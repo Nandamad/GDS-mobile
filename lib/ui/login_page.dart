@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'main_navigation_page.dart'; // Ganti import 'dashboard_page.dart'
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -9,8 +10,53 @@ class LoginScreen extends StatefulWidget {
 
 class _LoginScreenState extends State<LoginScreen> {
   bool _obscurePassword = true;
+  bool _isLoading = false;
   final TextEditingController _nipController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
+
+  void _handleLogin() {
+  FocusScope.of(context).unfocus(); // Sembunyikan keyboard
+
+  final nip = _nipController.text.trim();
+  final password = _passwordController.text.trim();
+
+  // Validasi Input Kosong
+  if (nip.isEmpty || password.isEmpty) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text('Email/NIP dan Password wajib diisi!'),
+        backgroundColor: Colors.redAccent,
+      ),
+    );
+    return;
+  }
+
+  // Validasi Kredensial Mock/Dummy
+  if (nip == '12345' && password == '12345') {
+    setState(() => _isLoading = true);
+
+    Future.delayed(const Duration(seconds: 1), () {
+      if (mounted) {
+        setState(() => _isLoading = false);
+        // Navigasi ke MainNavigationScreen (Layout Utama dengan BottomNavBar)
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(
+            builder: (context) => const MainNavigationScreen(),
+          ),
+        );
+      }
+    });
+  } else {
+    // Jika Kredensial Salah
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text('NIP atau Password salah! (Gunakan NIP: 12345, Pass: 12345)'),
+        backgroundColor: Colors.redAccent,
+      ),
+    );
+  }
+}
 
   @override
   Widget build(BuildContext context) {
@@ -175,7 +221,13 @@ class _LoginScreenState extends State<LoginScreen> {
                       Align(
                         alignment: Alignment.centerRight,
                         child: TextButton(
-                          onPressed: () {},
+                          onPressed: () {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(
+                                content: Text('Silakan hubungi admin HRD untuk reset password.'),
+                              ),
+                            );
+                          },
                           style: TextButton.styleFrom(
                             padding: EdgeInsets.zero,
                             minimumSize: Size.zero,
@@ -198,7 +250,7 @@ class _LoginScreenState extends State<LoginScreen> {
                         width: double.infinity,
                         height: 44,
                         child: ElevatedButton(
-                          onPressed: () {},
+                          onPressed: _isLoading ? null : _handleLogin,
                           style: ElevatedButton.styleFrom(
                             backgroundColor: const Color(0xFF009688),
                             elevation: 0,
@@ -206,14 +258,23 @@ class _LoginScreenState extends State<LoginScreen> {
                               borderRadius: BorderRadius.circular(22),
                             ),
                           ),
-                          child: const Text(
-                            'Masuk',
-                            style: TextStyle(
-                              color: Colors.white,
-                              fontSize: 13,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
+                          child: _isLoading
+                              ? const SizedBox(
+                                  width: 18,
+                                  height: 18,
+                                  child: CircularProgressIndicator(
+                                    color: Colors.white,
+                                    strokeWidth: 2,
+                                  ),
+                                )
+                              : const Text(
+                                  'Masuk',
+                                  style: TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 13,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
                         ),
                       ),
                     ],

@@ -1,13 +1,36 @@
+import 'dart:convert';
 import 'package:flutter/material.dart';
 
 class KonfirmasiFotoScreen extends StatefulWidget {
-  const KonfirmasiFotoScreen({super.key});
+  final String? imageBase64;
+
+  const KonfirmasiFotoScreen({super.key, this.imageBase64});
 
   @override
   State<KonfirmasiFotoScreen> createState() => _KonfirmasiFotoScreenState();
 }
 
 class _KonfirmasiFotoScreenState extends State<KonfirmasiFotoScreen> {
+  bool _isSubmitting = false;
+
+  void _onConfirm() {
+    setState(() => _isSubmitting = true);
+
+    // Simulasi proses submit data presensi
+    Future.delayed(const Duration(seconds: 2), () {
+      if (mounted) {
+        setState(() => _isSubmitting = false);
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Presensi Berhasil Dikonfirmasi!'),
+            backgroundColor: Color(0xFF009688),
+          ),
+        );
+        Navigator.pop(context, true); // Kembalikan nilai sukses
+      }
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -122,6 +145,8 @@ class _KonfirmasiFotoScreenState extends State<KonfirmasiFotoScreen> {
   }
 
   Widget _buildCameraPreviewCard() {
+    final hasBase64 = widget.imageBase64 != null && widget.imageBase64!.startsWith('data:image');
+
     return Container(
       width: 220,
       height: 220,
@@ -135,12 +160,19 @@ class _KonfirmasiFotoScreenState extends State<KonfirmasiFotoScreen> {
           alignment: Alignment.center,
           children: [
             // Image Preview Selfie
-            Image.network(
-              'https://i.pravatar.cc/400?img=11',
-              width: double.infinity,
-              height: double.infinity,
-              fit: BoxFit.cover,
-            ),
+            hasBase64
+                ? Image.memory(
+                    base64Decode(widget.imageBase64!.split(',').last),
+                    width: double.infinity,
+                    height: double.infinity,
+                    fit: BoxFit.cover,
+                  )
+                : Image.network(
+                    'https://i.pravatar.cc/400?img=11',
+                    width: double.infinity,
+                    height: double.infinity,
+                    fit: BoxFit.cover,
+                  ),
 
             // Face Detection Bounding Box Frame
             Container(
@@ -289,7 +321,7 @@ class _KonfirmasiFotoScreenState extends State<KonfirmasiFotoScreen> {
           child: SizedBox(
             height: 40,
             child: OutlinedButton(
-              onPressed: () => Navigator.pop(context),
+              onPressed: _isSubmitting ? null : () => Navigator.pop(context),
               style: OutlinedButton.styleFrom(
                 side: const BorderSide(color: Color(0xFF009688)),
                 shape: RoundedRectangleBorder(
@@ -312,7 +344,7 @@ class _KonfirmasiFotoScreenState extends State<KonfirmasiFotoScreen> {
           child: SizedBox(
             height: 40,
             child: ElevatedButton(
-              onPressed: () {},
+              onPressed: _isSubmitting ? null : _onConfirm,
               style: ElevatedButton.styleFrom(
                 backgroundColor: const Color(0xFF009688),
                 elevation: 0,
@@ -320,14 +352,20 @@ class _KonfirmasiFotoScreenState extends State<KonfirmasiFotoScreen> {
                   borderRadius: BorderRadius.circular(10),
                 ),
               ),
-              child: const Text(
-                'KONFIRMASI',
-                style: TextStyle(
-                  color: Colors.white,
-                  fontSize: 10,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
+              child: _isSubmitting
+                  ? const SizedBox(
+                      width: 16,
+                      height: 16,
+                      child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
+                    )
+                  : const Text(
+                      'KONFIRMASI',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 10,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
             ),
           ),
         ),

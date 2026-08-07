@@ -9,7 +9,46 @@ class PengajuanScreen extends StatefulWidget {
 
 class _PengajuanScreenState extends State<PengajuanScreen> {
   int _selectedFilter = 0; // 0: Semua, 1: Cuti/Izin, 2: Lembur
-  int _selectedNavIndex = 2; // Index Pengajuan
+
+  // Sample data riwayat pengajuan
+  final List<Map<String, dynamic>> _allHistory = [
+    {
+      'type': 'Cuti/Izin',
+      'badgeText': 'Cuti',
+      'badgeBgColor': const Color(0xFFE0F2FE),
+      'badgeTextColor': const Color(0xFF0284C7),
+      'title': 'Cuti Tahunan - 5 Hari',
+      'statusText': 'Pending Approval L1',
+      'statusBgColor': const Color(0xFFFFEDD5),
+      'statusTextColor': const Color(0xFFC2410C),
+      'dateRange': '06-10 Agt 2026',
+      'submittedDate': 'Diajukan: 01 Agt 2026',
+    },
+    {
+      'type': 'Lembur',
+      'badgeText': 'Lembur',
+      'badgeBgColor': const Color(0xFFFEF3C7),
+      'badgeTextColor': const Color(0xFFD97706),
+      'title': '2 Jam Lembur',
+      'statusText': 'L1 Disetujui, L2 Pending',
+      'statusBgColor': const Color(0xFFFFEDD5),
+      'statusTextColor': const Color(0xFFC2410C),
+      'dateRange': '04 Agt 2026, 17:00-19:00',
+      'submittedDate': 'Diajukan: 04 Agt 2026',
+    },
+    {
+      'type': 'Cuti/Izin',
+      'badgeText': 'Izin',
+      'badgeBgColor': const Color(0xFFE0E7FF),
+      'badgeTextColor': const Color(0xFF4338CA),
+      'title': 'Izin Pribadi - 1 Hari',
+      'statusText': 'Pending Approval L1',
+      'statusBgColor': const Color(0xFFFFEDD5),
+      'statusTextColor': const Color(0xFFC2410C),
+      'dateRange': '15 Agt 2026',
+      'submittedDate': 'Diajukan: 01 Agt 2026',
+    },
+  ];
 
   @override
   Widget build(BuildContext context) {
@@ -18,10 +57,7 @@ class _PengajuanScreenState extends State<PengajuanScreen> {
       appBar: AppBar(
         backgroundColor: Colors.white,
         elevation: 0,
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back, color: Color(0xFF0F172A)),
-          onPressed: () {},
-        ),
+        automaticallyImplyLeading: false, // Menghapus tombol back ganda untuk tab utama
         title: const Text(
           'Pengajuan',
           style: TextStyle(
@@ -33,7 +69,13 @@ class _PengajuanScreenState extends State<PengajuanScreen> {
         actions: [
           IconButton(
             icon: const Icon(Icons.help_outline, color: Color(0xFF64748B)),
-            onPressed: () {},
+            onPressed: () {
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(
+                  content: Text('Pilih jenis pengajuan untuk melanjutkan.'),
+                ),
+              );
+            },
           ),
         ],
       ),
@@ -49,7 +91,11 @@ class _PengajuanScreenState extends State<PengajuanScreen> {
               iconColor: const Color(0xFF0284C7),
               title: 'Ajukan Cuti / Izin',
               subtitle: 'Permohonan cuti, izin, atau sakit',
-              onTap: () {},
+              onTap: () {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('Membuka Formulir Cuti/Izin...')),
+                );
+              },
             ),
             const SizedBox(height: 10),
             _buildActionCard(
@@ -58,7 +104,11 @@ class _PengajuanScreenState extends State<PengajuanScreen> {
               iconColor: const Color(0xFFD97706),
               title: 'Ajukan Lembur',
               subtitle: 'Permohonan jam kerja tambahan',
-              onTap: () {},
+              onTap: () {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('Membuka Formulir Lembur...')),
+                );
+              },
             ),
             const SizedBox(height: 18),
 
@@ -82,7 +132,7 @@ class _PengajuanScreenState extends State<PengajuanScreen> {
           ],
         ),
       ),
-      bottomNavigationBar: _buildBottomNavigationBar(),
+      // PERHATIAN: bottomNavigationBar dihapus dari sini
     );
   }
 
@@ -183,44 +233,41 @@ class _PengajuanScreenState extends State<PengajuanScreen> {
   }
 
   Widget _buildHistoryList() {
+    final filteredList = _allHistory.where((item) {
+      if (_selectedFilter == 1) return item['type'] == 'Cuti/Izin';
+      if (_selectedFilter == 2) return item['type'] == 'Lembur';
+      return true;
+    }).toList();
+
+    if (filteredList.isEmpty) {
+      return const Center(
+        child: Padding(
+          padding: EdgeInsets.symmetric(vertical: 20),
+          child: Text(
+            'Tidak ada riwayat pengajuan',
+            style: TextStyle(fontSize: 11, color: Colors.grey),
+          ),
+        ),
+      );
+    }
+
     return Column(
-      children: [
-        _buildHistoryCard(
-          badgeText: 'Cuti',
-          badgeBgColor: const Color(0xFFE0F2FE),
-          badgeTextColor: const Color(0xFF0284C7),
-          title: 'Cuti Tahunan - 5 Hari',
-          statusText: 'Pending Approval L1',
-          statusBgColor: const Color(0xFFFFEDD5),
-          statusTextColor: const Color(0xFFC2410C),
-          dateRange: '06-10 Agt 2026',
-          submittedDate: 'Diajukan: 01 Agt 2026',
-        ),
-        const SizedBox(height: 10),
-        _buildHistoryCard(
-          badgeText: 'Lembur',
-          badgeBgColor: const Color(0xFFFEF3C7),
-          badgeTextColor: const Color(0xFFD97706),
-          title: '2 Jam Lembur',
-          statusText: 'L1 Disetujui, L2 Pending',
-          statusBgColor: const Color(0xFFFFEDD5),
-          statusTextColor: const Color(0xFFC2410C),
-          dateRange: '04 Agt 2026, 17:00-19:00',
-          submittedDate: 'Diajukan: 04 Agt 2026',
-        ),
-        const SizedBox(height: 10),
-        _buildHistoryCard(
-          badgeText: 'Izin',
-          badgeBgColor: const Color(0xFFE0E7FF),
-          badgeTextColor: const Color(0xFF4338CA),
-          title: 'Izin Pribadi - 1 Hari',
-          statusText: 'Pending Approval L1',
-          statusBgColor: const Color(0xFFFFEDD5),
-          statusTextColor: const Color(0xFFC2410C),
-          dateRange: '15 Agt 2026',
-          submittedDate: 'Diajukan: 01 Agt 2026',
-        ),
-      ],
+      children: filteredList.map((item) {
+        return Padding(
+          padding: const EdgeInsets.only(bottom: 10.0),
+          child: _buildHistoryCard(
+            badgeText: item['badgeText'],
+            badgeBgColor: item['badgeBgColor'],
+            badgeTextColor: item['badgeTextColor'],
+            title: item['title'],
+            statusText: item['statusText'],
+            statusBgColor: item['statusBgColor'],
+            statusTextColor: item['statusTextColor'],
+            dateRange: item['dateRange'],
+            submittedDate: item['submittedDate'],
+          ),
+        );
+      }).toList(),
     );
   }
 
@@ -316,7 +363,11 @@ class _PengajuanScreenState extends State<PengajuanScreen> {
                 ],
               ),
               InkWell(
-                onTap: () {},
+                onTap: () {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text('Membuka Detail Workflow...')),
+                  );
+                },
                 child: const Text(
                   'Detail Workflow >',
                   style: TextStyle(
@@ -330,41 +381,6 @@ class _PengajuanScreenState extends State<PengajuanScreen> {
           ),
         ],
       ),
-    );
-  }
-
-  Widget _buildBottomNavigationBar() {
-    return BottomNavigationBar(
-      currentIndex: _selectedNavIndex,
-      onTap: (index) => setState(() => _selectedNavIndex = index),
-      type: BottomNavigationBarType.fixed,
-      selectedItemColor: const Color(0xFF009688),
-      unselectedItemColor: Colors.grey,
-      selectedFontSize: 10,
-      unselectedFontSize: 10,
-      iconSize: 20,
-      items: const [
-        BottomNavigationBarItem(
-          icon: Icon(Icons.home_outlined),
-          label: 'Beranda',
-        ),
-        BottomNavigationBarItem(
-          icon: Icon(Icons.check_circle_outline),
-          label: 'Presensi',
-        ),
-        BottomNavigationBarItem(
-          icon: Icon(Icons.assignment),
-          label: 'Pengajuan',
-        ),
-        BottomNavigationBarItem(
-          icon: Icon(Icons.format_list_bulleted),
-          label: 'Riwayat',
-        ),
-        BottomNavigationBarItem(
-          icon: Icon(Icons.notifications_none),
-          label: 'Notifikasi',
-        ),
-      ],
     );
   }
 }

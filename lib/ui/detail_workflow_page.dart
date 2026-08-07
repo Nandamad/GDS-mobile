@@ -1,7 +1,12 @@
 import 'package:flutter/material.dart';
+import '../model/izin_cuti.dart';
+import '../model/lembur.dart';
 
 class DetailWorkflowScreen extends StatefulWidget {
-  const DetailWorkflowScreen({super.key});
+  final IzinCuti? izinCuti;
+  final Lembur? lembur;
+
+  const DetailWorkflowScreen({super.key, this.izinCuti, this.lembur});
 
   @override
   State<DetailWorkflowScreen> createState() => _DetailWorkflowScreenState();
@@ -9,6 +14,25 @@ class DetailWorkflowScreen extends StatefulWidget {
 
 class _DetailWorkflowScreenState extends State<DetailWorkflowScreen> {
   int _selectedNavIndex = 2; // Index Pengajuan
+
+  String _formatDate(DateTime? date) {
+    if (date == null) return '-';
+    final List<String> bulan = [
+      'Jan',
+      'Feb',
+      'Mar',
+      'Apr',
+      'Mei',
+      'Jun',
+      'Jul',
+      'Agt',
+      'Sep',
+      'Okt',
+      'Nov',
+      'Des',
+    ];
+    return '${date.day.toString().padLeft(2, '0')} ${bulan[date.month - 1]} ${date.year}';
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -35,7 +59,7 @@ class _DetailWorkflowScreenState extends State<DetailWorkflowScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Card Ringkasan Cuti
+            // Card Ringkasan Cuti / Lembur
             _buildSummaryCard(),
             const SizedBox(height: 16),
 
@@ -60,6 +84,22 @@ class _DetailWorkflowScreenState extends State<DetailWorkflowScreen> {
   }
 
   Widget _buildSummaryCard() {
+    final bool isCuti = widget.izinCuti != null;
+    final String jenis = isCuti
+        ? (widget.izinCuti?.jenis != null
+              ? widget.izinCuti!.jenis!.toUpperCase()
+              : 'Cuti Tahunan')
+        : 'Pengajuan Lembur';
+    final String status = isCuti
+        ? (widget.izinCuti?.status ?? 'pending')
+        : (widget.lembur?.status ?? 'pending');
+    final String alasan = isCuti
+        ? (widget.izinCuti?.alasan ?? 'Liburan keluarga')
+        : (widget.lembur?.alasanLembur ?? 'Deadline tugas urgent');
+    final String tanggalDiajukan = _formatDate(
+      isCuti ? widget.izinCuti?.createdAt : widget.lembur?.createdAt,
+    );
+
     return Container(
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
@@ -72,9 +112,9 @@ class _DetailWorkflowScreenState extends State<DetailWorkflowScreen> {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              const Text(
-                'Cuti Tahunan',
-                style: TextStyle(
+              Text(
+                jenis,
+                style: const TextStyle(
                   fontWeight: FontWeight.bold,
                   fontSize: 13,
                   color: Color(0xFF0F172A),
@@ -83,13 +123,17 @@ class _DetailWorkflowScreenState extends State<DetailWorkflowScreen> {
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                 decoration: BoxDecoration(
-                  color: const Color(0xFFFFEDD5),
+                  color: status == 'approved'
+                      ? const Color(0xFFDCFCE7)
+                      : const Color(0xFFFFEDD5),
                   borderRadius: BorderRadius.circular(4),
                 ),
-                child: const Text(
-                  'Pending Approval L2',
+                child: Text(
+                  status == 'approved' ? 'Disetujui' : 'Pending Approval L2',
                   style: TextStyle(
-                    color: Color(0xFFC2410C),
+                    color: status == 'approved'
+                        ? const Color(0xFF15803D)
+                        : const Color(0xFFC2410C),
                     fontWeight: FontWeight.bold,
                     fontSize: 8,
                   ),
@@ -98,13 +142,18 @@ class _DetailWorkflowScreenState extends State<DetailWorkflowScreen> {
             ],
           ),
           const SizedBox(height: 10),
-          _buildSummaryRow('Jenis', 'Cuti Tahunan'),
+          _buildSummaryRow('Jenis', jenis),
           const SizedBox(height: 4),
-          _buildSummaryRow('Periode', '06-10 Agt 2026 (5 Hari)'),
+          _buildSummaryRow(
+            'Periode',
+            isCuti
+                ? '${_formatDate(widget.izinCuti?.tanggalMulai)} - ${_formatDate(widget.izinCuti?.tanggalSelesai)}'
+                : _formatDate(widget.lembur?.tanggal),
+          ),
           const SizedBox(height: 4),
-          _buildSummaryRow('Diajukan', '01 Agt 2026'),
+          _buildSummaryRow('Diajukan', tanggalDiajukan),
           const SizedBox(height: 4),
-          _buildSummaryRow('Alasan', 'Liburan keluarga ke Bali'),
+          _buildSummaryRow('Alasan', alasan),
         ],
       ),
     );
@@ -114,10 +163,7 @@ class _DetailWorkflowScreenState extends State<DetailWorkflowScreen> {
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
-        Text(
-          label,
-          style: const TextStyle(fontSize: 10, color: Colors.grey),
-        ),
+        Text(label, style: const TextStyle(fontSize: 10, color: Colors.grey)),
         Text(
           value,
           style: const TextStyle(
@@ -138,7 +184,9 @@ class _DetailWorkflowScreenState extends State<DetailWorkflowScreen> {
           // Step 1: Pengajuan Dikirim
           _buildTimelineStep(
             title: 'Pengajuan Dikirim',
-            subtitle: '01 Agt 2026, 09:15',
+            subtitle: _formatDate(
+              widget.izinCuti?.createdAt ?? widget.lembur?.createdAt,
+            ),
             badgeText: 'Selesai',
             badgeBgColor: const Color(0xFFDCFCE7),
             badgeTextColor: const Color(0xFF15803D),
@@ -148,11 +196,14 @@ class _DetailWorkflowScreenState extends State<DetailWorkflowScreen> {
             isLast: false,
           ),
 
-          // Step 2: Persetujuan Atasan
+          // Step 2: Persetujuan Atasan (L1)
           _buildTimelineStep(
             title: 'Persetujuan Atasan (Level 1)',
-            subtitle: 'Ahmad Fauzi (Manager IT)\nPukul 01 Agt 2026, 14:30',
-            note: 'Catatan: Silakan, selamat berlibur',
+            subtitle:
+                'Ahmad Fauzi (Manager IT)\n${_formatDate(widget.izinCuti?.approvedAt ?? widget.lembur?.approvedAtL1)}',
+            note: widget.izinCuti?.catatanPersetujuan != null
+                ? 'Catatan: ${widget.izinCuti?.catatanPersetujuan}'
+                : 'Catatan: Silakan, selamat berlibur',
             badgeText: 'Disetujui',
             badgeBgColor: const Color(0xFFDCFCE7),
             badgeTextColor: const Color(0xFF15803D),
@@ -162,7 +213,7 @@ class _DetailWorkflowScreenState extends State<DetailWorkflowScreen> {
             isLast: false,
           ),
 
-          // Step 3: Persetujuan HRD
+          // Step 3: Persetujuan HRD (L2)
           _buildTimelineStep(
             title: 'Persetujuan HRD (Level 2)',
             subtitle: 'Siti Rahayu (HR Manager)',
@@ -217,7 +268,9 @@ class _DetailWorkflowScreenState extends State<DetailWorkflowScreen> {
                 Container(
                   width: 2,
                   height: 8,
-                  color: isDone || isCurrent ? const Color(0xFF009688) : Colors.grey.shade300,
+                  color: isDone || isCurrent
+                      ? const Color(0xFF009688)
+                      : Colors.grey.shade300,
                 ),
               Container(
                 width: 20,
@@ -227,14 +280,14 @@ class _DetailWorkflowScreenState extends State<DetailWorkflowScreen> {
                   color: isDone
                       ? const Color(0xFF009688)
                       : isCurrent
-                          ? Colors.orange
-                          : Colors.white,
+                      ? Colors.orange
+                      : Colors.white,
                   border: Border.all(
                     color: isDone
                         ? const Color(0xFF009688)
                         : isCurrent
-                            ? Colors.orange
-                            : Colors.grey.shade300,
+                        ? Colors.orange
+                        : Colors.grey.shade300,
                     width: 2,
                   ),
                 ),
@@ -242,24 +295,19 @@ class _DetailWorkflowScreenState extends State<DetailWorkflowScreen> {
                   child: isDone
                       ? const Icon(Icons.check, size: 12, color: Colors.white)
                       : isCurrent
-                          ? Container(
-                              width: 6,
-                              height: 6,
-                              decoration: const BoxDecoration(
-                                color: Colors.white,
-                                shape: BoxShape.circle,
-                              ),
-                            )
-                          : null,
+                      ? Container(
+                          width: 6,
+                          height: 6,
+                          decoration: const BoxDecoration(
+                            color: Colors.white,
+                            shape: BoxShape.circle,
+                          ),
+                        )
+                      : null,
                 ),
               ),
               if (!isLast)
-                Expanded(
-                  child: Container(
-                    width: 2,
-                    color: lineColor,
-                  ),
-                ),
+                Expanded(child: Container(width: 2, color: lineColor)),
             ],
           ),
           const SizedBox(width: 10),
@@ -286,7 +334,9 @@ class _DetailWorkflowScreenState extends State<DetailWorkflowScreen> {
                       ),
                       Container(
                         padding: const EdgeInsets.symmetric(
-                            horizontal: 6, vertical: 2),
+                          horizontal: 6,
+                          vertical: 2,
+                        ),
                         decoration: BoxDecoration(
                           color: badgeBgColor,
                           borderRadius: BorderRadius.circular(4),

@@ -1,24 +1,23 @@
 import 'package:flutter/material.dart';
-import 'ui/kamera_screen.dart'; 
+import 'ui/login_page.dart';
 
-void main() async {
-  WidgetsFlutterBinding.ensureInitialized();
-  runApp(const MainApp());
+void main() {
+  runApp(const MyApp());
 }
 
-class MainApp extends StatelessWidget {
-  const MainApp({super.key});
+class MyApp extends StatelessWidget {
+  const MyApp({super.key});
 
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
+      title: 'PresensiKu',
       debugShowCheckedModeBanner: false,
-      title: 'Presensi App',
       theme: ThemeData(
         fontFamily: 'Sans-Serif',
-        scaffoldBackgroundColor: Colors.black,
+        scaffoldBackgroundColor: const Color(0xFFF8FAFC),
       ),
-      home: const KameraScreen(),
+      home: const LoginScreen(),
     );
   }
 }

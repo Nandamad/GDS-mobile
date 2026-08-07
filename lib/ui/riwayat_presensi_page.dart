@@ -10,7 +10,70 @@ class RiwayatPresensiScreen extends StatefulWidget {
 class _RiwayatPresensiScreenState extends State<RiwayatPresensiScreen> {
   String _selectedMonth = 'Agustus 2026';
   String _selectedStatus = 'Semua Status';
-  int _selectedNavIndex = 3; // Index untuk tab Riwayat
+
+  // Master Data Riwayat
+  final List<Map<String, dynamic>> _allHistoryData = [
+    {
+      'month': 'Agustus 2026',
+      'date': 'Rabu, 05 Agt 2026',
+      'statusText': 'Terlambat +15m',
+      'statusCategory': 'Terlambat',
+      'statusBgColor': const Color(0xFFFFF3E0),
+      'statusTextColor': const Color(0xFFE65100),
+      'checkIn': '08:15',
+      'checkOut': '17:05',
+      'duration': '8h 50m',
+      'hasDetailButton': true,
+    },
+    {
+      'month': 'Agustus 2026',
+      'date': 'Selasa, 04 Agt 2026',
+      'statusText': 'On Time',
+      'statusCategory': 'On Time',
+      'statusBgColor': const Color(0xFFE8F5E9),
+      'statusTextColor': const Color(0xFF2E7D32),
+      'checkIn': '08:00',
+      'checkOut': '17:00',
+      'duration': '8h 00m',
+      'hasDetailButton': false,
+    },
+    {
+      'month': 'Agustus 2026',
+      'date': 'Senin, 03 Agt 2026',
+      'statusText': 'On Time',
+      'statusCategory': 'On Time',
+      'statusBgColor': const Color(0xFFE8F5E9),
+      'statusTextColor': const Color(0xFF2E7D32),
+      'checkIn': '07:55',
+      'checkOut': '17:10',
+      'duration': '8h 15m',
+      'hasDetailButton': false,
+    },
+    {
+      'month': 'Juli 2026',
+      'date': 'Jumat, 31 Jul 2026',
+      'statusText': 'Terlambat +30m',
+      'statusCategory': 'Terlambat',
+      'statusBgColor': const Color(0xFFFFF3E0),
+      'statusTextColor': const Color(0xFFE65100),
+      'checkIn': '08:30',
+      'checkOut': '17:00',
+      'duration': '8h 30m',
+      'hasDetailButton': true,
+    },
+    {
+      'month': 'Juli 2026',
+      'date': 'Kamis, 30 Jul 2026',
+      'statusText': 'Izin Ditolak',
+      'statusCategory': 'Izin',
+      'statusBgColor': const Color(0xFFFFEBEE),
+      'statusTextColor': const Color(0xFFC62828),
+      'checkIn': '-',
+      'checkOut': '-',
+      'duration': '0m',
+      'hasDetailButton': false,
+    },
+  ];
 
   @override
   Widget build(BuildContext context) {
@@ -19,6 +82,7 @@ class _RiwayatPresensiScreenState extends State<RiwayatPresensiScreen> {
       appBar: AppBar(
         backgroundColor: Colors.white,
         elevation: 0,
+        automaticallyImplyLeading: false,
         title: const Text(
           'Riwayat Presensi',
           style: TextStyle(
@@ -59,7 +123,7 @@ class _RiwayatPresensiScreenState extends State<RiwayatPresensiScreen> {
           ],
         ),
       ),
-      bottomNavigationBar: _buildBottomNavigationBar(),
+      // bottomNavigationBar dihapus dari sini
     );
   }
 
@@ -98,56 +162,47 @@ class _RiwayatPresensiScreenState extends State<RiwayatPresensiScreen> {
   }
 
   Widget _buildHistoryList() {
+    // Filter data berdasar Bulan dan Status
+    final filteredData = _allHistoryData.where((item) {
+      final matchesMonth = item['month'] == _selectedMonth;
+      final matchesStatus = _selectedStatus == 'Semua Status' ||
+          item['statusCategory'] == _selectedStatus;
+      return matchesMonth && matchesStatus;
+    }).toList();
+
+    if (filteredData.isEmpty) {
+      return Container(
+        padding: const EdgeInsets.symmetric(vertical: 40),
+        alignment: Alignment.center,
+        child: const Column(
+          children: [
+            Icon(Icons.history_toggle_off_rounded, size: 40, color: Colors.grey),
+            SizedBox(height: 8),
+            Text(
+              'Tidak ada data riwayat presensi',
+              style: TextStyle(fontSize: 11, color: Colors.grey),
+            ),
+          ],
+        ),
+      );
+    }
+
     return Column(
-      children: [
-        // Rabu, 05 Agt 2026 (Terlambat dengan Detail Log)
-        _buildAttendanceCard(
-          date: 'Rabu, 05 Agt 2026',
-          statusText: 'Terlambat +15m',
-          statusBgColor: const Color(0xFFFFF3E0),
-          statusTextColor: Colors.orange.shade800,
-          checkIn: '08:15',
-          checkOut: '17:05',
-          duration: '8h 50m',
-          hasDetailButton: true,
-        ),
-        const SizedBox(height: 10),
-
-        // Selasa, 04 Agt 2026 (On Time)
-        _buildAttendanceCard(
-          date: 'Selasa, 04 Agt 2026',
-          statusText: 'On Time',
-          statusBgColor: const Color(0xFFE8F5E9),
-          statusTextColor: Colors.green.shade700,
-          checkIn: '08:00',
-          checkOut: '17:00',
-          duration: '8h 00m',
-        ),
-        const SizedBox(height: 10),
-
-        // Senin, 03 Agt 2026 (On Time)
-        _buildAttendanceCard(
-          date: 'Senin, 03 Agt 2026',
-          statusText: 'On Time',
-          statusBgColor: const Color(0xFFE8F5E9),
-          statusTextColor: Colors.green.shade700,
-          checkIn: '07:55',
-          checkOut: '17:10',
-          duration: '8h 15m',
-        ),
-        const SizedBox(height: 10),
-
-        // Jumat, 31 Jul 2026 (Terlambat)
-        _buildAttendanceCard(
-          date: 'Jumat, 31 Jul 2026',
-          statusText: 'Terlambat +30m',
-          statusBgColor: const Color(0xFFFFF3E0),
-          statusTextColor: Colors.orange.shade800,
-          checkIn: '08:30',
-          checkOut: '17:00',
-          duration: '8h 30m',
-        ),
-      ],
+      children: filteredData.map((item) {
+        return Padding(
+          padding: const EdgeInsets.only(bottom: 10.0),
+          child: _buildAttendanceCard(
+            date: item['date'],
+            statusText: item['statusText'],
+            statusBgColor: item['statusBgColor'],
+            statusTextColor: item['statusTextColor'],
+            checkIn: item['checkIn'],
+            checkOut: item['checkOut'],
+            duration: item['duration'],
+            hasDetailButton: item['hasDetailButton'],
+          ),
+        );
+      }).toList(),
     );
   }
 
@@ -211,14 +266,18 @@ class _RiwayatPresensiScreenState extends State<RiwayatPresensiScreen> {
             ],
           ),
 
-          // Tombol Detail Log (Opsional)
+          // Tombol Detail Log
           if (hasDetailButton) ...[
             const SizedBox(height: 10),
             SizedBox(
               width: double.infinity,
               height: 32,
               child: ElevatedButton.icon(
-                onPressed: () {},
+                onPressed: () {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text('Membuka Detail Log...')),
+                  );
+                },
                 icon: const Icon(Icons.remove_red_eye_outlined, size: 14),
                 label: const Text(
                   'Detail Log',
@@ -259,42 +318,6 @@ class _RiwayatPresensiScreenState extends State<RiwayatPresensiScreen> {
             fontSize: 12,
             color: Color(0xFF0F172A),
           ),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildBottomNavigationBar() {
-    return BottomNavigationBar(
-      currentIndex: _selectedNavIndex,
-      onTap: (index) => setState(() => _selectedNavIndex = index),
-      type: BottomNavigationBarType.fixed,
-      selectedItemColor: const Color(0xFF009688),
-      unselectedItemColor: Colors.grey,
-      selectedFontSize: 10,
-      unselectedFontSize: 10,
-      iconSize: 20,
-      items: const [
-        BottomNavigationBarItem(
-          icon: Icon(Icons.home_outlined),
-          label: 'Beranda',
-        ),
-        BottomNavigationBarItem(
-          icon: Icon(Icons.check_circle_outline),
-          label: 'Presensi',
-        ),
-        BottomNavigationBarItem(
-          icon: Icon(Icons.assignment_outlined),
-          label: 'Pengajuan',
-        ),
-        BottomNavigationBarItem(
-          icon: Icon(Icons.format_list_bulleted),
-          activeIcon: Icon(Icons.format_list_bulleted_sharp),
-          label: 'Riwayat',
-        ),
-        BottomNavigationBarItem(
-          icon: Icon(Icons.notifications_none),
-          label: 'Notifikasi',
         ),
       ],
     );

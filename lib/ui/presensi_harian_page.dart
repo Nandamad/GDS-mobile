@@ -1,13 +1,7 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
-
-void main() {
-  runApp(
-    const MaterialApp(
-      home: PresensiScreen(),
-      debugShowCheckedModeBanner: false,
-    ),
-  );
-}
+import 'kamera_page.dart';
+import 'konfirmasi_foto_page.dart';
 
 class PresensiScreen extends StatefulWidget {
   const PresensiScreen({super.key});
@@ -17,9 +11,73 @@ class PresensiScreen extends StatefulWidget {
 }
 
 class _PresensiScreenState extends State<PresensiScreen> {
-  // Warna tema utama dari gambar
+  // Warna tema utama
   final Color primaryTeal = const Color(0xFF009688);
   final Color lightTealAccent = const Color(0xFFE0F2F1);
+
+  // Realtime Clock State
+  late Timer _timer;
+  String _currentTime = '';
+
+  // Status Absensi
+  String _jamMasuk = 'Belum Absen';
+  String _jamKeluar = 'Belum Absen';
+  bool _isSudahAbsenMasuk = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _updateTime();
+    _timer = Timer.periodic(const Duration(seconds: 1), (timer) => _updateTime());
+  }
+
+  void _updateTime() {
+    final now = DateTime.now();
+    final hour = now.hour.toString().padLeft(2, '0');
+    final minute = now.minute.toString().padLeft(2, '0');
+    final second = now.second.toString().padLeft(2, '0');
+    if (mounted) {
+      setState(() {
+        _currentTime = '$hour:$minute:$second WIB';
+      });
+    }
+  }
+
+  @override
+  void dispose() {
+    _timer.cancel();
+    super.dispose();
+  }
+
+  // Alur Navigasi Presensi: Presensi -> Kamera -> Konfirmasi
+  Future<void> _handleAbsenMasuk() async {
+    // 1. Buka Kamera
+    final resultImage = await Navigator.push<String>(
+      context,
+      MaterialPageRoute(builder: (context) => const KameraScreen()),
+    );
+
+    if (resultImage != null && mounted) {
+      // 2. Buka Konfirmasi Foto jika mengambil foto
+      final isConfirmed = await Navigator.push<bool>(
+        context,
+        MaterialPageRoute(
+          builder: (context) => KonfirmasiFotoScreen(imageBase64: resultImage),
+        ),
+      );
+
+      // 3. Update UI jika konfirmasi sukses
+      if (isConfirmed == true && mounted) {
+        final now = DateTime.now();
+        final timeString =
+            '${now.hour.toString().padLeft(2, '0')}:${now.minute.toString().padLeft(2, '0')} WIB';
+        setState(() {
+          _jamMasuk = timeString;
+          _isSudahAbsenMasuk = true;
+        });
+      }
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -28,7 +86,6 @@ class _PresensiScreenState extends State<PresensiScreen> {
       appBar: AppBar(
         backgroundColor: Colors.white,
         elevation: 0,
-        // Status Bar terintegrasi
         titleSpacing: 0,
         automaticallyImplyLeading: false,
         title: Padding(
@@ -36,16 +93,16 @@ class _PresensiScreenState extends State<PresensiScreen> {
           child: Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              const Text(
-                '08:45',
-                style: TextStyle(
+              Text(
+                _currentTime.length >= 5 ? _currentTime.substring(0, 5) : '08:45',
+                style: const TextStyle(
                   color: Colors.black,
                   fontWeight: FontWeight.bold,
                   fontSize: 16,
                 ),
               ),
-              Row(
-                children: const [
+              const Row(
+                children: [
                   Icon(
                     Icons.signal_cellular_alt,
                     color: Colors.black,
@@ -81,7 +138,7 @@ class _PresensiScreenState extends State<PresensiScreen> {
                   ),
                   const SizedBox(height: 4),
                   Text(
-                    '08:45:12 WIB',
+                    _currentTime.isEmpty ? '08:45:12 WIB' : _currentTime,
                     style: TextStyle(
                       fontSize: 18,
                       fontWeight: FontWeight.bold,
@@ -138,20 +195,16 @@ class _PresensiScreenState extends State<PresensiScreen> {
                   topRight: Radius.circular(12),
                 ),
                 child: AspectRatio(
-                  aspectRatio: 2.2, // Sesuaikan proporsi gambar peta
+                  aspectRatio: 2.2,
                   child: Container(
-                    color: Colors.grey[200], // Placeholder untuk loading peta
-                    // Di implementasi nyata, gunakan paket google_maps_flutter di sini
-                    // Untuk replikasi UI, kita pakai Image.asset atau placeholder
+                    color: Colors.grey[200],
                     child: Stack(
                       children: [
-                        // Gambar latar peta (placeholder)
                         Image.network(
-                          'https://via.placeholder.com/600x300.png?text=Peta+Lokasi', // Ganti dengan gambar peta nyata
+                          'https://via.placeholder.com/600x300.png?text=Peta+Lokasi',
                           fit: BoxFit.cover,
                           width: double.infinity,
                         ),
-                        // Efek melingkar di tengah
                         Center(
                           child: Container(
                             width: 130,
@@ -170,7 +223,6 @@ class _PresensiScreenState extends State<PresensiScreen> {
                             ),
                           ),
                         ),
-                        // Pin Lokasi Merah
                         const Center(
                           child: Padding(
                             padding: EdgeInsets.only(bottom: 20),
@@ -181,10 +233,9 @@ class _PresensiScreenState extends State<PresensiScreen> {
                             ),
                           ),
                         ),
-                        // Titik Biru Pengguna
                         Positioned(
                           top: 60,
-                          left: 160, // Sesuaikan posisi
+                          left: 160,
                           child: Container(
                             width: 12,
                             height: 12,
@@ -206,9 +257,9 @@ class _PresensiScreenState extends State<PresensiScreen> {
               child: Container(
                 width: double.infinity,
                 padding: const EdgeInsets.symmetric(vertical: 8),
-                decoration: BoxDecoration(
-                  color: const Color(0xFFE8F5E9), // Warna hijau sangat muda
-                  borderRadius: const BorderRadius.only(
+                decoration: const BoxDecoration(
+                  color: Color(0xFFE8F5E9),
+                  borderRadius: BorderRadius.only(
                     bottomLeft: Radius.circular(12),
                     bottomRight: Radius.circular(12),
                   ),
@@ -217,7 +268,7 @@ class _PresensiScreenState extends State<PresensiScreen> {
                   'Dalam Radius Kantor (52m < 100m)',
                   textAlign: TextAlign.center,
                   style: TextStyle(
-                    color: Color(0xFF2E7D32), // Warna hijau tua untuk teks
+                    color: Color(0xFF2E7D32),
                     fontSize: 12,
                     fontWeight: FontWeight.w500,
                   ),
@@ -232,30 +283,27 @@ class _PresensiScreenState extends State<PresensiScreen> {
               padding: const EdgeInsets.symmetric(horizontal: 20.0),
               child: Row(
                 children: [
-                  _buildTimeStatusCard('Jam Masuk', 'Belum Absen'),
+                  _buildTimeStatusCard('Jam Masuk', _jamMasuk, isDone: _isSudahAbsenMasuk),
                   const SizedBox(width: 16),
-                  _buildTimeStatusCard('Jam Pulang', 'Belum Absen'),
+                  _buildTimeStatusCard('Jam Pulang', _jamKeluar, isDone: false),
                 ],
               ),
             ),
 
             const SizedBox(height: 20),
 
-            // Tombol Absen Masuk (Aktif)
+            // Tombol Absen Masuk
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 20.0),
               child: SizedBox(
                 width: double.infinity,
                 height: 50,
                 child: ElevatedButton.icon(
-                  onPressed: () {
-                    // Logika untuk Absen Masuk
-                    print('Absen Masuk Ditekan');
-                  },
+                  onPressed: _isSudahAbsenMasuk ? null : _handleAbsenMasuk,
                   icon: const Icon(Icons.camera_alt_outlined),
-                  label: const Text(
-                    'ABSEN MASUK',
-                    style: TextStyle(
+                  label: Text(
+                    _isSudahAbsenMasuk ? 'SUDAH ABSEN MASUK' : 'ABSEN MASUK',
+                    style: const TextStyle(
                       fontWeight: FontWeight.bold,
                       letterSpacing: 1.0,
                     ),
@@ -273,29 +321,30 @@ class _PresensiScreenState extends State<PresensiScreen> {
 
             const SizedBox(height: 12),
 
-            // Tombol Absen Keluar (Tidak Aktif/Disabled)
+            // Tombol Absen Keluar
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 20.0),
               child: SizedBox(
                 width: double.infinity,
                 height: 50,
                 child: OutlinedButton.icon(
-                  onPressed: null, // 'null' membuat tombol menjadi disabled
+                  onPressed: _isSudahAbsenMasuk ? () {} : null,
                   icon: Icon(
                     Icons.camera_alt_outlined,
-                    color: Colors.grey[400],
+                    color: _isSudahAbsenMasuk ? primaryTeal : Colors.grey[400],
                   ),
                   label: Text(
                     'ABSEN KELUAR',
                     style: TextStyle(
-                      color: Colors.grey[400],
+                      color: _isSudahAbsenMasuk ? primaryTeal : Colors.grey[400],
                       fontWeight: FontWeight.bold,
                       letterSpacing: 1.0,
                     ),
                   ),
                   style: OutlinedButton.styleFrom(
-                    backgroundColor: Colors.grey[100],
-                    side: BorderSide(color: Colors.grey[200]!),
+                    backgroundColor: _isSudahAbsenMasuk ? lightTealAccent : Colors.grey[100],
+                    side: BorderSide(
+                        color: _isSudahAbsenMasuk ? primaryTeal : Colors.grey[200]!),
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(10),
                     ),
@@ -304,57 +353,14 @@ class _PresensiScreenState extends State<PresensiScreen> {
               ),
             ),
 
-            const SizedBox(height: 80), // Ruang ekstra untuk scrolling
+            const SizedBox(height: 20),
           ],
         ),
       ),
-      // Bottom Navigation Bar
-      bottomNavigationBar: Container(
-        decoration: BoxDecoration(
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withOpacity(0.05),
-              blurRadius: 10,
-              spreadRadius: 2,
-            ),
-          ],
-        ),
-        child: BottomNavigationBar(
-          type: BottomNavigationBarType.fixed,
-          backgroundColor: Colors.white,
-          selectedItemColor: primaryTeal,
-          unselectedItemColor: Colors.grey[500],
-          currentIndex: 1, // Set index ke 'Presensi'
-          selectedFontSize: 12,
-          unselectedFontSize: 12,
-          items: const [
-            BottomNavigationBarItem(
-              icon: Icon(Icons.home_outlined),
-              label: 'Beranda',
-            ),
-            BottomNavigationBarItem(
-              icon: Icon(Icons.check_circle),
-              label: 'Presensi',
-            ),
-            BottomNavigationBarItem(
-              icon: Icon(Icons.assignment_outlined),
-              label: 'Pengajuan',
-            ),
-            BottomNavigationBarItem(
-              icon: Icon(Icons.list_alt),
-              label: 'Riwayat',
-            ),
-            BottomNavigationBarItem(
-              icon: Icon(Icons.notifications_none),
-              label: 'Notifikasi',
-            ),
-          ],
-        ),
-      ),
+      // PERHATIAN: bottomNavigationBar dihapus dari sini
     );
   }
 
-  // Widget Pembantu untuk Baris Informasi (Card Atas)
   Widget _buildInfoRow(IconData icon, String title, [String? subtitle]) {
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -391,8 +397,7 @@ class _PresensiScreenState extends State<PresensiScreen> {
     );
   }
 
-  // Widget Pembantu untuk Card Jam Masuk/Pulang
-  Widget _buildTimeStatusCard(String title, String status) {
+  Widget _buildTimeStatusCard(String title, String status, {bool isDone = false}) {
     return Expanded(
       child: Container(
         padding: const EdgeInsets.all(16),
@@ -415,10 +420,10 @@ class _PresensiScreenState extends State<PresensiScreen> {
             const SizedBox(height: 6),
             Text(
               status,
-              style: const TextStyle(
+              style: TextStyle(
                 fontSize: 14,
                 fontWeight: FontWeight.bold,
-                color: Color(0xFFD32F2F), // Warna merah untuk 'Belum Absen'
+                color: isDone ? const Color(0xFF2E7D32) : const Color(0xFFD32F2F),
               ),
             ),
           ],

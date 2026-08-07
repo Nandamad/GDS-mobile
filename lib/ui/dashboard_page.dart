@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'ajukan_cuti_page.dart';
+import 'ajukan_lembur_page.dart';
 
 class DashboardScreen extends StatefulWidget {
   const DashboardScreen({super.key});
@@ -23,6 +25,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
               _buildHeader(),
               const SizedBox(height: 12),
               _buildStatusBanners(),
+              const SizedBox(height: 14),
+              _buildQuickActionButtons(),
               const SizedBox(height: 14),
               const Text(
                 'Ringkasan Kehadiran Bulan Ini',
@@ -74,36 +78,42 @@ class _DashboardScreenState extends State<DashboardScreen> {
             ],
           ),
         ),
-        Stack(
-          children: [
-            Container(
-              padding: const EdgeInsets.all(6),
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                border: Border.all(color: Colors.grey.shade300),
-              ),
-              child: const Icon(Icons.notifications_none, size: 18, color: Colors.grey),
-            ),
-            Positioned(
-              right: 2,
-              top: 2,
-              child: Container(
-                padding: const EdgeInsets.all(3),
-                decoration: const BoxDecoration(
-                  color: Colors.red,
+        InkWell(
+          onTap: () {
+            setState(() => _selectedIndex = 4); // Pindah ke tab Notifikasi
+          },
+          borderRadius: BorderRadius.circular(20),
+          child: Stack(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(6),
+                decoration: BoxDecoration(
                   shape: BoxShape.circle,
+                  border: Border.all(color: Colors.grey.shade300),
                 ),
-                child: const Text(
-                  '3',
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontSize: 7,
-                    fontWeight: FontWeight.bold,
+                child: const Icon(Icons.notifications_none, size: 18, color: Colors.grey),
+              ),
+              Positioned(
+                right: 2,
+                top: 2,
+                child: Container(
+                  padding: const EdgeInsets.all(3),
+                  decoration: const BoxDecoration(
+                    color: Colors.red,
+                    shape: BoxShape.circle,
+                  ),
+                  child: const Text(
+                    '3',
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 7,
+                      fontWeight: FontWeight.bold,
+                    ),
                   ),
                 ),
               ),
-            ),
-          ],
+            ],
+          ),
         )
       ],
     );
@@ -163,6 +173,73 @@ class _DashboardScreenState extends State<DashboardScreen> {
     );
   }
 
+  // Tombol aksi cepat untuk memicu Modal Bottom Sheet Cuti/Lembur
+  Widget _buildQuickActionButtons() {
+    return Row(
+      children: [
+        Expanded(
+          child: InkWell(
+            onTap: () => AjukanCutiSheet.show(context),
+            borderRadius: BorderRadius.circular(10),
+            child: Container(
+              padding: const EdgeInsets.symmetric(vertical: 10),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(10),
+                border: Border.all(color: const Color(0xFF009688).withOpacity(0.3)),
+              ),
+              child: const Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(Icons.beach_access_rounded, size: 16, color: Color(0xFF009688)),
+                  SizedBox(width: 6),
+                  Text(
+                    'Ajukan Cuti',
+                    style: TextStyle(
+                      fontSize: 11,
+                      fontWeight: FontWeight.bold,
+                      color: Color(0xFF009688),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+        const SizedBox(width: 10),
+        Expanded(
+          child: InkWell(
+            onTap: () => AjukanLemburSheet.show(context),
+            borderRadius: BorderRadius.circular(10),
+            child: Container(
+              padding: const EdgeInsets.symmetric(vertical: 10),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(10),
+                border: Border.all(color: const Color(0xFF009688).withOpacity(0.3)),
+              ),
+              child: const Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(Icons.access_time_filled_rounded, size: 16, color: Color(0xFF009688)),
+                  SizedBox(width: 6),
+                  Text(
+                    'Ajukan Lembur',
+                    style: TextStyle(
+                      fontSize: 11,
+                      fontWeight: FontWeight.bold,
+                      color: Color(0xFF009688),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
   Widget _buildAttendanceGrid() {
     return GridView.count(
       shrinkWrap: true,
@@ -196,9 +273,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(
+          const Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: const [
+            children: [
               Text(
                 'Tren Kehadiran (7 Hari Terakhir)',
                 style: TextStyle(fontWeight: FontWeight.bold, fontSize: 11),
@@ -246,7 +323,15 @@ class _DashboardScreenState extends State<DashboardScreen> {
   Widget _buildBottomNavigationBar() {
     return BottomNavigationBar(
       currentIndex: _selectedIndex,
-      onTap: (index) => setState(() => _selectedIndex = index),
+      onTap: (index) {
+        setState(() => _selectedIndex = index);
+
+        // Aksi Buka Sheet atau Pindah Halaman saat Bottom Nav diklik
+        if (index == 2) {
+          // Klik Tab 'Pengajuan' -> Tampilkan pilihan Cuti / Lembur
+          _showPengajuanModal(context);
+        }
+      },
       type: BottomNavigationBarType.fixed,
       selectedItemColor: const Color(0xFF009688),
       unselectedItemColor: Colors.grey,
@@ -261,10 +346,12 @@ class _DashboardScreenState extends State<DashboardScreen> {
         ),
         BottomNavigationBarItem(
           icon: Icon(Icons.check_circle_outline),
+          activeIcon: Icon(Icons.check_circle),
           label: 'Presensi',
         ),
         BottomNavigationBarItem(
           icon: Icon(Icons.assignment_outlined),
+          activeIcon: Icon(Icons.assignment),
           label: 'Pengajuan',
         ),
         BottomNavigationBarItem(
@@ -273,9 +360,46 @@ class _DashboardScreenState extends State<DashboardScreen> {
         ),
         BottomNavigationBarItem(
           icon: Icon(Icons.notifications_none),
+          activeIcon: Icon(Icons.notifications),
           label: 'Notifikasi',
         ),
       ],
+    );
+  }
+
+  // Dialog Pilihan Pengajuan saat Tab 'Pengajuan' diklik
+  void _showPengajuanModal(BuildContext context) {
+    showModalBottomSheet(
+      context: context,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+      ),
+      builder: (context) {
+        return Container(
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              ListTile(
+                leading: const Icon(Icons.beach_access, color: Color(0xFF009688)),
+                title: const Text('Ajukan Izin / Cuti'),
+                onTap: () {
+                  Navigator.pop(context);
+                  AjukanCutiSheet.show(context);
+                },
+              ),
+              ListTile(
+                leading: const Icon(Icons.access_time_filled, color: Color(0xFF009688)),
+                title: const Text('Ajukan Lembur'),
+                onTap: () {
+                  Navigator.pop(context);
+                  AjukanLemburSheet.show(context);
+                },
+              ),
+            ],
+          ),
+        );
+      },
     );
   }
 }

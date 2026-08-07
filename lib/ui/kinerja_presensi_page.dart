@@ -9,7 +9,6 @@ class KinerjaPresensiScreen extends StatefulWidget {
 
 class _KinerjaPresensiScreenState extends State<KinerjaPresensiScreen> {
   String _selectedMonth = 'Agustus 2026';
-  int _selectedNavIndex = 0; // Index Beranda (Active State)
 
   @override
   Widget build(BuildContext context) {
@@ -97,7 +96,7 @@ class _KinerjaPresensiScreenState extends State<KinerjaPresensiScreen> {
           ],
         ),
       ),
-      bottomNavigationBar: _buildBottomNavigationBar(),
+      // PERHATIAN: bottomNavigationBar dihapus dari sini
     );
   }
 
@@ -123,7 +122,6 @@ class _KinerjaPresensiScreenState extends State<KinerjaPresensiScreen> {
   Widget _buildLogCards() {
     return Column(
       children: [
-        // Card 1: Terlambat
         _buildLogCard(
           date: '04 Agt',
           badgeText: 'Terlambat',
@@ -132,10 +130,13 @@ class _KinerjaPresensiScreenState extends State<KinerjaPresensiScreen> {
           timeDiff: '-15m',
           atasanStatus: 'Pending',
           hrdStatus: 'Waiting',
+          onTap: () {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(content: Text('Detail Log Keterlambatan')),
+            );
+          },
         ),
         const SizedBox(height: 8),
-
-        // Card 2: Pulang Awal
         _buildLogCard(
           date: '01 Agt',
           badgeText: 'Pulang Awal',
@@ -144,6 +145,11 @@ class _KinerjaPresensiScreenState extends State<KinerjaPresensiScreen> {
           timeDiff: '-30m',
           atasanStatus: 'OK',
           hrdStatus: 'Pending',
+          onTap: () {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(content: Text('Detail Log Pulang Awal')),
+            );
+          },
         ),
       ],
     );
@@ -157,88 +163,95 @@ class _KinerjaPresensiScreenState extends State<KinerjaPresensiScreen> {
     required String timeDiff,
     required String atasanStatus,
     required String hrdStatus,
+    required VoidCallback onTap,
   }) {
-    return Container(
-      padding: const EdgeInsets.all(10),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: Colors.grey.shade200),
-      ),
-      child: Column(
-        children: [
-          Row(
-            children: [
-              Text(
-                date,
-                style: const TextStyle(
-                  fontWeight: FontWeight.bold,
-                  fontSize: 12,
-                  color: Color(0xFF0F172A),
-                ),
-              ),
-              const SizedBox(width: 6),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                decoration: BoxDecoration(
-                  color: badgeBgColor,
-                  borderRadius: BorderRadius.circular(4),
-                ),
-                child: Text(
-                  badgeText,
-                  style: TextStyle(
-                    color: badgeTextColor,
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(10),
+      child: Container(
+        padding: const EdgeInsets.all(10),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(10),
+          border: Border.all(color: Colors.grey.shade200),
+        ),
+        child: Column(
+          children: [
+            Row(
+              children: [
+                Text(
+                  date,
+                  style: const TextStyle(
                     fontWeight: FontWeight.bold,
-                    fontSize: 8,
+                    fontSize: 12,
+                    color: Color(0xFF0F172A),
                   ),
                 ),
-              ),
-              const Spacer(),
-              Text(
-                timeDiff,
-                style: const TextStyle(
-                  fontWeight: FontWeight.bold,
-                  fontSize: 11,
-                  color: Color(0xFFDC2626),
+                const SizedBox(width: 6),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                  decoration: BoxDecoration(
+                    color: badgeBgColor,
+                    borderRadius: BorderRadius.circular(4),
+                  ),
+                  child: Text(
+                    badgeText,
+                    style: TextStyle(
+                      color: badgeTextColor,
+                      fontWeight: FontWeight.bold,
+                      fontSize: 8,
+                    ),
+                  ),
                 ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 8),
-          Row(
-            children: [
-              const Text(
-                'Persetujuan:   ',
-                style: TextStyle(fontSize: 9, color: Colors.grey),
-              ),
-              Text(
-                'Atasan: ',
-                style: TextStyle(fontSize: 9, color: Colors.grey.shade600),
-              ),
-              Text(
-                atasanStatus,
-                style: TextStyle(
-                  fontSize: 9,
-                  fontWeight: FontWeight.bold,
-                  color: atasanStatus == 'OK' ? Colors.green.shade700 : Colors.black87,
+                const Spacer(),
+                Text(
+                  timeDiff,
+                  style: const TextStyle(
+                    fontWeight: FontWeight.bold,
+                    fontSize: 11,
+                    color: Color(0xFFDC2626),
+                  ),
                 ),
-              ),
-              const SizedBox(width: 8),
-              Text(
-                'HRD: ',
-                style: TextStyle(fontSize: 9, color: Colors.grey.shade600),
-              ),
-              Text(
-                hrdStatus,
-                style: const TextStyle(
-                  fontSize: 9,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.black87,
+              ],
+            ),
+            const SizedBox(height: 8),
+            Row(
+              children: [
+                const Text(
+                  'Persetujuan:   ',
+                  style: TextStyle(fontSize: 9, color: Colors.grey),
                 ),
-              ),
-            ],
-          ),
-        ],
+                Text(
+                  'Atasan: ',
+                  style: TextStyle(fontSize: 9, color: Colors.grey.shade600),
+                ),
+                Text(
+                  atasanStatus,
+                  style: TextStyle(
+                    fontSize: 9,
+                    fontWeight: FontWeight.bold,
+                    color: atasanStatus == 'OK' ? Colors.green.shade700 : Colors.black87,
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Text(
+                  'HRD: ',
+                  style: TextStyle(fontSize: 9, color: Colors.grey.shade600),
+                ),
+                Text(
+                  hrdStatus,
+                  style: const TextStyle(
+                    fontSize: 9,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.black87,
+                  ),
+                ),
+                const Spacer(),
+                const Icon(Icons.chevron_right_rounded, size: 16, color: Colors.grey),
+              ],
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -252,8 +265,8 @@ class _KinerjaPresensiScreenState extends State<KinerjaPresensiScreen> {
         borderRadius: BorderRadius.circular(10),
         border: Border.all(color: const Color(0xFFFECACA)),
       ),
-      child: Column(
-        children: const [
+      child: const Column(
+        children: [
           Text(
             'Potensi Dampak Payroll: Ya',
             style: TextStyle(
@@ -274,42 +287,6 @@ class _KinerjaPresensiScreenState extends State<KinerjaPresensiScreen> {
           ),
         ],
       ),
-    );
-  }
-
-  Widget _buildBottomNavigationBar() {
-    return BottomNavigationBar(
-      currentIndex: _selectedNavIndex,
-      onTap: (index) => setState(() => _selectedNavIndex = index),
-      type: BottomNavigationBarType.fixed,
-      selectedItemColor: const Color(0xFF009688),
-      unselectedItemColor: Colors.grey,
-      selectedFontSize: 10,
-      unselectedFontSize: 10,
-      iconSize: 20,
-      items: const [
-        BottomNavigationBarItem(
-          icon: Icon(Icons.home_outlined),
-          activeIcon: Icon(Icons.home),
-          label: 'Beranda',
-        ),
-        BottomNavigationBarItem(
-          icon: Icon(Icons.check_circle_outline),
-          label: 'Presensi',
-        ),
-        BottomNavigationBarItem(
-          icon: Icon(Icons.assignment_outlined),
-          label: 'Pengajuan',
-        ),
-        BottomNavigationBarItem(
-          icon: Icon(Icons.format_list_bulleted),
-          label: 'Riwayat',
-        ),
-        BottomNavigationBarItem(
-          icon: Icon(Icons.notifications_none),
-          label: 'Notifikasi',
-        ),
-      ],
     );
   }
 }

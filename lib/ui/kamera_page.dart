@@ -1,7 +1,7 @@
 import 'dart:async';
 // ignore: deprecated_member_use, avoid_web_libraries_in_flutter
 import 'dart:html' as html;
-import 'dart:ui_web' as ui_web; // Menggunakan dart:ui_web
+import 'dart:ui_web' as ui_web;
 import 'package:flutter/material.dart';
 
 class KameraScreen extends StatefulWidget {
@@ -18,10 +18,28 @@ class _KameraScreenState extends State<KameraScreen> {
   bool _isCameraReady = false;
   String? _errorMessage;
 
+  // Realtime Clock State
+  late Timer _timer;
+  String _currentTime = '';
+
   @override
   void initState() {
     super.initState();
+    _updateTime();
+    _timer = Timer.periodic(const Duration(seconds: 1), (timer) => _updateTime());
     _setupVideoElement();
+  }
+
+  void _updateTime() {
+    final now = DateTime.now();
+    final hour = now.hour.toString().padLeft(2, '0');
+    final minute = now.minute.toString().padLeft(2, '0');
+    final second = now.second.toString().padLeft(2, '0');
+    if (mounted) {
+      setState(() {
+        _currentTime = '$hour:$minute:$second WIB';
+      });
+    }
   }
 
   void _setupVideoElement() {
@@ -33,7 +51,6 @@ class _KameraScreenState extends State<KameraScreen> {
     videoElement.setAttribute('playsinline', 'true');
     _videoElement = videoElement;
 
-    // Registrasi platform view menggunakan ui_web
     ui_web.platformViewRegistry.registerViewFactory(
       _viewId,
       (int viewId) => _videoElement!,
@@ -83,18 +100,30 @@ class _KameraScreenState extends State<KameraScreen> {
         height: _videoElement!.videoHeight,
       );
       canvas.context2D.drawImage(_videoElement!, 0, 0);
+      
+      // Ambil Base64 Image
+      final String imageDataUrl = canvas.toDataUrl('image/png');
 
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text('Foto verifikasi berhasil ditangkap!'),
           backgroundColor: Color(0xFF009688),
+          duration: Duration(seconds: 1),
         ),
       );
+
+      // Kembalikan data foto ke layar sebelumnya setelah 1 detik
+      Future.delayed(const Duration(seconds: 1), () {
+        if (mounted) {
+          Navigator.pop(context, imageDataUrl);
+        }
+      });
     }
   }
 
   @override
   void dispose() {
+    _timer.cancel();
     if (_mediaStream != null) {
       for (final track in _mediaStream!.getTracks()) {
         track.stop();
@@ -154,6 +183,7 @@ class _KameraScreenState extends State<KameraScreen> {
                         ),
                       ],
                     ),
+
             ),
 
           // 2. OVERLAY UI
@@ -183,16 +213,16 @@ class _KameraScreenState extends State<KameraScreen> {
                       ),
                       Column(
                         crossAxisAlignment: CrossAxisAlignment.end,
-                        children: const [
+                        children: [
                           Text(
-                            '08:45:12 WIB',
-                            style: TextStyle(
+                            _currentTime,
+                            style: const TextStyle(
                               color: Colors.white,
                               fontWeight: FontWeight.bold,
                               fontSize: 14,
                             ),
                           ),
-                          Text(
+                          const Text(
                             'Kantor Pusat (Jl. Sudirman)',
                             style: TextStyle(
                               color: Colors.white70,
@@ -205,45 +235,44 @@ class _KameraScreenState extends State<KameraScreen> {
                   ),
                 ),
 
-                // Bingkai Oval
-                // Bingkai Oval Proporsional Wajah Dewasa
-Container(
-  width: 260,
-  height: 360,
-  decoration: BoxDecoration(
-    borderRadius: const BorderRadius.all(
-      Radius.elliptical(130, 180),
-    ),
-    border: Border.all(
-      color: Colors.white.withOpacity(0.95),
-      width: 2.5,
-    ),
-    boxShadow: [
-      BoxShadow(
-        color: Colors.black.withOpacity(0.2),
-        blurRadius: 10,
-        spreadRadius: 2,
-      ),
-    ],
-  ),
-  child: const Center(
-    child: Padding(
-      padding: EdgeInsets.symmetric(horizontal: 20.0),
-      child: Text(
-        'Posisikan wajah Anda\ndi dalam bingkai',
-        textAlign: TextAlign.center,
-        style: TextStyle(
-          color: Colors.white,
-          fontSize: 12,
-          fontWeight: FontWeight.w500,
-          shadows: [
-            Shadow(blurRadius: 6, color: Colors.black87),
-          ],
-        ),
-      ),
-    ),
-  ),
-),
+                // Bingkai Oval Proporsional Wajah
+                Container(
+                  width: 260,
+                  height: 360,
+                  decoration: BoxDecoration(
+                    borderRadius: const BorderRadius.all(
+                      Radius.elliptical(130, 180),
+                    ),
+                    border: Border.all(
+                      color: Colors.white.withOpacity(0.95),
+                      width: 2.5,
+                    ),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withOpacity(0.2),
+                        blurRadius: 10,
+                        spreadRadius: 2,
+                      ),
+                    ],
+                  ),
+                  child: const Center(
+                    child: Padding(
+                      padding: EdgeInsets.symmetric(horizontal: 20.0),
+                      child: Text(
+                        'Posisikan wajah Anda\ndi dalam bingkai',
+                        textAlign: TextAlign.center,
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 12,
+                          fontWeight: FontWeight.w500,
+                          shadows: [
+                            Shadow(blurRadius: 6, color: Colors.black87),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
 
                 // Button Ambil Foto
                 Padding(

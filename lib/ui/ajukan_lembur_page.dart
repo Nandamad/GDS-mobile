@@ -17,9 +17,88 @@ class AjukanLemburSheet extends StatefulWidget {
 }
 
 class _AjukanLemburSheetState extends State<AjukanLemburSheet> {
-  final TextEditingController _alasanController = TextEditingController(
-    text: 'Menyelesaikan tugas urgent deadline project...',
-  );
+  DateTime _tanggalLembur = DateTime.now();
+  TimeOfDay _jamMulai = const TimeOfDay(hour: 17, minute: 0);
+  TimeOfDay _jamSelesai = const TimeOfDay(hour: 19, minute: 0);
+
+  final TextEditingController _alasanController = TextEditingController();
+
+  // Menghitung selisih durasi lembur dalam jam
+  double get _totalDurasi {
+    final startMinutes = _jamMulai.hour * 60 + _jamMulai.minute;
+    final endMinutes = _jamSelesai.hour * 60 + _jamSelesai.minute;
+
+    if (endMinutes <= startMinutes) return 0;
+    return (endMinutes - startMinutes) / 60.0;
+  }
+
+  // Pilih Tanggal
+  Future<void> _selectDate(BuildContext context) async {
+    final DateTime? picked = await showDatePicker(
+      context: context,
+      initialDate: _tanggalLembur,
+      firstDate: DateTime(2020),
+      lastDate: DateTime(2030),
+      builder: (context, child) {
+        return Theme(
+          data: Theme.of(context).copyWith(
+            colorScheme: const ColorScheme.light(
+              primary: Color(0xFF009688),
+            ),
+          ),
+          child: child!,
+        );
+      },
+    );
+
+    if (picked != null) {
+      setState(() {
+        _tanggalLembur = picked;
+      });
+    }
+  }
+
+  // Pilih Jam (Mulai / Selesai)
+  Future<void> _selectTime(BuildContext context, bool isMulai) async {
+    final TimeOfDay? picked = await showTimePicker(
+      context: context,
+      initialTime: isMulai ? _jamMulai : _jamSelesai,
+      builder: (context, child) {
+        return Theme(
+          data: Theme.of(context).copyWith(
+            colorScheme: const ColorScheme.light(
+              primary: Color(0xFF009688),
+            ),
+          ),
+          child: child!,
+        );
+      },
+    );
+
+    if (picked != null) {
+      setState(() {
+        if (isMulai) {
+          _jamMulai = picked;
+        } else {
+          _jamSelesai = picked;
+        }
+      });
+    }
+  }
+
+  String _formatDate(DateTime date) {
+    final List<String> bulan = [
+      'Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun',
+      'Jul', 'Agt', 'Sep', 'Okt', 'Nov', 'Des'
+    ];
+    return '${date.day.toString().padLeft(2, '0')} ${bulan[date.month - 1]} ${date.year}';
+  }
+
+  String _formatTime(TimeOfDay time) {
+    final hour = time.hour.toString().padLeft(2, '0');
+    final minute = time.minute.toString().padLeft(2, '0');
+    return '$hour:$minute';
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -71,8 +150,9 @@ class _AjukanLemburSheetState extends State<AjukanLemburSheet> {
             ),
             const SizedBox(height: 4),
             _buildInputField(
-              text: '05 Agt 2026',
+              text: _formatDate(_tanggalLembur),
               icon: Icons.calendar_today_outlined,
+              onTap: () => _selectDate(context),
             ),
             const SizedBox(height: 12),
 
@@ -89,9 +169,9 @@ class _AjukanLemburSheetState extends State<AjukanLemburSheet> {
                 borderRadius: BorderRadius.circular(8),
                 border: Border.all(color: Colors.grey.shade200),
               ),
-              child: Row(
+              child: const Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: const [
+                children: [
                   Text(
                     '08:00 - 17:00 WIB',
                     style: TextStyle(fontSize: 11, color: Color(0xFF475569), fontWeight: FontWeight.w500),
@@ -118,8 +198,9 @@ class _AjukanLemburSheetState extends State<AjukanLemburSheet> {
                       ),
                       const SizedBox(height: 4),
                       _buildInputField(
-                        text: '17:00',
+                        text: _formatTime(_jamMulai),
                         icon: Icons.access_time_rounded,
+                        onTap: () => _selectTime(context, true),
                       ),
                     ],
                   ),
@@ -135,8 +216,9 @@ class _AjukanLemburSheetState extends State<AjukanLemburSheet> {
                       ),
                       const SizedBox(height: 4),
                       _buildInputField(
-                        text: '19:00',
+                        text: _formatTime(_jamSelesai),
                         icon: Icons.access_time_rounded,
+                        onTap: () => _selectTime(context, false),
                       ),
                     ],
                   ),
@@ -154,12 +236,12 @@ class _AjukanLemburSheetState extends State<AjukanLemburSheet> {
                 borderRadius: BorderRadius.circular(8),
               ),
               child: Row(
-                children: const [
-                  Icon(Icons.info_outline, size: 14, color: Color(0xFF0F766E)),
-                  SizedBox(width: 6),
+                children: [
+                  const Icon(Icons.info_outline, size: 14, color: Color(0xFF0F766E)),
+                  const SizedBox(width: 6),
                   Text(
-                    'Total Durasi: 2 Jam',
-                    style: TextStyle(
+                    'Total Durasi: ${_totalDurasi.toStringAsFixed(_totalDurasi.truncateToDouble() == _totalDurasi ? 0 : 1)} Jam',
+                    style: const TextStyle(
                       color: Color(0xFF0F766E),
                       fontWeight: FontWeight.bold,
                       fontSize: 11,
@@ -222,7 +304,10 @@ class _AjukanLemburSheetState extends State<AjukanLemburSheet> {
                   child: SizedBox(
                     height: 40,
                     child: ElevatedButton(
-                      onPressed: () {},
+                      onPressed: () {
+                        // TODO: Implementasi simpan / panggil API Lembur
+                        Navigator.pop(context);
+                      },
                       style: ElevatedButton.styleFrom(
                         backgroundColor: const Color(0xFF009688),
                         elevation: 0,
@@ -245,23 +330,31 @@ class _AjukanLemburSheetState extends State<AjukanLemburSheet> {
     );
   }
 
-  Widget _buildInputField({required String text, required IconData icon}) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: Colors.grey.shade300),
-      ),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          Text(
-            text,
-            style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: Color(0xFF0F172A)),
-          ),
-          Icon(icon, size: 16, color: Colors.grey),
-        ],
+  Widget _buildInputField({
+    required String text,
+    required IconData icon,
+    VoidCallback? onTap,
+  }) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(8),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(8),
+          border: Border.all(color: Colors.grey.shade300),
+        ),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Text(
+              text,
+              style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: Color(0xFF0F172A)),
+            ),
+            Icon(icon, size: 16, color: Colors.grey),
+          ],
+        ),
       ),
     );
   }

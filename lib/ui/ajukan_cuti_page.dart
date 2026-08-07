@@ -1,4 +1,6 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
+import 'package:file_picker/file_picker.dart';
 
 class AjukanCutiSheet extends StatefulWidget {
   const AjukanCutiSheet({super.key});
@@ -18,11 +20,78 @@ class AjukanCutiSheet extends StatefulWidget {
 
 class _AjukanCutiSheetState extends State<AjukanCutiSheet> {
   String _tipePengajuan = 'Cuti'; // 'Izin', 'Cuti', 'Sakit'
-  DateTime _tanggalMulai = DateTime(2026, 8, 6);
-  DateTime _tanggalSelesai = DateTime(2026, 8, 10);
-  final TextEditingController _alasanController = TextEditingController(
-    text: 'Acara pernikahan keluarga di luar kota...',
-  );
+  DateTime _tanggalMulai = DateTime.now();
+  DateTime _tanggalSelesai = DateTime.now().add(const Duration(days: 1));
+  File? _selectedFile;
+  String? _fileName;
+
+  final TextEditingController _alasanController = TextEditingController();
+
+  // Menghitung durasi hari kerja (sederhana)
+  int get _durasiHari {
+    return _tanggalSelesai.difference(_tanggalMulai).inDays + 1;
+  }
+
+  // Fungsi membuka DatePicker
+  Future<void> _selectDate(BuildContext context, bool isMulai) async {
+    final DateTime? picked = await showDatePicker(
+      context: context,
+      initialDate: isMulai ? _tanggalMulai : _tanggalSelesai,
+      firstDate: DateTime(2020),
+      lastDate: DateTime(2030),
+      builder: (context, child) {
+        return Theme(
+          data: Theme.of(context).copyWith(
+            colorScheme: const ColorScheme.light(
+              primary: Color(0xFF009688),
+            ),
+          ),
+          child: child!,
+        );
+      },
+    );
+
+    if (picked != null) {
+      setState(() {
+        if (isMulai) {
+          _tanggalMulai = picked;
+          if (_tanggalSelesai.isBefore(_tanggalMulai)) {
+            _tanggalSelesai = _tanggalMulai;
+          }
+        } else {
+          if (picked.isBefore(_tanggalMulai)) {
+            _tanggalSelesai = _tanggalMulai;
+          } else {
+            _tanggalSelesai = picked;
+          }
+        }
+      });
+    }
+  }
+
+  // Fungsi memilih file bukti/surat
+  Future<void> _pickFile() async {
+    final result = await FilePicker.platform.pickFiles(
+      type: FileType.custom,
+      allowedExtensions: ['pdf', 'jpg', 'jpeg', 'png'],
+    );
+
+    if (result != null && result.files.single.path != null) {
+      setState(() {
+        _selectedFile = File(result.files.single.path!);
+        _fileName = result.files.single.name;
+      });
+    }
+  }
+
+  // Format Tanggal ke Teks Bahasa Indonesia Sederhana
+  String _formatDate(DateTime date) {
+    final List<String> bulan = [
+      'Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun',
+      'Jul', 'Agt', 'Sep', 'Okt', 'Nov', 'Des'
+    ];
+    return '${date.day.toString().padLeft(2, '0')} ${bulan[date.month - 1]} ${date.year}';
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -42,7 +111,7 @@ class _AjukanCutiSheetState extends State<AjukanCutiSheet> {
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Handle Bar Top Sheet
+            // Handle Bar
             Center(
               child: Container(
                 width: 36,
@@ -67,7 +136,7 @@ class _AjukanCutiSheetState extends State<AjukanCutiSheet> {
             ),
             const SizedBox(height: 14),
 
-            // Tipe Pengajuan (Radio Group)
+            // Tipe Pengajuan
             const Text(
               'Tipe Pengajuan',
               style: TextStyle(fontSize: 10, color: Colors.grey, fontWeight: FontWeight.w500),
@@ -96,7 +165,10 @@ class _AjukanCutiSheetState extends State<AjukanCutiSheet> {
                         style: TextStyle(fontSize: 10, color: Colors.grey, fontWeight: FontWeight.w500),
                       ),
                       const SizedBox(height: 4),
-                      _buildDatePickerField('${_tanggalMulai.day.toString().padLeft(2, '0')} Agt ${_tanggalMulai.year}'),
+                      _buildDatePickerField(
+                        _formatDate(_tanggalMulai),
+                        () => _selectDate(context, true),
+                      ),
                     ],
                   ),
                 ),
@@ -110,7 +182,10 @@ class _AjukanCutiSheetState extends State<AjukanCutiSheet> {
                         style: TextStyle(fontSize: 10, color: Colors.grey, fontWeight: FontWeight.w500),
                       ),
                       const SizedBox(height: 4),
-                      _buildDatePickerField('${_tanggalSelesai.day.toString().padLeft(2, '0')} Agt ${_tanggalSelesai.year}'),
+                      _buildDatePickerField(
+                        _formatDate(_tanggalSelesai),
+                        () => _selectDate(context, false),
+                      ),
                     ],
                   ),
                 ),
@@ -118,7 +193,7 @@ class _AjukanCutiSheetState extends State<AjukanCutiSheet> {
             ),
             const SizedBox(height: 10),
 
-            // Duration Status Banner
+            // Duration Banner
             Container(
               width: double.infinity,
               padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
@@ -126,9 +201,9 @@ class _AjukanCutiSheetState extends State<AjukanCutiSheet> {
                 color: const Color(0xFFE0F2F1),
                 borderRadius: BorderRadius.circular(8),
               ),
-              child: const Text(
-                'Durasi: 5 Hari Kerja (Sisa cuti menjadi 3 hari)',
-                style: TextStyle(
+              child: Text(
+                'Durasi: $_durasiHari Hari Kerja',
+                style: const TextStyle(
                   color: Color(0xFF00796B),
                   fontWeight: FontWeight.bold,
                   fontSize: 10,
@@ -137,7 +212,7 @@ class _AjukanCutiSheetState extends State<AjukanCutiSheet> {
             ),
             const SizedBox(height: 12),
 
-            // Alasan Pengajuan Textarea
+            // Alasan Textarea
             const Text(
               'Alasan Pengajuan',
               style: TextStyle(fontSize: 10, color: Colors.grey, fontWeight: FontWeight.w500),
@@ -169,35 +244,44 @@ class _AjukanCutiSheetState extends State<AjukanCutiSheet> {
               style: TextStyle(fontSize: 10, color: Colors.grey, fontWeight: FontWeight.w500),
             ),
             const SizedBox(height: 6),
-            Container(
-              width: double.infinity,
-              padding: const EdgeInsets.symmetric(vertical: 14),
-              decoration: BoxDecoration(
-                color: const Color(0xFFF8FAFC),
-                borderRadius: BorderRadius.circular(8),
-                border: Border.all(
-                  color: const Color(0xFF009688).withOpacity(0.5),
-                  style: BorderStyle.solid,
+            InkWell(
+              onTap: _pickFile,
+              borderRadius: BorderRadius.circular(8),
+              child: Container(
+                width: double.infinity,
+                padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 8),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFF8FAFC),
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(
+                    color: const Color(0xFF009688).withOpacity(0.5),
+                  ),
                 ),
-              ),
-              child: Column(
-                children: const [
-                  Icon(Icons.arrow_upward_rounded, size: 18, color: Color(0xFF009688)),
-                  SizedBox(height: 4),
-                  Text(
-                    'Unggah Surat Dokter / Bukti',
-                    style: TextStyle(
-                      fontSize: 11,
-                      fontWeight: FontWeight.bold,
-                      color: Color(0xFF009688),
+                child: Column(
+                  children: [
+                    Icon(
+                      _selectedFile != null ? Icons.check_circle_rounded : Icons.arrow_upward_rounded,
+                      size: 18,
+                      color: const Color(0xFF009688),
                     ),
-                  ),
-                  SizedBox(height: 2),
-                  Text(
-                    'Format PDF, JPG, PNG up to 5MB',
-                    style: TextStyle(fontSize: 8, color: Colors.grey),
-                  ),
-                ],
+                    const SizedBox(height: 4),
+                    Text(
+                      _fileName ?? 'Unggah Surat Dokter / Bukti',
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        fontSize: 11,
+                        fontWeight: FontWeight.bold,
+                        color: Color(0xFF009688),
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      _selectedFile != null ? 'Klik untuk mengubah berkas' : 'Format PDF, JPG, PNG up to 5MB',
+                      style: const TextStyle(fontSize: 8, color: Colors.grey),
+                    ),
+                  ],
+                ),
               ),
             ),
             const SizedBox(height: 16),
@@ -228,7 +312,10 @@ class _AjukanCutiSheetState extends State<AjukanCutiSheet> {
                   child: SizedBox(
                     height: 38,
                     child: ElevatedButton(
-                      onPressed: () {},
+                      onPressed: () {
+                        // TODO: Implementasi simpan / panggil API
+                        Navigator.pop(context);
+                      },
                       style: ElevatedButton.styleFrom(
                         backgroundColor: const Color(0xFF009688),
                         elevation: 0,
@@ -291,23 +378,27 @@ class _AjukanCutiSheetState extends State<AjukanCutiSheet> {
     );
   }
 
-  Widget _buildDatePickerField(String dateText) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: Colors.grey.shade300),
-      ),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          Text(
-            dateText,
-            style: const TextStyle(fontSize: 10, fontWeight: FontWeight.w600, color: Color(0xFF0F172A)),
-          ),
-          const Icon(Icons.arrow_drop_down, size: 16, color: Colors.grey),
-        ],
+  Widget _buildDatePickerField(String dateText, VoidCallback onTap) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(8),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(8),
+          border: Border.all(color: Colors.grey.shade300),
+        ),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Text(
+              dateText,
+              style: const TextStyle(fontSize: 10, fontWeight: FontWeight.w600, color: Color(0xFF0F172A)),
+            ),
+            const Icon(Icons.arrow_drop_down, size: 16, color: Colors.grey),
+          ],
+        ),
       ),
     );
   }
