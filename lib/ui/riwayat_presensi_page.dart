@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:dio/dio.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 class RiwayatPresensiScreen extends StatefulWidget {
   const RiwayatPresensiScreen({super.key});
@@ -11,69 +13,73 @@ class _RiwayatPresensiScreenState extends State<RiwayatPresensiScreen> {
   String _selectedMonth = 'Agustus 2026';
   String _selectedStatus = 'Semua Status';
 
-  // Master Data Riwayat
-  final List<Map<String, dynamic>> _allHistoryData = [
-    {
-      'month': 'Agustus 2026',
-      'date': 'Rabu, 05 Agt 2026',
-      'statusText': 'Terlambat +15m',
-      'statusCategory': 'Terlambat',
-      'statusBgColor': const Color(0xFFFFF3E0),
-      'statusTextColor': const Color(0xFFE65100),
-      'checkIn': '08:15',
-      'checkOut': '17:05',
-      'duration': '8h 50m',
-      'hasDetailButton': true,
-    },
-    {
-      'month': 'Agustus 2026',
-      'date': 'Selasa, 04 Agt 2026',
-      'statusText': 'On Time',
-      'statusCategory': 'On Time',
-      'statusBgColor': const Color(0xFFE8F5E9),
-      'statusTextColor': const Color(0xFF2E7D32),
-      'checkIn': '08:00',
-      'checkOut': '17:00',
-      'duration': '8h 00m',
-      'hasDetailButton': false,
-    },
-    {
-      'month': 'Agustus 2026',
-      'date': 'Senin, 03 Agt 2026',
-      'statusText': 'On Time',
-      'statusCategory': 'On Time',
-      'statusBgColor': const Color(0xFFE8F5E9),
-      'statusTextColor': const Color(0xFF2E7D32),
-      'checkIn': '07:55',
-      'checkOut': '17:10',
-      'duration': '8h 15m',
-      'hasDetailButton': false,
-    },
-    {
-      'month': 'Juli 2026',
-      'date': 'Jumat, 31 Jul 2026',
-      'statusText': 'Terlambat +30m',
-      'statusCategory': 'Terlambat',
-      'statusBgColor': const Color(0xFFFFF3E0),
-      'statusTextColor': const Color(0xFFE65100),
-      'checkIn': '08:30',
-      'checkOut': '17:00',
-      'duration': '8h 30m',
-      'hasDetailButton': true,
-    },
-    {
-      'month': 'Juli 2026',
-      'date': 'Kamis, 30 Jul 2026',
-      'statusText': 'Izin Ditolak',
-      'statusCategory': 'Izin',
-      'statusBgColor': const Color(0xFFFFEBEE),
-      'statusTextColor': const Color(0xFFC62828),
-      'checkIn': '-',
-      'checkOut': '-',
-      'duration': '0m',
-      'hasDetailButton': false,
-    },
-  ];
+  bool _isLoading = true;
+  List<Map<String, dynamic>> _allHistoryData = [];
+
+  @override
+  void initState() {
+    super.initState();
+    _fetchHistoryData();
+  }
+
+  Future<void> _fetchHistoryData() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final token = prefs.getString('token');
+
+      final dio = Dio(BaseOptions(
+        baseUrl: 'http://10.0.2.2:8000/api',
+        headers: {'Authorization': 'Bearer $token'},
+        connectTimeout: const Duration(seconds: 15),
+      ));
+
+      final response = await dio.get('/history');
+
+      if (response.statusCode == 200) {
+        final List<dynamic> data = response.data['data'];
+        final parsedData = data.map((item) {
+          final isCuti = item['tipe'] != 'Kehadiran';
+          Color bgColor = const Color(0xFFE8F5E9);
+          Color txtColor = const Color(0xFF2E7D32);
+          String statusTxt = item['status_kehadiran'] ?? '-';
+          String statusCat = isCuti ? 'Izin' : statusTxt;
+
+          if (statusTxt == 'terlambat' || statusTxt == 'rejected') {
+            bgColor = const Color(0xFFFFF3E0);
+            txtColor = const Color(0xFFE65100);
+          } else if (statusTxt == 'pending') {
+            bgColor = const Color(0xFFFFF9C4);
+            txtColor = const Color(0xFFF57F17);
+          }
+
+          return {
+            'month': 'Agustus 2026', // Sederhanakan untuk demo
+            'date': item['tanggal'] ?? '-',
+            'statusText': statusTxt.toUpperCase(),
+            'statusCategory': statusCat,
+            'statusBgColor': bgColor,
+            'statusTextColor': txtColor,
+            'checkIn': item['jam_masuk'] ?? '-',
+            'checkOut': item['jam_pulang'] ?? '-',
+            'duration': '-', // Kalkulasi jika diperlukan
+            'hasDetailButton': false,
+          };
+        }).toList();
+
+        setState(() {
+          _allHistoryData = parsedData;
+          _isLoading = false;
+        });
+      }
+    } catch (e) {
+      setState(() => _isLoading = false);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Gagal memuat riwayat presensi')),
+        );
+      }
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -92,37 +98,39 @@ class _RiwayatPresensiScreenState extends State<RiwayatPresensiScreen> {
           ),
         ),
       ),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.symmetric(horizontal: 14.0, vertical: 12.0),
-        child: Column(
-          children: [
-            // Dropdown Filter
-            Row(
+      body: _isLoading 
+        ? const Center(child: CircularProgressIndicator(color: Color(0xFF009688)))
+        : SingleChildScrollView(
+            padding: const EdgeInsets.symmetric(horizontal: 14.0, vertical: 12.0),
+            child: Column(
               children: [
-                Expanded(
-                  child: _buildDropdown(
-                    value: _selectedMonth,
-                    items: ['Agustus 2026', 'Juli 2026', 'Juni 2026'],
-                    onChanged: (val) => setState(() => _selectedMonth = val!),
-                  ),
+                // Dropdown Filter
+                Row(
+                  children: [
+                    Expanded(
+                      child: _buildDropdown(
+                        value: _selectedMonth,
+                        items: ['Agustus 2026', 'Juli 2026', 'Juni 2026'],
+                        onChanged: (val) => setState(() => _selectedMonth = val!),
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: _buildDropdown(
+                        value: _selectedStatus,
+                        items: ['Semua Status', 'On Time', 'Terlambat', 'Izin'],
+                        onChanged: (val) => setState(() => _selectedStatus = val!),
+                      ),
+                    ),
+                  ],
                 ),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: _buildDropdown(
-                    value: _selectedStatus,
-                    items: ['Semua Status', 'On Time', 'Terlambat', 'Izin'],
-                    onChanged: (val) => setState(() => _selectedStatus = val!),
-                  ),
-                ),
+                const SizedBox(height: 14),
+
+                // List Cards Riwayat
+                _buildHistoryList(),
               ],
             ),
-            const SizedBox(height: 14),
-
-            // List Cards Riwayat
-            _buildHistoryList(),
-          ],
-        ),
-      ),
+          ),
       // bottomNavigationBar dihapus dari sini
     );
   }

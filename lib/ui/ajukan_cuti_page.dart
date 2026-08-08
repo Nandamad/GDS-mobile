@@ -1,6 +1,8 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:file_picker/file_picker.dart';
+import 'package:dio/dio.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 class AjukanCutiSheet extends StatefulWidget {
   const AjukanCutiSheet({super.key});
@@ -25,11 +27,71 @@ class _AjukanCutiSheetState extends State<AjukanCutiSheet> {
   File? _selectedFile;
   String? _fileName;
 
+  bool _isSubmitting = false;
   final TextEditingController _alasanController = TextEditingController();
 
   // Menghitung durasi hari kerja (sederhana)
   int get _durasiHari {
     return _tanggalSelesai.difference(_tanggalMulai).inDays + 1;
+  }
+
+  Future<void> _submitCuti() async {
+    if (_alasanController.text.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Alasan wajib diisi!')));
+      return;
+    }
+
+    setState(() => _isSubmitting = true);
+
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final token = prefs.getString('token');
+
+      final dio = Dio(BaseOptions(
+        baseUrl: 'http://10.0.2.2:8000/api',
+        headers: {'Authorization': 'Bearer $token'},
+        connectTimeout: const Duration(seconds: 15),
+      ));
+
+      FormData formData = FormData.fromMap({
+        'jenis_izin': _tipePengajuan.toLowerCase(),
+        'tanggal_mulai': _tanggalMulai.toIso8601String().split('T')[0],
+        'tanggal_selesai': _tanggalSelesai.toIso8601String().split('T')[0],
+        'alasan': _alasanController.text,
+      });
+
+      if (_selectedFile != null) {
+        formData.files.add(MapEntry(
+          'dokumen_pendukung',
+          await MultipartFile.fromFile(_selectedFile!.path, filename: _fileName),
+        ));
+      }
+
+      final response = await dio.post('/cuti', data: formData);
+
+      if (response.statusCode == 200 || response.statusCode == 201) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Pengajuan berhasil!'), backgroundColor: Colors.green),
+          );
+          Navigator.pop(context);
+        }
+      }
+    } on DioException catch (e) {
+      if (mounted) {
+        String msg = 'Gagal mengirim pengajuan.';
+        if (e.response != null && e.response!.data['message'] != null) {
+          msg = e.response!.data['message'];
+        }
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(msg), backgroundColor: Colors.redAccent),
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() => _isSubmitting = false);
+      }
+    }
   }
 
   // Fungsi membuka DatePicker
@@ -312,10 +374,7 @@ class _AjukanCutiSheetState extends State<AjukanCutiSheet> {
                   child: SizedBox(
                     height: 38,
                     child: ElevatedButton(
-                      onPressed: () {
-                        // TODO: Implementasi simpan / panggil API
-                        Navigator.pop(context);
-                      },
+                      onPressed: _isSubmitting ? null : _submitCuti,
                       style: ElevatedButton.styleFrom(
                         backgroundColor: const Color(0xFF009688),
                         elevation: 0,
@@ -323,10 +382,12 @@ class _AjukanCutiSheetState extends State<AjukanCutiSheet> {
                           borderRadius: BorderRadius.circular(8),
                         ),
                       ),
-                      child: const Text(
-                        'Kirim Pengajuan',
-                        style: TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.bold),
-                      ),
+                      child: _isSubmitting
+                          ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
+                          : const Text(
+                              'Kirim Pengajuan',
+                              style: TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.bold),
+                            ),
                     ),
                   ),
                 ),

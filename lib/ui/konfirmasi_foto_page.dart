@@ -1,5 +1,7 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
+import 'package:dio/dio.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 class KonfirmasiFotoScreen extends StatefulWidget {
   final String? imageBase64;
@@ -13,22 +15,64 @@ class KonfirmasiFotoScreen extends StatefulWidget {
 class _KonfirmasiFotoScreenState extends State<KonfirmasiFotoScreen> {
   bool _isSubmitting = false;
 
-  void _onConfirm() {
+  Future<void> _onConfirm() async {
     setState(() => _isSubmitting = true);
 
-    // Simulasi proses submit data presensi
-    Future.delayed(const Duration(seconds: 2), () {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final token = prefs.getString('token');
+
+      final dio = Dio(BaseOptions(
+        baseUrl: 'http://10.0.2.2:8000/api',
+        headers: {'Authorization': 'Bearer $token'},
+        connectTimeout: const Duration(seconds: 15),
+      ));
+
+      FormData formData = FormData.fromMap({
+        'latitude': '-6.2088',
+        'longitude': '106.8456',
+        'tipe': 'masuk', // Hardcode masuk for simulation
+      });
+
+      if (widget.imageBase64 != null) {
+        final bytes = base64Decode(widget.imageBase64!.split(',').last);
+        formData.files.add(MapEntry(
+          'foto',
+          MultipartFile.fromBytes(bytes, filename: 'selfie.jpg'),
+        ));
+      }
+
+      final response = await dio.post('/absensi', data: formData);
+
+      if (response.statusCode == 200 || response.statusCode == 201) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Presensi Berhasil Dikonfirmasi!'),
+              backgroundColor: Color(0xFF009688),
+            ),
+          );
+          Navigator.pop(context, true); // Kembalikan nilai sukses
+        }
+      }
+    } on DioException catch (e) {
       if (mounted) {
-        setState(() => _isSubmitting = false);
+        String msg = 'Gagal menyimpan absensi.';
+        if (e.response != null && e.response!.data['message'] != null) {
+          msg = e.response!.data['message'];
+        }
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Presensi Berhasil Dikonfirmasi!'),
-            backgroundColor: Color(0xFF009688),
+          SnackBar(
+            content: Text(msg),
+            backgroundColor: Colors.redAccent,
           ),
         );
-        Navigator.pop(context, true); // Kembalikan nilai sukses
       }
-    });
+    } finally {
+      if (mounted) {
+        setState(() => _isSubmitting = false);
+      }
+    }
   }
 
   @override

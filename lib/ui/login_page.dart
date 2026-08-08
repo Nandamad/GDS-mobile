@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:dio/dio.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'main_navigation_page.dart'; // Ganti import 'dashboard_page.dart'
 
 class LoginScreen extends StatefulWidget {
@@ -14,49 +16,72 @@ class _LoginScreenState extends State<LoginScreen> {
   final TextEditingController _nipController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
 
-  void _handleLogin() {
-  FocusScope.of(context).unfocus(); // Sembunyikan keyboard
+  Future<void> _handleLogin() async {
+    FocusScope.of(context).unfocus(); // Sembunyikan keyboard
 
-  final nip = _nipController.text.trim();
-  final password = _passwordController.text.trim();
+    final nip = _nipController.text.trim();
+    final password = _passwordController.text.trim();
 
-  // Validasi Input Kosong
-  if (nip.isEmpty || password.isEmpty) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('Email/NIP dan Password wajib diisi!'),
-        backgroundColor: Colors.redAccent,
-      ),
-    );
-    return;
-  }
+    // Validasi Input Kosong
+    if (nip.isEmpty || password.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Email/NIP dan Password wajib diisi!'),
+          backgroundColor: Colors.redAccent,
+        ),
+      );
+      return;
+    }
 
-  // Validasi Kredensial Mock/Dummy
-  if (nip == '12345' && password == '12345') {
     setState(() => _isLoading = true);
 
-    Future.delayed(const Duration(seconds: 1), () {
+    try {
+      final dio = Dio(BaseOptions(
+        baseUrl: 'http://10.0.2.2:8000/api', // Ubah IP sesuai server jika di physical device
+        connectTimeout: const Duration(seconds: 10),
+      ));
+
+      final response = await dio.post('/login', data: {
+        'email': nip,
+        'password': password,
+      });
+
+      if (response.statusCode == 200) {
+        final token = response.data['access_token'];
+        final prefs = await SharedPreferences.getInstance();
+        await prefs.setString('token', token);
+
+        if (mounted) {
+          Navigator.pushReplacement(
+            context,
+            MaterialPageRoute(builder: (context) => const MainNavigationScreen()),
+          );
+        }
+      }
+    } on DioException catch (e) {
+      String errorMsg = 'Gagal terhubung ke server.';
+      if (e.response != null) {
+        if (e.response!.statusCode == 422) {
+          errorMsg = e.response!.data['message'] ?? 'Kredensial salah';
+        } else {
+          errorMsg = 'Error server: ${e.response!.statusCode}';
+        }
+      }
+      
       if (mounted) {
-        setState(() => _isLoading = false);
-        // Navigasi ke MainNavigationScreen (Layout Utama dengan BottomNavBar)
-        Navigator.pushReplacement(
-          context,
-          MaterialPageRoute(
-            builder: (context) => const MainNavigationScreen(),
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(errorMsg),
+            backgroundColor: Colors.redAccent,
           ),
         );
       }
-    });
-  } else {
-    // Jika Kredensial Salah
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('NIP atau Password salah! (Gunakan NIP: 12345, Pass: 12345)'),
-        backgroundColor: Colors.redAccent,
-      ),
-    );
+    } finally {
+      if (mounted) {
+        setState(() => _isLoading = false);
+      }
+    }
   }
-}
 
   @override
   Widget build(BuildContext context) {

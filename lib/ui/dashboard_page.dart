@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:dio/dio.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'ajukan_cuti_page.dart';
 import 'ajukan_lembur_page.dart';
 
@@ -11,14 +13,52 @@ class DashboardScreen extends StatefulWidget {
 
 class _DashboardScreenState extends State<DashboardScreen> {
   int _selectedIndex = 0;
+  bool _isLoading = true;
+  Map<String, dynamic>? _dashboardData;
+
+  @override
+  void initState() {
+    super.initState();
+    _fetchDashboardData();
+  }
+
+  Future<void> _fetchDashboardData() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final token = prefs.getString('token');
+
+      final dio = Dio(BaseOptions(
+        baseUrl: 'http://10.0.2.2:8000/api',
+        headers: {'Authorization': 'Bearer $token'},
+        connectTimeout: const Duration(seconds: 10),
+      ));
+
+      final response = await dio.get('/dashboard');
+      if (response.statusCode == 200) {
+        setState(() {
+          _dashboardData = response.data['data'];
+          _isLoading = false;
+        });
+      }
+    } catch (e) {
+      setState(() => _isLoading = false);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Gagal memuat data dashboard')),
+        );
+      }
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: const Color(0xFFF8FAFC),
       body: SafeArea(
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.symmetric(horizontal: 14.0, vertical: 10.0),
+        child: _isLoading
+            ? const Center(child: CircularProgressIndicator(color: Color(0xFF009688)))
+            : SingleChildScrollView(
+                padding: const EdgeInsets.symmetric(horizontal: 14.0, vertical: 10.0),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -49,28 +89,33 @@ class _DashboardScreenState extends State<DashboardScreen> {
   }
 
   Widget _buildHeader() {
+    final user = _dashboardData?['user'] ?? {};
+    final nama = user['nama'] ?? 'Pengguna';
+    final jabatan = user['jabatan'] ?? 'Karyawan';
+    final avatar = user['avatar'] ?? 'https://i.pravatar.cc/150';
+
     return Row(
       children: [
-        const CircleAvatar(
+        CircleAvatar(
           radius: 18,
-          backgroundImage: NetworkImage('https://i.pravatar.cc/150?img=11'),
+          backgroundImage: NetworkImage(avatar),
         ),
         const SizedBox(width: 10),
-        const Expanded(
+        Expanded(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
-                'Selamat Pagi, Budi!',
-                style: TextStyle(
+                'Selamat Pagi, $nama!',
+                style: const TextStyle(
                   fontWeight: FontWeight.bold,
                   fontSize: 14,
                   color: Color(0xFF0F172A),
                 ),
               ),
               Text(
-                'Senior Developer - IT',
-                style: TextStyle(
+                jabatan,
+                style: const TextStyle(
                   color: Colors.grey,
                   fontSize: 11,
                 ),
@@ -120,6 +165,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
   }
 
   Widget _buildStatusBanners() {
+    final sisaCuti = _dashboardData?['summary']?['sisa_cuti'] ?? 0;
+    final statusKes = _dashboardData?['summary']?['status_kesehatan'] ?? 'Baik';
+
     return Row(
       children: [
         Expanded(
@@ -129,13 +177,13 @@ class _DashboardScreenState extends State<DashboardScreen> {
               color: const Color(0xFFFFF3E0),
               borderRadius: BorderRadius.circular(10),
             ),
-            child: const Row(
+            child: Row(
               children: [
-                Icon(Icons.warning_amber_rounded, color: Colors.orange, size: 15),
-                SizedBox(width: 5),
+                const Icon(Icons.warning_amber_rounded, color: Colors.orange, size: 15),
+                const SizedBox(width: 5),
                 Text(
-                  'Sisa Cuti: 8 Hari',
-                  style: TextStyle(
+                  'Sisa Cuti: $sisaCuti Hari',
+                  style: const TextStyle(
                     color: Colors.orange,
                     fontWeight: FontWeight.bold,
                     fontSize: 11,
@@ -153,13 +201,13 @@ class _DashboardScreenState extends State<DashboardScreen> {
               color: const Color(0xFFE8F5E9),
               borderRadius: BorderRadius.circular(10),
             ),
-            child: const Row(
+              child: Row(
               children: [
-                Icon(Icons.check, color: Colors.green, size: 15),
-                SizedBox(width: 5),
+                const Icon(Icons.check, color: Colors.green, size: 15),
+                const SizedBox(width: 5),
                 Text(
-                  'Status: Baik',
-                  style: TextStyle(
+                  'Status: $statusKes',
+                  style: const TextStyle(
                     color: Colors.green,
                     fontWeight: FontWeight.bold,
                     fontSize: 11,
@@ -241,6 +289,17 @@ class _DashboardScreenState extends State<DashboardScreen> {
   }
 
   Widget _buildAttendanceGrid() {
+    final attn = _dashboardData?['attendance_month'] ?? {};
+    final hadir = attn['hadir'] ?? 0;
+    final terlambat = attn['terlambat'] ?? 0;
+    final izin = attn['izin'] ?? 0;
+    final cuti = attn['cuti'] ?? 0;
+    final sakit = attn['sakit'] ?? 0;
+    final alpha = attn['alpha'] ?? 0;
+    final total = attn['total_hari_kerja'] ?? 22;
+
+    String pct(int val) => total > 0 ? '(${(val / total * 100).toStringAsFixed(0)}%)' : '(0%)';
+
     return GridView.count(
       shrinkWrap: true,
       physics: const NeverScrollableScrollPhysics(),
@@ -248,13 +307,13 @@ class _DashboardScreenState extends State<DashboardScreen> {
       crossAxisSpacing: 8,
       mainAxisSpacing: 8,
       childAspectRatio: 1.4,
-      children: const [
-        _AttendanceCard(title: 'Hadir', count: '18 Hari', percentage: '(72%)', color: Colors.teal),
-        _AttendanceCard(title: 'Terlambat', count: '3 Hari', percentage: '(12%)', color: Colors.orange),
-        _AttendanceCard(title: 'Izin', count: '2 Hari', percentage: '(8%)', color: Colors.blue),
-        _AttendanceCard(title: 'Cuti', count: '2 Hari', percentage: '(8%)', color: Colors.purple),
-        _AttendanceCard(title: 'Sakit', count: '0 Hari', percentage: '(0%)', color: Colors.amber),
-        _AttendanceCard(title: 'Alpha', count: '0 Hari', percentage: '(0%)', color: Colors.red),
+      children: [
+        _AttendanceCard(title: 'Hadir', count: '$hadir Hari', percentage: pct(hadir), color: Colors.teal),
+        _AttendanceCard(title: 'Terlambat', count: '$terlambat Hari', percentage: pct(terlambat), color: Colors.orange),
+        _AttendanceCard(title: 'Izin', count: '$izin Hari', percentage: pct(izin), color: Colors.blue),
+        _AttendanceCard(title: 'Cuti', count: '$cuti Hari', percentage: pct(cuti), color: Colors.purple),
+        _AttendanceCard(title: 'Sakit', count: '$sakit Hari', percentage: pct(sakit), color: Colors.amber),
+        _AttendanceCard(title: 'Alpha', count: '$alpha Hari', percentage: pct(alpha), color: Colors.red),
       ],
     );
   }
