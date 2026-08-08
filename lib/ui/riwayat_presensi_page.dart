@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:dio/dio.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import '../api_config.dart';
 
 class RiwayatPresensiScreen extends StatefulWidget {
   const RiwayatPresensiScreen({super.key});
@@ -28,7 +29,7 @@ class _RiwayatPresensiScreenState extends State<RiwayatPresensiScreen> {
       final token = prefs.getString('token');
 
       final dio = Dio(BaseOptions(
-        baseUrl: 'http://10.0.2.2:8000/api',
+        baseUrl: ApiConfig.baseUrl,
         headers: {'Authorization': 'Bearer $token'},
         connectTimeout: const Duration(seconds: 15),
       ));

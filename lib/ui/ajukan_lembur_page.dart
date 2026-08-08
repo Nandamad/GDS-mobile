@@ -1,4 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:dio/dio.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import '../api_config.dart';
 
 class AjukanLemburSheet extends StatefulWidget {
   const AjukanLemburSheet({super.key});
@@ -22,6 +25,57 @@ class _AjukanLemburSheetState extends State<AjukanLemburSheet> {
   TimeOfDay _jamSelesai = const TimeOfDay(hour: 19, minute: 0);
 
   final TextEditingController _alasanController = TextEditingController();
+  bool _isSubmitting = false;
+
+  Future<void> _submitLembur() async {
+    if (_alasanController.text.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Alasan lembur wajib diisi!')));
+      return;
+    }
+
+    setState(() => _isSubmitting = true);
+
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final token = prefs.getString('token');
+
+      final dio = Dio(BaseOptions(
+        baseUrl: ApiConfig.baseUrl,
+        headers: {'Authorization': 'Bearer $token'},
+        connectTimeout: const Duration(seconds: 15),
+      ));
+
+      final response = await dio.post('/lembur', data: {
+        'tanggal': _tanggalLembur.toIso8601String().split('T')[0],
+        'jam_mulai_lembur': _formatTime(_jamMulai),
+        'jam_selesai_lembur': _formatTime(_jamSelesai),
+        'alasan': _alasanController.text,
+      });
+
+      if (response.statusCode == 200 || response.statusCode == 201) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Pengajuan lembur berhasil!'), backgroundColor: Colors.green),
+          );
+          Navigator.pop(context);
+        }
+      }
+    } on DioException catch (e) {
+      if (mounted) {
+        String msg = 'Gagal mengirim pengajuan lembur.';
+        if (e.response != null && e.response!.data['message'] != null) {
+          msg = e.response!.data['message'];
+        }
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(msg), backgroundColor: Colors.redAccent),
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() => _isSubmitting = false);
+      }
+    }
+  }
 
   // Menghitung selisih durasi lembur dalam jam
   double get _totalDurasi {
@@ -304,10 +358,7 @@ class _AjukanLemburSheetState extends State<AjukanLemburSheet> {
                   child: SizedBox(
                     height: 40,
                     child: ElevatedButton(
-                      onPressed: () {
-                        // TODO: Implementasi simpan / panggil API Lembur
-                        Navigator.pop(context);
-                      },
+                      onPressed: _isSubmitting ? null : _submitLembur,
                       style: ElevatedButton.styleFrom(
                         backgroundColor: const Color(0xFF009688),
                         elevation: 0,
@@ -315,10 +366,12 @@ class _AjukanLemburSheetState extends State<AjukanLemburSheet> {
                           borderRadius: BorderRadius.circular(8),
                         ),
                       ),
-                      child: const Text(
-                        'Ajukan Lembur',
-                        style: TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.bold),
-                      ),
+                      child: _isSubmitting
+                          ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
+                          : const Text(
+                              'Ajukan Lembur',
+                              style: TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.bold),
+                            ),
                     ),
                   ),
                 ),

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:dio/dio.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import '../api_config.dart';
 import 'main_navigation_page.dart'; // Ganti import 'dashboard_page.dart'
 
 class LoginScreen extends StatefulWidget {
@@ -37,7 +38,7 @@ class _LoginScreenState extends State<LoginScreen> {
 
     try {
       final dio = Dio(BaseOptions(
-        baseUrl: 'http://10.0.2.2:8000/api', // Ubah IP sesuai server jika di physical device
+        baseUrl: ApiConfig.baseUrl,
         connectTimeout: const Duration(seconds: 10),
       ));
 

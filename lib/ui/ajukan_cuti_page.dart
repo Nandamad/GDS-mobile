@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:dio/dio.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import '../api_config.dart';
 
 class AjukanCutiSheet extends StatefulWidget {
   const AjukanCutiSheet({super.key});
@@ -48,7 +49,7 @@ class _AjukanCutiSheetState extends State<AjukanCutiSheet> {
       final token = prefs.getString('token');
 
       final dio = Dio(BaseOptions(
-        baseUrl: 'http://10.0.2.2:8000/api',
+        baseUrl: ApiConfig.baseUrl,
         headers: {'Authorization': 'Bearer $token'},
         connectTimeout: const Duration(seconds: 15),
       ));
