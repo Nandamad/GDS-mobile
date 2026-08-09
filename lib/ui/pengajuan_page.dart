@@ -1,4 +1,47 @@
 import 'package:flutter/material.dart';
+import 'ajukan_cuti_page.dart';
+import 'ajukan_lembur_page.dart';
+import 'detail_workflow_page.dart';
+
+// Notifier Global untuk menyimpan data riwayat pengajuan secara realtime
+final ValueNotifier<List<Map<String, dynamic>>> submissionHistoryList = ValueNotifier<List<Map<String, dynamic>>>([
+  {
+    'type': 'Cuti/Izin',
+    'badgeText': 'Cuti',
+    'badgeBgColor': const Color(0xFFE0F2FE),
+    'badgeTextColor': const Color(0xFF0284C7),
+    'title': 'Cuti Tahunan - 5 Hari',
+    'statusText': 'Pending Approval L1',
+    'statusBgColor': const Color(0xFFFFEDD5),
+    'statusTextColor': const Color(0xFFC2410C),
+    'dateRange': '06-10 Agt 2026',
+    'submittedDate': 'Diajukan: 01 Agt 2026',
+  },
+  {
+    'type': 'Lembur',
+    'badgeText': 'Lembur',
+    'badgeBgColor': const Color(0xFFFEF3C7),
+    'badgeTextColor': const Color(0xFFD97706),
+    'title': '2 Jam Lembur',
+    'statusText': 'L1 Disetujui, L2 Pending',
+    'statusBgColor': const Color(0xFFFFEDD5),
+    'statusTextColor': const Color(0xFFC2410C),
+    'dateRange': '04 Agt 2026, 17:00-19:00',
+    'submittedDate': 'Diajukan: 04 Agt 2026',
+  },
+  {
+    'type': 'Cuti/Izin',
+    'badgeText': 'Izin',
+    'badgeBgColor': const Color(0xFFE0E7FF),
+    'badgeTextColor': const Color(0xFF4338CA),
+    'title': 'Izin Pribadi - 1 Hari',
+    'statusText': 'Pending Approval L1',
+    'statusBgColor': const Color(0xFFFFEDD5),
+    'statusTextColor': const Color(0xFFC2410C),
+    'dateRange': '15 Agt 2026',
+    'submittedDate': 'Diajukan: 01 Agt 2026',
+  },
+]);
 
 class PengajuanScreen extends StatefulWidget {
   const PengajuanScreen({super.key});
@@ -10,46 +53,6 @@ class PengajuanScreen extends StatefulWidget {
 class _PengajuanScreenState extends State<PengajuanScreen> {
   int _selectedFilter = 0; // 0: Semua, 1: Cuti/Izin, 2: Lembur
 
-  // Sample data riwayat pengajuan
-  final List<Map<String, dynamic>> _allHistory = [
-    {
-      'type': 'Cuti/Izin',
-      'badgeText': 'Cuti',
-      'badgeBgColor': const Color(0xFFE0F2FE),
-      'badgeTextColor': const Color(0xFF0284C7),
-      'title': 'Cuti Tahunan - 5 Hari',
-      'statusText': 'Pending Approval L1',
-      'statusBgColor': const Color(0xFFFFEDD5),
-      'statusTextColor': const Color(0xFFC2410C),
-      'dateRange': '06-10 Agt 2026',
-      'submittedDate': 'Diajukan: 01 Agt 2026',
-    },
-    {
-      'type': 'Lembur',
-      'badgeText': 'Lembur',
-      'badgeBgColor': const Color(0xFFFEF3C7),
-      'badgeTextColor': const Color(0xFFD97706),
-      'title': '2 Jam Lembur',
-      'statusText': 'L1 Disetujui, L2 Pending',
-      'statusBgColor': const Color(0xFFFFEDD5),
-      'statusTextColor': const Color(0xFFC2410C),
-      'dateRange': '04 Agt 2026, 17:00-19:00',
-      'submittedDate': 'Diajukan: 04 Agt 2026',
-    },
-    {
-      'type': 'Cuti/Izin',
-      'badgeText': 'Izin',
-      'badgeBgColor': const Color(0xFFE0E7FF),
-      'badgeTextColor': const Color(0xFF4338CA),
-      'title': 'Izin Pribadi - 1 Hari',
-      'statusText': 'Pending Approval L1',
-      'statusBgColor': const Color(0xFFFFEDD5),
-      'statusTextColor': const Color(0xFFC2410C),
-      'dateRange': '15 Agt 2026',
-      'submittedDate': 'Diajukan: 01 Agt 2026',
-    },
-  ];
-
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -57,7 +60,7 @@ class _PengajuanScreenState extends State<PengajuanScreen> {
       appBar: AppBar(
         backgroundColor: Colors.white,
         elevation: 0,
-        automaticallyImplyLeading: false, // Menghapus tombol back ganda untuk tab utama
+        automaticallyImplyLeading: false,
         title: const Text(
           'Pengajuan',
           style: TextStyle(
@@ -66,36 +69,19 @@ class _PengajuanScreenState extends State<PengajuanScreen> {
             fontSize: 16,
           ),
         ),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.help_outline, color: Color(0xFF64748B)),
-            onPressed: () {
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(
-                  content: Text('Pilih jenis pengajuan untuk melanjutkan.'),
-                ),
-              );
-            },
-          ),
-        ],
       ),
       body: SingleChildScrollView(
         padding: const EdgeInsets.symmetric(horizontal: 14.0, vertical: 12.0),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Action Cards
             _buildActionCard(
               icon: Icons.assignment_outlined,
               iconBgColor: const Color(0xFFE0F2FE),
               iconColor: const Color(0xFF0284C7),
               title: 'Ajukan Cuti / Izin',
               subtitle: 'Permohonan cuti, izin, atau sakit',
-              onTap: () {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text('Membuka Formulir Cuti/Izin...')),
-                );
-              },
+              onTap: () => AjukanCutiSheet.show(context),
             ),
             const SizedBox(height: 10),
             _buildActionCard(
@@ -104,15 +90,10 @@ class _PengajuanScreenState extends State<PengajuanScreen> {
               iconColor: const Color(0xFFD97706),
               title: 'Ajukan Lembur',
               subtitle: 'Permohonan jam kerja tambahan',
-              onTap: () {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text('Membuka Formulir Lembur...')),
-                );
-              },
+              onTap: () => AjukanLemburSheet.show(context),
             ),
             const SizedBox(height: 18),
 
-            // Section Title
             const Text(
               'Riwayat Pengajuan Terbaru',
               style: TextStyle(
@@ -123,16 +104,19 @@ class _PengajuanScreenState extends State<PengajuanScreen> {
             ),
             const SizedBox(height: 10),
 
-            // Filter Tabs
             _buildFilterTabs(),
             const SizedBox(height: 12),
 
-            // List Cards
-            _buildHistoryList(),
+            // Menggunakan ValueListenableBuilder agar daftar otomatis bertambah saat data di-push
+            ValueListenableBuilder<List<Map<String, dynamic>>>(
+              valueListenable: submissionHistoryList,
+              builder: (context, history, _) {
+                return _buildHistoryList(history);
+              },
+            ),
           ],
         ),
       ),
-      // PERHATIAN: bottomNavigationBar dihapus dari sini
     );
   }
 
@@ -232,8 +216,8 @@ class _PengajuanScreenState extends State<PengajuanScreen> {
     );
   }
 
-  Widget _buildHistoryList() {
-    final filteredList = _allHistory.where((item) {
+  Widget _buildHistoryList(List<Map<String, dynamic>> allHistory) {
+    final filteredList = allHistory.where((item) {
       if (_selectedFilter == 1) return item['type'] == 'Cuti/Izin';
       if (_selectedFilter == 2) return item['type'] == 'Lembur';
       return true;
@@ -364,8 +348,11 @@ class _PengajuanScreenState extends State<PengajuanScreen> {
               ),
               InkWell(
                 onTap: () {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('Membuka Detail Workflow...')),
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => const DetailWorkflowScreen(),
+                    ),
                   );
                 },
                 child: const Text(

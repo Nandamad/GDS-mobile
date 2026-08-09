@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:dio/dio.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../api_config.dart';
-import 'main_navigation_page.dart'; // Ganti import 'dashboard_page.dart'
+import 'main_navigation_page.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -18,13 +18,12 @@ class _LoginScreenState extends State<LoginScreen> {
   final TextEditingController _passwordController = TextEditingController();
 
   Future<void> _handleLogin() async {
-    FocusScope.of(context).unfocus(); // Sembunyikan keyboard
+    FocusScope.of(context).unfocus();
 
-    final nip = _nipController.text.trim();
+    final input = _nipController.text.trim();
     final password = _passwordController.text.trim();
 
-    // Validasi Input Kosong
-    if (nip.isEmpty || password.isEmpty) {
+    if (input.isEmpty || password.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text('Email/NIP dan Password wajib diisi!'),
@@ -42,15 +41,18 @@ class _LoginScreenState extends State<LoginScreen> {
         connectTimeout: const Duration(seconds: 10),
       ));
 
+      // Kirim kedua key (nip dan email) jika backend menerima salah satunya, 
+      // atau sesuaikan key utama yang dipakai di API Laravel kamu:
       final response = await dio.post('/login', data: {
-        'email': nip,
+        'nip': input,
+        'email': input,
         'password': password,
       });
 
       if (response.statusCode == 200) {
-        final token = response.data['access_token'];
+        final token = response.data['access_token'] ?? response.data['token'];
         final prefs = await SharedPreferences.getInstance();
-        await prefs.setString('token', token);
+        await prefs.setString('token', token ?? '');
 
         if (mounted) {
           Navigator.pushReplacement(
@@ -63,7 +65,13 @@ class _LoginScreenState extends State<LoginScreen> {
       String errorMsg = 'Gagal terhubung ke server.';
       if (e.response != null) {
         if (e.response!.statusCode == 422) {
-          errorMsg = e.response!.data['message'] ?? 'Kredensial salah';
+          // Menampilkan detail pesan error dari validator Laravel
+          final data = e.response!.data;
+          if (data is Map && data.containsKey('message')) {
+            errorMsg = data['message'];
+          } else {
+            errorMsg = 'NIP/Email atau Password salah atau format tidak valid.';
+          }
         } else {
           errorMsg = 'Error server: ${e.response!.statusCode}';
         }
@@ -99,8 +107,6 @@ class _LoginScreenState extends State<LoginScreen> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       const SizedBox(height: 40),
-
-                      // Logo & App Header
                       Center(
                         child: Column(
                           children: [
@@ -139,7 +145,6 @@ class _LoginScreenState extends State<LoginScreen> {
                       ),
                       const SizedBox(height: 40),
 
-                      // Section Title Masuk
                       const Text(
                         'Masuk',
                         style: TextStyle(
@@ -158,7 +163,6 @@ class _LoginScreenState extends State<LoginScreen> {
                       ),
                       const SizedBox(height: 24),
 
-                      // Input Email / NIP
                       const Text(
                         'Email atau NIP',
                         style: TextStyle(
@@ -194,7 +198,6 @@ class _LoginScreenState extends State<LoginScreen> {
                       ),
                       const SizedBox(height: 16),
 
-                      // Input Password
                       const Text(
                         'Password',
                         style: TextStyle(
@@ -243,7 +246,6 @@ class _LoginScreenState extends State<LoginScreen> {
                       ),
                       const SizedBox(height: 8),
 
-                      // Lupa Password Link
                       Align(
                         alignment: Alignment.centerRight,
                         child: TextButton(
@@ -271,7 +273,6 @@ class _LoginScreenState extends State<LoginScreen> {
                       ),
                       const SizedBox(height: 24),
 
-                      // Tombol Masuk
                       SizedBox(
                         width: double.infinity,
                         height: 44,
@@ -307,8 +308,6 @@ class _LoginScreenState extends State<LoginScreen> {
                   ),
                 ),
               ),
-
-              // Version Bottom Text
               const Padding(
                 padding: EdgeInsets.only(bottom: 12.0),
                 child: Text(

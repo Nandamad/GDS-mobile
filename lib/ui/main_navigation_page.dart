@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'kinerja_presensi_page.dart';
+import 'dashboard_page.dart';
 import 'presensi_harian_page.dart';
 import 'pengajuan_page.dart';
 import 'riwayat_presensi_page.dart';
@@ -16,14 +16,6 @@ class MainNavigationScreen extends StatefulWidget {
 class _MainNavigationScreenState extends State<MainNavigationScreen> {
   late int _currentIndex;
 
-  final List<Widget> _pages = const [
-    KinerjaPresensiScreen(), // Tab 0: Beranda
-    PresensiScreen(),        // Tab 1: Presensi
-    PengajuanScreen(),       // Tab 2: Pengajuan
-    RiwayatPresensiScreen(), // Tab 3: Riwayat
-    NotifikasiScreen(),      // Tab 4: Notifikasi
-  ];
-
   @override
   void initState() {
     super.initState();
@@ -32,10 +24,22 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final List<Widget> pages = [
+      DashboardScreen(
+        onNotificationTap: () {
+          setState(() => _currentIndex = 4); // Pindah ke Tab Notifikasi
+        },
+      ),
+      const PresensiScreen(),
+      const PengajuanScreen(),
+      const RiwayatPresensiScreen(),
+      const NotifikasiScreen(),
+    ];
+
     return Scaffold(
       body: IndexedStack(
         index: _currentIndex,
-        children: _pages,
+        children: pages,
       ),
       bottomNavigationBar: BottomNavigationBar(
         currentIndex: _currentIndex,

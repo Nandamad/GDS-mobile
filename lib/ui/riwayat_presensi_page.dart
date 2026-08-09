@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:dio/dio.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../api_config.dart';
+import 'detail_log_page.dart'; // Diperbarui: Tambahkan import ini
 
 class RiwayatPresensiScreen extends StatefulWidget {
   const RiwayatPresensiScreen({super.key});
@@ -54,7 +55,7 @@ class _RiwayatPresensiScreenState extends State<RiwayatPresensiScreen> {
           }
 
           return {
-            'month': 'Agustus 2026', // Sederhanakan untuk demo
+            'month': 'Agustus 2026',
             'date': item['tanggal'] ?? '-',
             'statusText': statusTxt.toUpperCase(),
             'statusCategory': statusCat,
@@ -62,8 +63,8 @@ class _RiwayatPresensiScreenState extends State<RiwayatPresensiScreen> {
             'statusTextColor': txtColor,
             'checkIn': item['jam_masuk'] ?? '-',
             'checkOut': item['jam_pulang'] ?? '-',
-            'duration': '-', // Kalkulasi jika diperlukan
-            'hasDetailButton': false,
+            'duration': '-',
+            'hasDetailButton': true, // Diperbarui: Aktifkan tombol detail log
           };
         }).toList();
 
@@ -132,7 +133,6 @@ class _RiwayatPresensiScreenState extends State<RiwayatPresensiScreen> {
               ],
             ),
           ),
-      // bottomNavigationBar dihapus dari sini
     );
   }
 
@@ -171,7 +171,6 @@ class _RiwayatPresensiScreenState extends State<RiwayatPresensiScreen> {
   }
 
   Widget _buildHistoryList() {
-    // Filter data berdasar Bulan dan Status
     final filteredData = _allHistoryData.where((item) {
       final matchesMonth = item['month'] == _selectedMonth;
       final matchesStatus = _selectedStatus == 'Semua Status' ||
@@ -234,7 +233,6 @@ class _RiwayatPresensiScreenState extends State<RiwayatPresensiScreen> {
       ),
       child: Column(
         children: [
-          // Row Header Card: Tanggal & Badge Status
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
@@ -265,7 +263,6 @@ class _RiwayatPresensiScreenState extends State<RiwayatPresensiScreen> {
           ),
           const SizedBox(height: 10),
 
-          // Row Informasi Masuk, Pulang, Durasi
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
@@ -283,8 +280,12 @@ class _RiwayatPresensiScreenState extends State<RiwayatPresensiScreen> {
               height: 32,
               child: ElevatedButton.icon(
                 onPressed: () {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('Membuka Detail Log...')),
+                  // Diperbarui: Pindah ke halaman DetailLogPresensiScreen
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => const DetailLogScreen(),
+                    ),
                   );
                 },
                 icon: const Icon(Icons.remove_red_eye_outlined, size: 14),

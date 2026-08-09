@@ -1,8 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:dio/dio.dart';
-import 'package:shared_preferences/shared_preferences.dart';
-import '../api_config.dart';
-import 'detail_workflow_page.dart';
 
 class NotifikasiScreen extends StatefulWidget {
   const NotifikasiScreen({super.key});
@@ -12,61 +8,37 @@ class NotifikasiScreen extends StatefulWidget {
 }
 
 class _NotifikasiScreenState extends State<NotifikasiScreen> {
-  bool _isLoading = true;
-  List<Map<String, dynamic>> _notifications = [];
+  final List<Map<String, dynamic>> _notifications = [
+    {
+      'title': 'Pengajuan Cuti Disetujui',
+      'message': 'Pengajuan cuti Anda tanggal 06-10 Agt telah disetujui Atasan.',
+      'time': '2 jam lalu',
+      'dotColor': Colors.teal,
+      'isUnread': true,
+    },
+    {
+      'title': 'Update Lembur',
+      'message': 'Lembur tanggal 03 Agt sedang menunggu persetujuan HRD.',
+      'time': '4 jam lalu',
+      'dotColor': Colors.orange,
+      'isUnread': true,
+    },
+    {
+      'title': 'Reminder Absen Pagi',
+      'message': 'Jangan lupa absen masuk! Jam kerja mulai pukul 08:00.',
+      'time': '1 hari lalu',
+      'dotColor': Colors.blue,
+      'isUnread': false,
+    },
+    {
+      'title': 'Pengajuan Ditolak',
+      'message': 'Pengajuan izin tanggal 20 Jul ditolak oleh Atasan.',
+      'time': '2 hari lalu',
+      'dotColor': Colors.red,
+      'isUnread': false,
+    },
+  ];
 
-  @override
-  void initState() {
-    super.initState();
-    _fetchNotifikasi();
-  }
-
-  Future<void> _fetchNotifikasi() async {
-    try {
-      final prefs = await SharedPreferences.getInstance();
-      final token = prefs.getString('token');
-
-      final dio = Dio(BaseOptions(
-        baseUrl: ApiConfig.baseUrl,
-        headers: {'Authorization': 'Bearer $token'},
-        connectTimeout: const Duration(seconds: 15),
-      ));
-
-      final response = await dio.get('/notifikasi');
-
-      if (response.statusCode == 200) {
-        final List<dynamic> data = response.data['data'];
-        final parsedData = data.map((item) {
-          Color dotColor = Colors.blue;
-          if (item['type'] == 'success') dotColor = Colors.teal;
-          if (item['type'] == 'warning') dotColor = Colors.orange;
-          if (item['type'] == 'error') dotColor = Colors.red;
-
-          return {
-            'title': item['title'],
-            'message': item['message'],
-            'time': item['created_at'], // Idealnya parse Carbon to timeago
-            'dotColor': dotColor,
-            'isUnread': !(item['is_read'] as bool),
-          };
-        }).toList();
-
-        setState(() {
-          _notifications = parsedData;
-          _isLoading = false;
-        });
-      }
-    } catch (e) {
-      setState(() => _isLoading = false);
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Gagal memuat notifikasi')),
-        );
-      }
-    }
-  }
-
-  // Tandai semua notifikasi menjadi dibaca
   void _markAllAsRead() {
     setState(() {
       for (var item in _notifications) {
@@ -121,41 +93,28 @@ class _NotifikasiScreenState extends State<NotifikasiScreen> {
           ),
         ],
       ),
-      body: _isLoading 
-          ? const Center(child: CircularProgressIndicator(color: Color(0xFF009688)))
-          : SingleChildScrollView(
-              padding: const EdgeInsets.symmetric(horizontal: 14.0, vertical: 12.0),
-              child: Column(
-                children: _notifications.asMap().entries.map((entry) {
-                  int index = entry.key;
-                  var item = entry.value;
-                  return Padding(
-                    padding: const EdgeInsets.only(bottom: 10.0),
-                    child: _buildNotificationCard(
-                      title: item['title'],
-                      message: item['message'],
-                      time: item['time'],
-                      dotColor: item['dotColor'],
-                      isUnread: item['isUnread'],
-                      onTap: () {
-                        setState(() => _notifications[index]['isUnread'] = false);
-                        // Buka halaman workflow jika terkait pengajuan
-                        if (item['title'].toString().contains('Cuti') ||
-                            item['title'].toString().contains('Lembur')) {
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (context) => const DetailWorkflowScreen(),
-                            ),
-                          );
-                        }
-                      },
-                    ),
-                  );
-                }).toList(),
+      body: SingleChildScrollView(
+        padding: const EdgeInsets.symmetric(horizontal: 14.0, vertical: 12.0),
+        child: Column(
+          children: _notifications.asMap().entries.map((entry) {
+            int index = entry.key;
+            var item = entry.value;
+            return Padding(
+              padding: const EdgeInsets.only(bottom: 10.0),
+              child: _buildNotificationCard(
+                title: item['title'],
+                message: item['message'],
+                time: item['time'],
+                dotColor: item['dotColor'],
+                isUnread: item['isUnread'],
+                onTap: () {
+                  setState(() => _notifications[index]['isUnread'] = false);
+                },
               ),
-            ),
-      // bottomNavigationBar dihapus dari sini
+            );
+          }).toList(),
+        ),
+      ),
     );
   }
 
