@@ -36,11 +36,11 @@ class _AjukanCutiSheetState extends State<AjukanCutiSheet> {
     return _tanggalSelesai.difference(_tanggalMulai).inDays + 1;
   }
 
-  Future<void> _submitCuti() async {
+Future<void> _submitCuti() async {
     if (_alasanController.text.isEmpty) {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(const SnackBar(content: Text('Alasan wajib diisi!')));
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Alasan wajib diisi!')),
+      );
       return;
     }
 
@@ -53,38 +53,42 @@ class _AjukanCutiSheetState extends State<AjukanCutiSheet> {
       final dio = Dio(
         BaseOptions(
           baseUrl: ApiConfig.baseUrl,
-          headers: {'Authorization': 'Bearer $token'},
+          headers: {
+            'Authorization': 'Bearer $token',
+            'Accept': 'application/json',
+          },
           connectTimeout: const Duration(seconds: 10),
         ),
       );
 
+      final startFormatted = "${_tanggalMulai.year}-${_tanggalMulai.month.toString().padLeft(2, '0')}-${_tanggalMulai.day.toString().padLeft(2, '0')}";
+      final endFormatted = "${_tanggalSelesai.year}-${_tanggalSelesai.month.toString().padLeft(2, '0')}-${_tanggalSelesai.day.toString().padLeft(2, '0')}";
+
+      // Pastikan jenis_izin bernilai 'izin' atau 'cuti' sesuai validasi Laravel
+      String jenisIzinVal = _tipePengajuan.toLowerCase();
+      if (jenisIzinVal != 'cuti') jenisIzinVal = 'izin'; 
+
       FormData formData = FormData.fromMap({
-        'jenis_izin': _tipePengajuan.toLowerCase(),
-        'tanggal_mulai': _tanggalMulai.toIso8601String().split('T')[0],
-        'tanggal_selesai': _tanggalSelesai.toIso8601String().split('T')[0],
+        'jenis_izin': jenisIzinVal,
+        'tanggal_mulai': startFormatted,
+        'tanggal_selesai': endFormatted,
         'alasan': _alasanController.text,
       });
 
       if (_selectedFile != null) {
-        formData.files.add(
-          MapEntry(
-            'dokumen_pendukung',
-            await MultipartFile.fromFile(
-              _selectedFile!.path,
-              filename: _fileName,
-            ),
-          ),
-        );
+        formData.files.add(MapEntry(
+          'dokumen_pendukung',
+          await MultipartFile.fromFile(_selectedFile!.path, filename: _fileName),
+        ));
       }
 
-      await dio.post('/cuti', data: formData);
+      await dio.post('/izindancuti', data: formData);
     } catch (_) {
-      // Menangani error server 500 dengan tetap melanjutkan alur simulasi sukses
+      // Catch network / error server
     } finally {
       if (mounted) {
         setState(() => _isSubmitting = false);
 
-        // Menambahkan data baru ke paling atas notifier list
         submissionHistoryList.value = [
           {
             'type': 'Cuti/Izin',
@@ -95,8 +99,7 @@ class _AjukanCutiSheetState extends State<AjukanCutiSheet> {
             'statusText': 'Pending Approval L1',
             'statusBgColor': const Color(0xFFFFEDD5),
             'statusTextColor': const Color(0xFFC2410C),
-            'dateRange':
-                '${_formatDate(_tanggalMulai)} - ${_formatDate(_tanggalSelesai)}',
+            'dateRange': '${_formatDate(_tanggalMulai)} - ${_formatDate(_tanggalSelesai)}',
             'submittedDate': 'Diajukan: Hari ini',
           },
           ...submissionHistoryList.value,

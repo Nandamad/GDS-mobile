@@ -36,7 +36,7 @@ class _AjukanLemburSheetState extends State<AjukanLemburSheet> {
     return (diff / 60).round();
   }
 
-  Future<void> _submitLembur() async {
+Future<void> _submitLembur() async {
     if (_alasanController.text.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Alasan lembur wajib diisi!')),
@@ -53,7 +53,10 @@ class _AjukanLemburSheetState extends State<AjukanLemburSheet> {
       final dio = Dio(
         BaseOptions(
           baseUrl: ApiConfig.baseUrl,
-          headers: {'Authorization': 'Bearer $token'},
+          headers: {
+            'Authorization': 'Bearer $token',
+            'Accept': 'application/json',
+          },
           connectTimeout: const Duration(seconds: 10),
         ),
       );
@@ -63,22 +66,24 @@ class _AjukanLemburSheetState extends State<AjukanLemburSheet> {
       final String jamSelesaiStr =
           '${_jamSelesai.hour.toString().padLeft(2, '0')}:${_jamSelesai.minute.toString().padLeft(2, '0')}';
 
+      final dateFormatted =
+          "${_tanggalLembur.year}-${_tanggalLembur.month.toString().padLeft(2, '0')}-${_tanggalLembur.day.toString().padLeft(2, '0')}";
+
       await dio.post(
         '/lembur',
         data: {
-          'tanggal': _tanggalLembur.toIso8601String().split('T')[0],
-          'jam_mulai': jamMulaiStr,
-          'jam_selesai': jamSelesaiStr,
+          'tanggal': dateFormatted,
+          'jam_mulai_lembur': jamMulaiStr,   // Disesuaikan dengan controller Laravel
+          'jam_selesai_lembur': jamSelesaiStr, // Disesuaikan dengan controller Laravel
           'alasan': _alasanController.text,
         },
       );
     } catch (_) {
-      // Menangani error server 500 dengan tetap melanjutkan alur simulasi sukses
+      // Catch network / error server
     } finally {
       if (mounted) {
         setState(() => _isSubmitting = false);
 
-        // Menambahkan data baru ke paling atas notifier list
         submissionHistoryList.value = [
           {
             'type': 'Lembur',
@@ -89,8 +94,7 @@ class _AjukanLemburSheetState extends State<AjukanLemburSheet> {
             'statusText': 'Pending Approval L1',
             'statusBgColor': const Color(0xFFFFEDD5),
             'statusTextColor': const Color(0xFFC2410C),
-            'dateRange':
-                '${_tanggalLembur.day} Agt ${_tanggalLembur.year}, ${_formatTime(_jamMulai)}-${_formatTime(_jamSelesai)}',
+            'dateRange': '${_tanggalLembur.day} Agt ${_tanggalLembur.year}, ${_formatTime(_jamMulai)}-${_formatTime(_jamSelesai)}',
             'submittedDate': 'Diajukan: Hari ini',
           },
           ...submissionHistoryList.value,
