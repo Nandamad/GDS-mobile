@@ -1,7 +1,7 @@
 import 'dart:async';
-// ignore: deprecated_member_use, avoid_web_libraries_in_flutter
-import 'dart:html' as html;
-import 'dart:ui_web' as ui_web;
+import 'dart:convert';
+
+import 'package:camera/camera.dart';
 import 'package:flutter/material.dart';
 
 class KameraScreen extends StatefulWidget {
@@ -12,29 +12,37 @@ class KameraScreen extends StatefulWidget {
 }
 
 class _KameraScreenState extends State<KameraScreen> {
-  final String _viewId = 'webcam-video-element';
-  html.VideoElement? _videoElement;
-  html.MediaStream? _mediaStream;
+  CameraController? _cameraController;
+
   bool _isCameraReady = false;
+  bool _isTakingPicture = false;
   String? _errorMessage;
 
-  // Realtime Clock State
+  // Realtime Clock
   late Timer _timer;
   String _currentTime = '';
 
   @override
   void initState() {
     super.initState();
+
     _updateTime();
-    _timer = Timer.periodic(const Duration(seconds: 1), (timer) => _updateTime());
-    _setupVideoElement();
+
+    _timer = Timer.periodic(
+      const Duration(seconds: 1),
+          (timer) => _updateTime(),
+    );
+
+    _startCamera();
   }
 
   void _updateTime() {
     final now = DateTime.now();
+
     final hour = now.hour.toString().padLeft(2, '0');
     final minute = now.minute.toString().padLeft(2, '0');
     final second = now.second.toString().padLeft(2, '0');
+
     if (mounted) {
       setState(() {
         _currentTime = '$hour:$minute:$second WIB';
@@ -42,67 +50,106 @@ class _KameraScreenState extends State<KameraScreen> {
     }
   }
 
-  void _setupVideoElement() {
-    final videoElement = html.VideoElement()
-      ..style.width = '100%'
-      ..style.height = '100%'
-      ..style.objectFit = 'cover'
-      ..autoplay = true;
-    videoElement.setAttribute('playsinline', 'true');
-    _videoElement = videoElement;
-
-    ui_web.platformViewRegistry.registerViewFactory(
-      _viewId,
-      (int viewId) => _videoElement!,
-    );
-
-    _startCamera();
-  }
-
   Future<void> _startCamera() async {
-    setState(() {
-      _errorMessage = null;
-    });
-
     try {
-      final stream = await html.window.navigator.mediaDevices!.getUserMedia({
-        'video': {
-          'facingMode': 'user',
-          'width': {'ideal': 1280},
-          'height': {'ideal': 720},
-        },
-        'audio': false,
-      });
+      if (mounted) {
+        setState(() {
+          _errorMessage = null;
+          _isCameraReady = false;
+        });
+      }
 
-      _mediaStream = stream;
-      _videoElement!.srcObject = stream;
+      final cameras = await availableCameras();
+
+      if (cameras.isEmpty) {
+        throw Exception('Kamera tidak ditemukan pada perangkat.');
+      }
+
+      // Prioritaskan kamera depan
+      CameraDescription selectedCamera = cameras.first;
+
+      for (final camera in cameras) {
+        if (camera.lensDirection == CameraLensDirection.front) {
+          selectedCamera = camera;
+          break;
+        }
+      }
+
+      final controller = CameraController(
+        selectedCamera,
+        ResolutionPreset.high,
+        enableAudio: false,
+      );
+
+      await controller.initialize();
+
+      // Mirror preview kamera depan agar terasa natural seperti selfie
+      await controller.setFlashMode(FlashMode.off);
+
+      _cameraController = controller;
 
       if (mounted) {
         setState(() {
           _isCameraReady = true;
+          _errorMessage = null;
+        });
+      }
+    } on CameraException catch (e) {
+      if (mounted) {
+        setState(() {
+          _isCameraReady = false;
+          _errorMessage = _cameraErrorMessage(e);
         });
       }
     } catch (e) {
       if (mounted) {
         setState(() {
           _isCameraReady = false;
-          _errorMessage =
-              'Sistem menolak akses kamera.\nKlik tombol "AKTIFKAN KAMERA" di bawah jika kamera belum muncul.';
+          _errorMessage = 'Gagal mengakses kamera.\n$e';
         });
       }
     }
   }
 
-  void _takePicture() {
-    if (_videoElement != null && _isCameraReady) {
-      final canvas = html.CanvasElement(
-        width: _videoElement!.videoWidth,
-        height: _videoElement!.videoHeight,
-      );
-      canvas.context2D.drawImage(_videoElement!, 0, 0);
-      
-      // Ambil Base64 Image
-      final String imageDataUrl = canvas.toDataUrl('image/png');
+  String _cameraErrorMessage(CameraException e) {
+    switch (e.code) {
+      case 'CameraAccessDenied':
+        return 'Akses kamera ditolak.\nSilakan izinkan aplikasi menggunakan kamera.';
+      case 'CameraAccessDeniedWithoutPrompt':
+        return 'Akses kamera ditolak.\nSilakan aktifkan izin kamera dari Pengaturan.';
+      case 'CameraAccessRestricted':
+        return 'Akses kamera dibatasi oleh perangkat.';
+      case 'CameraAccessDeniedWithoutPrompt':
+        return 'Akses kamera ditolak.';
+      default:
+        return 'Kamera tidak dapat digunakan.\n${e.description ?? e.code}';
+    }
+  }
+
+  Future<void> _takePicture() async {
+    if (_cameraController == null ||
+        !_cameraController!.value.isInitialized ||
+        _isTakingPicture) {
+      return;
+    }
+
+    try {
+      setState(() {
+        _isTakingPicture = true;
+      });
+
+      final XFile image = await _cameraController!.takePicture();
+
+      // Baca foto sebagai bytes
+      final bytes = await image.readAsBytes();
+
+      // Convert ke Base64
+      final base64Image = base64Encode(bytes);
+
+      // Format data URL seperti yang digunakan versi Web sebelumnya
+      final imageDataUrl = 'data:image/jpeg;base64,$base64Image';
+
+      if (!mounted) return;
 
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
@@ -112,88 +159,128 @@ class _KameraScreenState extends State<KameraScreen> {
         ),
       );
 
-      // Kembalikan data foto ke layar sebelumnya setelah 1 detik
-      Future.delayed(const Duration(seconds: 1), () {
-        if (mounted) {
-          Navigator.pop(context, imageDataUrl);
-        }
-      });
+      // Kembalikan foto ke halaman sebelumnya
+      await Future.delayed(const Duration(seconds: 1));
+
+      if (mounted) {
+        Navigator.pop(context, imageDataUrl);
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Gagal mengambil foto: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isTakingPicture = false;
+        });
+      }
     }
   }
 
   @override
   void dispose() {
     _timer.cancel();
-    if (_mediaStream != null) {
-      for (final track in _mediaStream!.getTracks()) {
-        track.stop();
-      }
-    }
+    _cameraController?.dispose();
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
+    final controller = _cameraController;
+
     return Scaffold(
       backgroundColor: Colors.black,
       body: Stack(
         children: [
-          // 1. LIVE HTML WEBCAM STREAM
-          if (_isCameraReady)
-            HtmlElementView(viewType: _viewId)
+          // =========================================================
+          // LIVE CAMERA PREVIEW
+          // =========================================================
+          if (_isCameraReady &&
+              controller != null &&
+              controller.value.isInitialized)
+            Positioned.fill(
+              child: CameraPreview(controller),
+            )
           else
-            Center(
-              child: _errorMessage != null
-                  ? Padding(
-                      padding: const EdgeInsets.all(24.0),
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          const Icon(Icons.videocam_off_outlined,
-                              color: Colors.white54, size: 48),
-                          const SizedBox(height: 12),
-                          Text(
-                            _errorMessage!,
-                            textAlign: TextAlign.center,
-                            style: const TextStyle(
-                              color: Colors.white,
-                              fontSize: 11,
-                            ),
-                          ),
-                          const SizedBox(height: 16),
-                          ElevatedButton(
-                            onPressed: _startCamera,
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: const Color(0xFF009688),
-                            ),
-                            child: const Text('Coba Lagi',
-                                style: TextStyle(color: Colors.white)),
-                          ),
-                        ],
+            Positioned.fill(
+              child: Center(
+                child: _errorMessage != null
+                    ? Padding(
+                  padding: const EdgeInsets.all(24),
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      const Icon(
+                        Icons.videocam_off_outlined,
+                        color: Colors.white54,
+                        size: 48,
                       ),
-                    )
-                  : const Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        CircularProgressIndicator(color: Color(0xFF009688)),
-                        SizedBox(height: 12),
-                        Text(
-                          'Menghubungkan ke Webcam...',
-                          style: TextStyle(color: Colors.white, fontSize: 11),
-                        ),
-                      ],
-                    ),
 
+                      const SizedBox(height: 12),
+
+                      Text(
+                        _errorMessage!,
+                        textAlign: TextAlign.center,
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 11,
+                        ),
+                      ),
+
+                      const SizedBox(height: 16),
+
+                      ElevatedButton(
+                        onPressed: _startCamera,
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: const Color(0xFF009688),
+                        ),
+                        child: const Text(
+                          'COBA LAGI',
+                          style: TextStyle(
+                            color: Colors.white,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                )
+                    : const Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    CircularProgressIndicator(
+                      color: Color(0xFF009688),
+                    ),
+                    SizedBox(height: 12),
+                    Text(
+                      'Menghubungkan ke Kamera...',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 11,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
             ),
 
-          // 2. OVERLAY UI
+          // =========================================================
+          // OVERLAY UI
+          // =========================================================
           SafeArea(
             child: Column(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                // Top Bar
+                // =====================================================
+                // TOP BAR
+                // =====================================================
                 Padding(
-                  padding: const EdgeInsets.all(16.0),
+                  padding: const EdgeInsets.all(16),
                   child: Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
@@ -211,6 +298,7 @@ class _KameraScreenState extends State<KameraScreen> {
                           onPressed: () => Navigator.pop(context),
                         ),
                       ),
+
                       Column(
                         crossAxisAlignment: CrossAxisAlignment.end,
                         children: [
@@ -222,6 +310,7 @@ class _KameraScreenState extends State<KameraScreen> {
                               fontSize: 14,
                             ),
                           ),
+
                           const Text(
                             'Kantor Pusat (Jl. Sudirman)',
                             style: TextStyle(
@@ -235,7 +324,9 @@ class _KameraScreenState extends State<KameraScreen> {
                   ),
                 ),
 
-                // Bingkai Oval Proporsional Wajah
+                // =====================================================
+                // FACE FRAME
+                // =====================================================
                 Container(
                   width: 260,
                   height: 360,
@@ -244,7 +335,7 @@ class _KameraScreenState extends State<KameraScreen> {
                       Radius.elliptical(130, 180),
                     ),
                     border: Border.all(
-                      color: Colors.white.withOpacity(0.95),
+                      color: Colors.white,
                       width: 2.5,
                     ),
                     boxShadow: [
@@ -257,7 +348,7 @@ class _KameraScreenState extends State<KameraScreen> {
                   ),
                   child: const Center(
                     child: Padding(
-                      padding: EdgeInsets.symmetric(horizontal: 20.0),
+                      padding: EdgeInsets.symmetric(horizontal: 20),
                       child: Text(
                         'Posisikan wajah Anda\ndi dalam bingkai',
                         textAlign: TextAlign.center,
@@ -266,7 +357,10 @@ class _KameraScreenState extends State<KameraScreen> {
                           fontSize: 12,
                           fontWeight: FontWeight.w500,
                           shadows: [
-                            Shadow(blurRadius: 6, color: Colors.black87),
+                            Shadow(
+                              blurRadius: 6,
+                              color: Colors.black87,
+                            ),
                           ],
                         ),
                       ),
@@ -274,16 +368,20 @@ class _KameraScreenState extends State<KameraScreen> {
                   ),
                 ),
 
-                // Button Ambil Foto
+                // =====================================================
+                // BUTTON
+                // =====================================================
                 Padding(
-                  padding: const EdgeInsets.all(20.0),
+                  padding: const EdgeInsets.all(20),
                   child: Column(
                     children: [
                       SizedBox(
                         width: double.infinity,
                         height: 44,
                         child: ElevatedButton(
-                          onPressed: _isCameraReady ? _takePicture : _startCamera,
+                          onPressed: _isCameraReady && !_isTakingPicture
+                              ? _takePicture
+                              : _startCamera,
                           style: ElevatedButton.styleFrom(
                             backgroundColor: const Color(0xFF009688),
                             elevation: 0,
@@ -292,7 +390,11 @@ class _KameraScreenState extends State<KameraScreen> {
                             ),
                           ),
                           child: Text(
-                            _isCameraReady ? 'AMBIL FOTO' : 'AKTIFKAN KAMERA',
+                            _isTakingPicture
+                                ? 'MEMPROSES...'
+                                : _isCameraReady
+                                ? 'AMBIL FOTO'
+                                : 'AKTIFKAN KAMERA',
                             style: const TextStyle(
                               color: Colors.white,
                               fontSize: 12,
@@ -301,10 +403,15 @@ class _KameraScreenState extends State<KameraScreen> {
                           ),
                         ),
                       ),
+
                       const SizedBox(height: 10),
+
                       const Text(
                         'Pencahayaan yang cukup membantu verifikasi deteksi wajah AI',
-                        style: TextStyle(color: Colors.white70, fontSize: 9),
+                        style: TextStyle(
+                          color: Colors.white70,
+                          fontSize: 9,
+                        ),
                       ),
                     ],
                   ),
