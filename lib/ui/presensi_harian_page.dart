@@ -1,5 +1,8 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:geolocator/geolocator.dart'; // Package untuk GPS
+import 'package:flutter_map/flutter_map.dart'; // Package untuk Peta Interaktif
+import 'package:latlong2/latlong.dart'; // Package titik koordinat
 import 'kamera_page.dart';
 import 'konfirmasi_foto_page.dart';
 
@@ -11,7 +14,6 @@ class PresensiScreen extends StatefulWidget {
 }
 
 class _PresensiScreenState extends State<PresensiScreen> {
-  // Warna tema utama
   final Color primaryTeal = const Color(0xFF009688);
   final Color lightTealAccent = const Color(0xFFE0F2F1);
 
@@ -24,11 +26,21 @@ class _PresensiScreenState extends State<PresensiScreen> {
   String _jamKeluar = 'Belum Absen';
   bool _isSudahAbsenMasuk = false;
 
+  // Koordinat Kantor (Contoh: Kantor Pusat)
+  final LatLng _officeLocation = const LatLng(-6.2088, 106.8456);
+  double _radiusMeters = 0.0;
+  bool _isInRadius = false;
+
+  // Koordinat User Real-time
+  LatLng _currentLocation = const LatLng(-6.2088, 106.8456);
+  bool _isLoadingLocation = true;
+
   @override
   void initState() {
     super.initState();
     _updateTime();
     _timer = Timer.periodic(const Duration(seconds: 1), (timer) => _updateTime());
+    _determinePosition(); // Ambil lokasi GPS saat halaman dibuka
   }
 
   void _updateTime() {
@@ -43,22 +55,75 @@ class _PresensiScreenState extends State<PresensiScreen> {
     }
   }
 
+  // Fungsi untuk mendapatkan lokasi GPS HP secara real-time
+  Future<void> _determinePosition() async {
+    bool serviceEnabled;
+    LocationPermission permission;
+
+    // Cek apakah Layanan GPS aktif
+    serviceEnabled = await Geolocator.isLocationServiceEnabled();
+    if (!serviceEnabled) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Layanan GPS/Lokasi tidak aktif. Mohon aktifkan GPS.')),
+        );
+      }
+      return;
+    }
+
+    // Cek izin akses lokasi
+    permission = await Geolocator.checkPermission();
+    if (permission == LocationPermission.denied) {
+      permission = await Geolocator.requestPermission();
+      if (permission == LocationPermission.denied) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Izin akses lokasi ditolak.')),
+          );
+        }
+        return;
+      }
+    }
+
+    if (permission == LocationPermission.deniedForever) {
+      return;
+    }
+
+    // Ambil posisi terkini
+    Position position = await Geolocator.getCurrentPosition(
+      desiredAccuracy: LocationAccuracy.high,
+    );
+
+    setState(() {
+      _currentLocation = LatLng(position.latitude, position.longitude);
+
+      // Hitung jarak antara posisi user dan kantor (dalam meter)
+      _radiusMeters = Geolocator.distanceBetween(
+        _currentLocation.latitude,
+        _currentLocation.longitude,
+        _officeLocation.latitude,
+        _officeLocation.longitude,
+      );
+
+      // Tentukan apakah dalam radius 100 meter
+      _isInRadius = _radiusMeters <= 100;
+      _isLoadingLocation = false;
+    });
+  }
+
   @override
   void dispose() {
     _timer.cancel();
     super.dispose();
   }
 
-  // Alur Navigasi Presensi: Presensi -> Kamera -> Konfirmasi
   Future<void> _handleAbsenMasuk() async {
-    // 1. Buka Kamera
     final resultImage = await Navigator.push<String>(
       context,
       MaterialPageRoute(builder: (context) => const KameraScreen()),
     );
 
     if (resultImage != null && mounted) {
-      // 2. Buka Konfirmasi Foto jika mengambil foto
       final isConfirmed = await Navigator.push<bool>(
         context,
         MaterialPageRoute(
@@ -66,7 +131,6 @@ class _PresensiScreenState extends State<PresensiScreen> {
         ),
       );
 
-      // 3. Update UI jika konfirmasi sukses
       if (isConfirmed == true && mounted) {
         final now = DateTime.now();
         final timeString =
@@ -103,11 +167,7 @@ class _PresensiScreenState extends State<PresensiScreen> {
               ),
               const Row(
                 children: [
-                  Icon(
-                    Icons.signal_cellular_alt,
-                    color: Colors.black,
-                    size: 18,
-                  ),
+                  Icon(Icons.signal_cellular_alt, color: Colors.black, size: 18),
                   SizedBox(width: 4),
                   Icon(Icons.wifi, color: Colors.black, size: 18),
                   SizedBox(width: 4),
@@ -122,7 +182,7 @@ class _PresensiScreenState extends State<PresensiScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Header: Judul dan Waktu
+            // Header Waktu
             Padding(
               padding: const EdgeInsets.all(20.0),
               child: Column(
@@ -149,7 +209,7 @@ class _PresensiScreenState extends State<PresensiScreen> {
               ),
             ),
 
-            // Card Informasi Lokasi, Shift, Radius
+            // Card Informasi Lokasi Kantor & Shift
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 20.0),
               child: Card(
@@ -165,7 +225,7 @@ class _PresensiScreenState extends State<PresensiScreen> {
                       _buildInfoRow(
                         Icons.location_on_outlined,
                         'Lokasi Kantor',
-                        'Kantor Pusat (Jl. Sudirman No. 123)',
+                        'Kantor Pusat (Jl. Rinjani Ruko No. 09)',
                       ),
                       const Divider(height: 24),
                       _buildInfoRow(
@@ -186,7 +246,7 @@ class _PresensiScreenState extends State<PresensiScreen> {
 
             const SizedBox(height: 20),
 
-            // Bagian Peta
+            // BAGIAN PETA INTERAKTIF MENGGANTIKAN GAMBAR STATIS
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 20.0),
               child: ClipRRect(
@@ -196,81 +256,80 @@ class _PresensiScreenState extends State<PresensiScreen> {
                 ),
                 child: AspectRatio(
                   aspectRatio: 2.2,
-                  child: Container(
+                  child: _isLoadingLocation
+                      ? Container(
                     color: Colors.grey[200],
-                    child: Stack(
-                      children: [
-                        Image.network(
-                          'https://via.placeholder.com/600x300.png?text=Peta+Lokasi',
-                          fit: BoxFit.cover,
-                          width: double.infinity,
-                        ),
-                        Center(
-                          child: Container(
-                            width: 130,
-                            height: 130,
-                            decoration: BoxDecoration(
-                              shape: BoxShape.circle,
-                              border: Border.all(color: primaryTeal, width: 2),
-                              color: primaryTeal.withOpacity(0.1),
-                            ),
-                            child: Center(
-                              child: Icon(
-                                Icons.location_history,
-                                color: primaryTeal,
-                                size: 40,
-                              ),
+                    child: const Center(
+                      child: CircularProgressIndicator(),
+                    ),
+                  )
+                      : FlutterMap(
+                    options: MapOptions(
+                      initialCenter: _currentLocation,
+                      initialZoom: 16.0,
+                    ),
+                    children: [
+                      TileLayer(
+                        urlTemplate:
+                        'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+                        userAgentPackageName: 'com.presensiku.app',
+                      ),
+                      MarkerLayer(
+                        markers: [
+                          // Marker Posisi User (Biru)
+                          Marker(
+                            point: _currentLocation,
+                            width: 40,
+                            height: 40,
+                            child: const Icon(
+                              Icons.location_pin,
+                              color: Colors.blue,
+                              size: 35,
                             ),
                           ),
-                        ),
-                        const Center(
-                          child: Padding(
-                            padding: EdgeInsets.only(bottom: 20),
-                            child: Icon(
+                          // Marker Posisi Kantor (Merah)
+                          Marker(
+                            point: _officeLocation,
+                            width: 40,
+                            height: 40,
+                            child: const Icon(
                               Icons.location_on,
                               color: Colors.red,
-                              size: 30,
+                              size: 35,
                             ),
                           ),
-                        ),
-                        Positioned(
-                          top: 60,
-                          left: 160,
-                          child: Container(
-                            width: 12,
-                            height: 12,
-                            decoration: const BoxDecoration(
-                              color: Colors.blue,
-                              shape: BoxShape.circle,
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
+                        ],
+                      ),
+                    ],
                   ),
                 ),
               ),
             ),
-            // Label Status Radius (Hijau Terang)
+
+            // Label Status Radius Dinamis (Hijau / Merah)
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 20.0),
               child: Container(
                 width: double.infinity,
                 padding: const EdgeInsets.symmetric(vertical: 8),
-                decoration: const BoxDecoration(
-                  color: Color(0xFFE8F5E9),
-                  borderRadius: BorderRadius.only(
+                decoration: BoxDecoration(
+                  color: _isInRadius ? const Color(0xFFE8F5E9) : const Color(0xFFFFEBEE),
+                  borderRadius: const BorderRadius.only(
                     bottomLeft: Radius.circular(12),
                     bottomRight: Radius.circular(12),
                   ),
                 ),
-                child: const Text(
-                  'Dalam Radius Kantor (52m < 100m)',
+                child: Text(
+                  _isLoadingLocation
+                      ? 'Mendeteksi lokasi GPS...'
+                      : _isInRadius
+                      ? 'Dalam Radius Kantor (${_radiusMeters.toStringAsFixed(0)}m < 100m)'
+                      : 'Di Luar Radius Kantor (${_radiusMeters.toStringAsFixed(0)}m > 100m)',
                   textAlign: TextAlign.center,
                   style: TextStyle(
-                    color: Color(0xFF2E7D32),
+                    color: _isInRadius ? const Color(0xFF2E7D32) : const Color(0xFFC62828),
                     fontSize: 12,
-                    fontWeight: FontWeight.w500,
+                    fontWeight: FontWeight.bold,
                   ),
                 ),
               ),
@@ -292,7 +351,7 @@ class _PresensiScreenState extends State<PresensiScreen> {
 
             const SizedBox(height: 20),
 
-            // Tombol Absen Masuk
+            // Tombol Absen Masuk (Bisa dibatasi hanya bisa absen jika _isInRadius bernilai true)
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 20.0),
               child: SizedBox(
@@ -357,7 +416,6 @@ class _PresensiScreenState extends State<PresensiScreen> {
           ],
         ),
       ),
-      // PERHATIAN: bottomNavigationBar dihapus dari sini
     );
   }
 
@@ -397,6 +455,7 @@ class _PresensiScreenState extends State<PresensiScreen> {
     );
   }
 
+  // PERBAIKAN WIDGET _buildTimeStatusCard
   Widget _buildTimeStatusCard(String title, String status, {bool isDone = false}) {
     return Expanded(
       child: Container(

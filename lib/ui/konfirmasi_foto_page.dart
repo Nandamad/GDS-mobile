@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:dio/dio.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../api_config.dart';
+import 'package:geolocator/geolocator.dart'; // Tambahkan import ini jika diperlukan
 
 class KonfirmasiFotoScreen extends StatefulWidget {
   final String? imageBase64;
