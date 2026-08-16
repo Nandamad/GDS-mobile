@@ -147,37 +147,6 @@ class _PresensiScreenState extends State<PresensiScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Colors.white,
-      appBar: AppBar(
-        backgroundColor: Colors.white,
-        elevation: 0,
-        titleSpacing: 0,
-        automaticallyImplyLeading: false,
-        title: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 20.0),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Text(
-                _currentTime.length >= 5 ? _currentTime.substring(0, 5) : '08:45',
-                style: const TextStyle(
-                  color: Colors.black,
-                  fontWeight: FontWeight.bold,
-                  fontSize: 16,
-                ),
-              ),
-              const Row(
-                children: [
-                  Icon(Icons.signal_cellular_alt, color: Colors.black, size: 18),
-                  SizedBox(width: 4),
-                  Icon(Icons.wifi, color: Colors.black, size: 18),
-                  SizedBox(width: 4),
-                  Icon(Icons.battery_std, color: Colors.black, size: 18),
-                ],
-              ),
-            ],
-          ),
-        ),
-      ),
       body: SingleChildScrollView(
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
