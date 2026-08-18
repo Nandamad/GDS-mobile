@@ -4,6 +4,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../api_config.dart';
 import 'kinerja_presensi_page.dart';
 import 'login_page.dart';
+import 'profil_page.dart';
 
 class DashboardScreen extends StatefulWidget {
   final VoidCallback? onNotificationTap;
@@ -147,31 +148,50 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
     return Row(
       children: [
-        const CircleAvatar(
-          radius: 18,
-          backgroundColor: Color(0xFFCCFBF1),
-          child: Icon(Icons.person, size: 20, color: Color(0xFF009688)),
-        ),
-        const SizedBox(width: 10),
+        // BUNGKUS DENGAN INKWELL / GESTUREDETECTOR DI SINI
         Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                'Selamat Pagi, $nama!',
-                style: const TextStyle(
-                  fontWeight: FontWeight.bold,
-                  fontSize: 14,
-                  color: Color(0xFF0F172A),
+          child: InkWell(
+            onTap: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => const ProfilPage(), // Ganti dengan nama Class halaman profil kamu
                 ),
-              ),
-              Text(
-                jabatan,
-                style: const TextStyle(color: Colors.grey, fontSize: 11),
-              ),
-            ],
+              );
+            },
+            borderRadius: BorderRadius.circular(8),
+            child: Row(
+              children: [
+                const CircleAvatar(
+                  radius: 18,
+                  backgroundColor: Color(0xFFCCFBF1),
+                  child: Icon(Icons.person, size: 20, color: Color(0xFF009688)),
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Selamat Pagi, $nama!',
+                        style: const TextStyle(
+                          fontWeight: FontWeight.bold,
+                          fontSize: 14,
+                          color: Color(0xFF0F172A),
+                        ),
+                      ),
+                      Text(
+                        jabatan,
+                        style: const TextStyle(color: Colors.grey, fontSize: 11),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
           ),
         ),
+
         // Icon Notifikasi
         InkWell(
           onTap: widget.onNotificationTap,
@@ -213,7 +233,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
           ),
         ),
         const SizedBox(width: 8),
-        // Tombol Logout di samping kanan Notifikasi
+
+        // Tombol Logout
         InkWell(
           onTap: () {
             showDialog(

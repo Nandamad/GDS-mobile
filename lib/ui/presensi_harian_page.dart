@@ -1,8 +1,13 @@
 import 'dart:async';
+import 'dart:convert';
+import 'dart:typed_data';
 import 'package:flutter/material.dart';
-import 'package:geolocator/geolocator.dart'; // Package untuk GPS
-import 'package:flutter_map/flutter_map.dart'; // Package untuk Peta Interaktif
-import 'package:latlong2/latlong.dart'; // Package titik koordinat
+import 'package:dio/dio.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'package:geolocator/geolocator.dart';
+import 'package:flutter_map/flutter_map.dart';
+import 'package:latlong2/latlong.dart';
+import '../api_config.dart';
 import 'kamera_page.dart';
 import 'konfirmasi_foto_page.dart';
 
@@ -17,30 +22,73 @@ class _PresensiScreenState extends State<PresensiScreen> {
   final Color primaryTeal = const Color(0xFF009688);
   final Color lightTealAccent = const Color(0xFFE0F2F1);
 
-  // Realtime Clock State
   late Timer _timer;
   String _currentTime = '';
 
-  // Status Absensi
   String _jamMasuk = 'Belum Absen';
   String _jamKeluar = 'Belum Absen';
   bool _isSudahAbsenMasuk = false;
+  bool _isSudahAbsenKeluar = false;
 
-  // Koordinat Kantor (Contoh: Kantor Pusat)
-  final LatLng _officeLocation = const LatLng(-6.2088, 106.8456);
+  LatLng? _officeLocation;
+
   double _radiusMeters = 0.0;
+  double _maxRadiusMeters = 0.0;
   bool _isInRadius = false;
 
-  // Koordinat User Real-time
-  LatLng _currentLocation = const LatLng(-6.2088, 106.8456);
+  String _namaKantor = 'Memuat lokasi kantor...';
+  String _alamatKantor = '';
+
+  LatLng _currentLocation = const LatLng(-7.7279, 109.0089);
   bool _isLoadingLocation = true;
 
   @override
   void initState() {
     super.initState();
+
     _updateTime();
-    _timer = Timer.periodic(const Duration(seconds: 1), (timer) => _updateTime());
-    _determinePosition(); // Ambil lokasi GPS saat halaman dibuka
+
+    _timer = Timer.periodic(
+      const Duration(seconds: 1),
+          (timer) => _updateTime(),
+    );
+
+    _loadOfficeLocation();
+    _determinePosition();
+    _checkTodayAttendance();
+  }
+
+  void _calculateOfficeDistance() {
+    if (_officeLocation == null || _maxRadiusMeters <= 0) {
+      return;
+    }
+
+    final distance = Geolocator.distanceBetween(
+      _currentLocation.latitude,
+      _currentLocation.longitude,
+      _officeLocation!.latitude,
+      _officeLocation!.longitude,
+    );
+
+    if (!mounted) return;
+
+    setState(() {
+      _radiusMeters = distance;
+      _isInRadius = distance <= _maxRadiusMeters;
+    });
+
+    debugPrint(
+      'GPS USER: ${_currentLocation.latitude}, ${_currentLocation.longitude}',
+    );
+    debugPrint(
+      'GPS KANTOR: ${_officeLocation!.latitude}, ${_officeLocation!.longitude}',
+    );
+    debugPrint(
+      'JARAK: ${distance.toStringAsFixed(2)} meter',
+    );
+    debugPrint(
+      'RADIUS: ${_maxRadiusMeters.toStringAsFixed(2)} meter',
+    );
   }
 
   void _updateTime() {
@@ -55,32 +103,313 @@ class _PresensiScreenState extends State<PresensiScreen> {
     }
   }
 
-  // Fungsi untuk mendapatkan lokasi GPS HP secara real-time
+  Future<void> _loadOfficeLocation() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final token = prefs.getString('token');
+
+      if (token == null || token.isEmpty) {
+        return;
+      }
+
+      final dio = Dio(
+        BaseOptions(
+          baseUrl: ApiConfig.baseUrl,
+          headers: {
+            'Authorization': 'Bearer $token',
+            'Accept': 'application/json',
+          },
+        ),
+      );
+
+      final response = await dio.get('/profile');
+
+      if (response.statusCode == 200) {
+        final data = response.data['data'];
+        final karyawan = data['karyawan'];
+        final kantor = karyawan?['kantor'];
+
+        if (kantor == null) {
+          throw Exception('Data kantor karyawan belum tersedia.');
+        }
+
+        final latitude = double.tryParse(
+          kantor['latitude'].toString(),
+        );
+
+        final longitude = double.tryParse(
+          kantor['longitude'].toString(),
+        );
+
+        final radius = double.tryParse(
+          kantor['radius_toleransi_meter'].toString(),
+        );
+
+        if (latitude == null || longitude == null || radius == null) {
+          throw Exception('Koordinat atau radius kantor tidak valid.');
+        }
+
+        if (!mounted) return;
+
+        setState(() {
+          _officeLocation = LatLng(
+            latitude,
+            longitude,
+          );
+
+          _maxRadiusMeters = radius;
+
+          _namaKantor =
+              kantor['nama_kantor']?.toString() ?? 'Kantor';
+
+          _alamatKantor =
+              kantor['alamat_lengkap']?.toString() ?? '';
+        });
+
+        // Kalau GPS user sudah berhasil didapat,
+        // hitung jarak ke kantor
+        if (!_isLoadingLocation) {
+          _calculateOfficeDistance();
+        }
+      }
+    } on DioException catch (e) {
+      debugPrint(
+        'Gagal mengambil lokasi kantor: '
+            '${e.response?.data ?? e.message}',
+      );
+    } catch (e) {
+      debugPrint('Error lokasi kantor: $e');
+    }
+  }
+
+  Future<bool> _submitAbsensi({
+    required String tipe,
+    required String fotoBase64,
+  }) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final token = prefs.getString('token');
+
+      if (token == null || token.isEmpty) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Sesi login tidak ditemukan. Silakan login ulang.'),
+            ),
+          );
+        }
+        return false;
+      }
+
+      // Bersihkan prefix base64 jika ada
+      String base64String = fotoBase64;
+
+      if (base64String.contains(',')) {
+        base64String = base64String.split(',').last;
+      }
+
+      Uint8List imageBytes = base64Decode(base64String);
+
+      final formData = FormData.fromMap({
+        'foto': MultipartFile.fromBytes(
+          imageBytes,
+          filename: 'selfie_${DateTime.now().millisecondsSinceEpoch}.jpg',
+        ),
+        'latitude': _currentLocation.latitude.toString(),
+        'longitude': _currentLocation.longitude.toString(),
+        'tipe': tipe,
+      });
+
+      final dio = Dio(
+        BaseOptions(
+          baseUrl: ApiConfig.baseUrl,
+          headers: {
+            'Authorization': 'Bearer $token',
+            'Accept': 'application/json',
+          },
+        ),
+      );
+
+      final response = await dio.post(
+        '/absensi',
+        data: formData,
+      );
+
+      if (response.statusCode == 200 || response.statusCode == 201) {
+        return true;
+      }
+
+      return false;
+
+    } on DioException catch (e) {
+
+      final message =
+          e.response?.data?['message']?.toString() ??
+              'Gagal mengirim presensi ke server.';
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(message)),
+        );
+      }
+
+      return false;
+
+    } catch (e) {
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Terjadi kesalahan: $e'),
+          ),
+        );
+      }
+
+      return false;
+    }
+  }
+
+  Future<void> _checkTodayAttendance() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final token = prefs.getString('token');
+
+      if (token == null || token.isEmpty) return;
+
+      final dio = Dio(
+        BaseOptions(
+          baseUrl: ApiConfig.baseUrl,
+          headers: {
+            'Authorization': 'Bearer $token',
+            'Accept': 'application/json',
+          },
+        ),
+      );
+
+      final response = await dio.get('/absensi/today');
+
+      if (response.statusCode != 200) return;
+
+      final responseData = response.data;
+
+      final data = responseData['data'];
+      final kantor = responseData['kantor'];
+
+      if (!mounted) return;
+
+      setState(() {
+
+        // =========================
+        // DATA KANTOR DARI SERVER
+        // =========================
+
+        if (kantor != null) {
+          final latitude = double.tryParse(
+            kantor['latitude'].toString(),
+          );
+
+          final longitude = double.tryParse(
+            kantor['longitude'].toString(),
+          );
+
+          final radius = double.tryParse(
+            kantor['radius_toleransi_meter'].toString(),
+          );
+
+          if (latitude != null && longitude != null) {
+            _officeLocation = LatLng(
+              latitude,
+              longitude,
+            );
+          }
+
+          if (radius != null) {
+            _maxRadiusMeters = radius;
+          }
+
+          _namaKantor =
+              kantor['nama_kantor']?.toString() ?? 'Kantor';
+
+          _alamatKantor =
+              kantor['alamat']?.toString() ?? '';
+        }
+
+        // =========================
+        // DATA ABSENSI
+        // =========================
+
+        if (data != null && data is Map) {
+
+          final jamMasuk = data['jam_masuk'];
+
+          if (jamMasuk != null &&
+              jamMasuk.toString().isNotEmpty) {
+
+            _jamMasuk = jamMasuk.toString();
+            _isSudahAbsenMasuk = true;
+          }
+
+          final jamKeluar = data['jam_keluar'];
+
+          if (jamKeluar != null &&
+              jamKeluar.toString().isNotEmpty) {
+
+            _jamKeluar = jamKeluar.toString();
+            _isSudahAbsenKeluar = true;
+          }
+        }
+      });
+
+      // Setelah lokasi kantor didapat,
+      // hitung ulang jaraknya
+      _calculateOfficeDistance();
+
+    } on DioException catch (e) {
+
+      debugPrint(
+        'ERROR TODAY: ${e.response?.data}',
+      );
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              e.response?.data?['message']?.toString() ??
+                  'Gagal mengambil data presensi.',
+            ),
+          ),
+        );
+      }
+
+    } catch (e) {
+
+      debugPrint('ERROR TODAY: $e');
+    }
+  }
+
   Future<void> _determinePosition() async {
     bool serviceEnabled;
     LocationPermission permission;
 
-    // Cek apakah Layanan GPS aktif
     serviceEnabled = await Geolocator.isLocationServiceEnabled();
+
     if (!serviceEnabled) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Layanan GPS/Lokasi tidak aktif. Mohon aktifkan GPS.')),
+          const SnackBar(
+            content: Text('Layanan GPS/Lokasi tidak aktif.'),
+          ),
         );
       }
       return;
     }
 
-    // Cek izin akses lokasi
     permission = await Geolocator.checkPermission();
+
     if (permission == LocationPermission.denied) {
       permission = await Geolocator.requestPermission();
+
       if (permission == LocationPermission.denied) {
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Izin akses lokasi ditolak.')),
-          );
-        }
         return;
       }
     }
@@ -89,26 +418,35 @@ class _PresensiScreenState extends State<PresensiScreen> {
       return;
     }
 
-    // Ambil posisi terkini
-    Position position = await Geolocator.getCurrentPosition(
-      desiredAccuracy: LocationAccuracy.high,
-    );
-
-    setState(() {
-      _currentLocation = LatLng(position.latitude, position.longitude);
-
-      // Hitung jarak antara posisi user dan kantor (dalam meter)
-      _radiusMeters = Geolocator.distanceBetween(
-        _currentLocation.latitude,
-        _currentLocation.longitude,
-        _officeLocation.latitude,
-        _officeLocation.longitude,
+    try {
+      final position = await Geolocator.getCurrentPosition(
+        desiredAccuracy: LocationAccuracy.high,
       );
 
-      // Tentukan apakah dalam radius 100 meter
-      _isInRadius = _radiusMeters <= 100;
-      _isLoadingLocation = false;
-    });
+      if (!mounted) return;
+
+      setState(() {
+        _currentLocation = LatLng(
+          position.latitude,
+          position.longitude,
+        );
+
+        _isLoadingLocation = false;
+      });
+
+      // Kantor sudah berhasil diambil?
+      if (_officeLocation != null) {
+        _calculateOfficeDistance();
+      }
+    } catch (e) {
+      debugPrint('Gagal mendapatkan GPS: $e');
+
+      if (mounted) {
+        setState(() {
+          _isLoadingLocation = false;
+        });
+      }
+    }
   }
 
   @override
@@ -120,27 +458,91 @@ class _PresensiScreenState extends State<PresensiScreen> {
   Future<void> _handleAbsenMasuk() async {
     final resultImage = await Navigator.push<String>(
       context,
-      MaterialPageRoute(builder: (context) => const KameraScreen()),
+      MaterialPageRoute(
+        builder: (context) => const KameraScreen(),
+      ),
     );
 
-    if (resultImage != null && mounted) {
-      final isConfirmed = await Navigator.push<bool>(
-        context,
-        MaterialPageRoute(
-          builder: (context) => KonfirmasiFotoScreen(imageBase64: resultImage),
-        ),
-      );
+    if (resultImage == null || !mounted) return;
 
-      if (isConfirmed == true && mounted) {
-        final now = DateTime.now();
-        final timeString =
-            '${now.hour.toString().padLeft(2, '0')}:${now.minute.toString().padLeft(2, '0')} WIB';
-        setState(() {
-          _jamMasuk = timeString;
-          _isSudahAbsenMasuk = true;
-        });
-      }
-    }
+    final isConfirmed = await Navigator.push<bool>(
+      context,
+      MaterialPageRoute(
+        builder: (context) => KonfirmasiFotoScreen(
+          imageBase64: resultImage,
+          currentLocation: _currentLocation,
+          namaKantor: _namaKantor,
+          alamatKantor: _alamatKantor,
+          jarakMeter: _radiusMeters,
+          isInRadius: _isInRadius,
+        ),
+      ),
+    );
+
+    if (isConfirmed != true || !mounted) return;
+
+    // KIRIM KE BACKEND
+    final berhasil = await _submitAbsensi(
+      tipe: 'masuk',
+      fotoBase64: resultImage,
+    );
+
+    if (!berhasil || !mounted) return;
+
+    // Ambil ulang data dari server
+    await _checkTodayAttendance();
+
+    if (!mounted) return;
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text('Absen masuk berhasil disimpan.'),
+      ),
+    );
+  }
+
+  Future<void> _handleAbsenKeluar() async {
+    final resultImage = await Navigator.push<String>(
+      context,
+      MaterialPageRoute(
+        builder: (context) => const KameraScreen(),
+      ),
+    );
+
+    if (resultImage == null || !mounted) return;
+
+    final isConfirmed = await Navigator.push<bool>(
+      context,
+      MaterialPageRoute(
+        builder: (context) => KonfirmasiFotoScreen(
+          imageBase64: resultImage,
+          currentLocation: _currentLocation,
+          namaKantor: _namaKantor,
+          alamatKantor: _alamatKantor,
+          jarakMeter: _radiusMeters,
+          isInRadius: _isInRadius,
+        ),
+      ),
+    );
+
+    if (isConfirmed != true || !mounted) return;
+
+    final berhasil = await _submitAbsensi(
+      tipe: 'pulang',
+      fotoBase64: resultImage,
+    );
+
+    if (!berhasil || !mounted) return;
+
+    await _checkTodayAttendance();
+
+    if (!mounted) return;
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text('Absen pulang berhasil disimpan.'),
+      ),
+    );
   }
 
   @override
@@ -151,7 +553,6 @@ class _PresensiScreenState extends State<PresensiScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Header Waktu
             Padding(
               padding: const EdgeInsets.all(20.0),
               child: Column(
@@ -177,8 +578,6 @@ class _PresensiScreenState extends State<PresensiScreen> {
                 ],
               ),
             ),
-
-            // Card Informasi Lokasi Kantor & Shift
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 20.0),
               child: Card(
@@ -194,7 +593,9 @@ class _PresensiScreenState extends State<PresensiScreen> {
                       _buildInfoRow(
                         Icons.location_on_outlined,
                         'Lokasi Kantor',
-                        'Kantor Pusat (Jl. Rinjani Ruko No. 09)',
+                        _alamatKantor.isNotEmpty
+                            ? '$_namaKantor ($_alamatKantor)'
+                            : _namaKantor,
                       ),
                       const Divider(height: 24),
                       _buildInfoRow(
@@ -203,19 +604,16 @@ class _PresensiScreenState extends State<PresensiScreen> {
                         '08:00 - 17:00 WIB (8 Jam)',
                       ),
                       const Divider(height: 24),
-                      _buildInfoRow(
-                        Icons.not_listed_location_outlined,
-                        'Radius Toleransi: 100 Meter',
+                  _buildInfoRow(
+                    Icons.not_listed_location_outlined,
+                    'Radius Toleransi: ${_maxRadiusMeters.toStringAsFixed(0)} Meter',
                       ),
                     ],
                   ),
                 ),
               ),
             ),
-
             const SizedBox(height: 20),
-
-            // BAGIAN PETA INTERAKTIF MENGGANTIKAN GAMBAR STATIS
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 20.0),
               child: ClipRRect(
@@ -243,9 +641,9 @@ class _PresensiScreenState extends State<PresensiScreen> {
                         'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
                         userAgentPackageName: 'com.presensiku.app',
                       ),
+
                       MarkerLayer(
                         markers: [
-                          // Marker Posisi User (Biru)
                           Marker(
                             point: _currentLocation,
                             width: 40,
@@ -256,26 +654,25 @@ class _PresensiScreenState extends State<PresensiScreen> {
                               size: 35,
                             ),
                           ),
-                          // Marker Posisi Kantor (Merah)
-                          Marker(
-                            point: _officeLocation,
-                            width: 40,
-                            height: 40,
-                            child: const Icon(
-                              Icons.location_on,
-                              color: Colors.red,
-                              size: 35,
+
+                          if (_officeLocation != null)
+                            Marker(
+                              point: _officeLocation!,
+                              width: 40,
+                              height: 40,
+                              child: const Icon(
+                                Icons.location_on,
+                                color: Colors.red,
+                                size: 35,
+                              ),
                             ),
-                          ),
                         ],
                       ),
                     ],
                   ),
+                  ),
                 ),
               ),
-            ),
-
-            // Label Status Radius Dinamis (Hijau / Merah)
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 20.0),
               child: Container(
@@ -292,8 +689,8 @@ class _PresensiScreenState extends State<PresensiScreen> {
                   _isLoadingLocation
                       ? 'Mendeteksi lokasi GPS...'
                       : _isInRadius
-                      ? 'Dalam Radius Kantor (${_radiusMeters.toStringAsFixed(0)}m < 100m)'
-                      : 'Di Luar Radius Kantor (${_radiusMeters.toStringAsFixed(0)}m > 100m)',
+                      ? 'Dalam Radius Kantor (${_radiusMeters.toStringAsFixed(0)}m ≤ ${_maxRadiusMeters.toStringAsFixed(0)}m)'
+                      : 'Di Luar Radius Kantor (${_radiusMeters.toStringAsFixed(0)}m > ${_maxRadiusMeters.toStringAsFixed(0)}m)',
                   textAlign: TextAlign.center,
                   style: TextStyle(
                     color: _isInRadius ? const Color(0xFF2E7D32) : const Color(0xFFC62828),
@@ -303,24 +700,18 @@ class _PresensiScreenState extends State<PresensiScreen> {
                 ),
               ),
             ),
-
             const SizedBox(height: 20),
-
-            // Baris Jam Masuk / Jam Pulang
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 20.0),
               child: Row(
                 children: [
                   _buildTimeStatusCard('Jam Masuk', _jamMasuk, isDone: _isSudahAbsenMasuk),
                   const SizedBox(width: 16),
-                  _buildTimeStatusCard('Jam Pulang', _jamKeluar, isDone: false),
+                  _buildTimeStatusCard('Jam Pulang', _jamKeluar, isDone: _isSudahAbsenKeluar),
                 ],
               ),
             ),
-
             const SizedBox(height: 20),
-
-            // Tombol Absen Masuk (Bisa dibatasi hanya bisa absen jika _isInRadius bernilai true)
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 20.0),
               child: SizedBox(
@@ -346,33 +737,40 @@ class _PresensiScreenState extends State<PresensiScreen> {
                 ),
               ),
             ),
-
             const SizedBox(height: 12),
-
-            // Tombol Absen Keluar
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 20.0),
               child: SizedBox(
                 width: double.infinity,
                 height: 50,
                 child: OutlinedButton.icon(
-                  onPressed: _isSudahAbsenMasuk ? () {} : null,
+                  onPressed: (_isSudahAbsenMasuk && !_isSudahAbsenKeluar)
+                      ? _handleAbsenKeluar
+                      : null,
                   icon: Icon(
                     Icons.camera_alt_outlined,
-                    color: _isSudahAbsenMasuk ? primaryTeal : Colors.grey[400],
+                    color: (_isSudahAbsenMasuk && !_isSudahAbsenKeluar)
+                        ? primaryTeal
+                        : Colors.grey[400],
                   ),
                   label: Text(
-                    'ABSEN KELUAR',
+                    _isSudahAbsenKeluar ? 'SUDAH ABSEN KELUAR' : 'ABSEN KELUAR',
                     style: TextStyle(
-                      color: _isSudahAbsenMasuk ? primaryTeal : Colors.grey[400],
+                      color: (_isSudahAbsenMasuk && !_isSudahAbsenKeluar)
+                          ? primaryTeal
+                          : Colors.grey[400],
                       fontWeight: FontWeight.bold,
                       letterSpacing: 1.0,
                     ),
                   ),
                   style: OutlinedButton.styleFrom(
-                    backgroundColor: _isSudahAbsenMasuk ? lightTealAccent : Colors.grey[100],
+                    backgroundColor: (_isSudahAbsenMasuk && !_isSudahAbsenKeluar)
+                        ? lightTealAccent
+                        : Colors.grey[100],
                     side: BorderSide(
-                        color: _isSudahAbsenMasuk ? primaryTeal : Colors.grey[200]!),
+                        color: (_isSudahAbsenMasuk && !_isSudahAbsenKeluar)
+                            ? primaryTeal
+                            : Colors.grey[200]!),
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(10),
                     ),
@@ -380,7 +778,6 @@ class _PresensiScreenState extends State<PresensiScreen> {
                 ),
               ),
             ),
-
             const SizedBox(height: 20),
           ],
         ),
@@ -424,7 +821,6 @@ class _PresensiScreenState extends State<PresensiScreen> {
     );
   }
 
-  // PERBAIKAN WIDGET _buildTimeStatusCard
   Widget _buildTimeStatusCard(String title, String status, {bool isDone = false}) {
     return Expanded(
       child: Container(

@@ -1,10 +1,11 @@
 import 'dart:io';
+import '../ui/detail_workflow_page.dart';
 import 'package:flutter/material.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:dio/dio.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../api_config.dart';
-import 'pengajuan_page.dart';
+import '../ui/pengajuan_page.dart';
 
 class AjukanCutiSheet extends StatefulWidget {
   const AjukanCutiSheet({super.key});
@@ -24,32 +25,55 @@ class AjukanCutiSheet extends StatefulWidget {
 
 class _AjukanCutiSheetState extends State<AjukanCutiSheet> {
   String _tipePengajuan = 'Cuti';
+
   DateTime _tanggalMulai = DateTime.now();
-  DateTime _tanggalSelesai = DateTime.now().add(const Duration(days: 1));
+
+  DateTime _tanggalSelesai =
+  DateTime.now().add(const Duration(days: 1));
+
   File? _selectedFile;
   String? _fileName;
 
   bool _isSubmitting = false;
-  final TextEditingController _alasanController = TextEditingController();
+
+  final TextEditingController _alasanController =
+  TextEditingController();
 
   int get _durasiHari {
-    return _tanggalSelesai.difference(_tanggalMulai).inDays + 1;
+    return _tanggalSelesai
+        .difference(_tanggalMulai)
+        .inDays +
+        1;
   }
 
-Future<void> _submitCuti() async {
-    if (_alasanController.text.isEmpty) {
+  // ============================================================
+  // SUBMIT CUTI / IZIN
+  // ============================================================
+
+  Future<void> _submitCuti() async {
+    if (_alasanController.text.trim().isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Alasan wajib diisi!')),
+        const SnackBar(
+          content: Text('Alasan wajib diisi!'),
+        ),
       );
       return;
     }
 
-    setState(() => _isSubmitting = true);
+    setState(() {
+      _isSubmitting = true;
+    });
 
     try {
+      // Ambil token login
       final prefs = await SharedPreferences.getInstance();
       final token = prefs.getString('token');
 
+      if (token == null || token.isEmpty) {
+        throw Exception('Token login tidak ditemukan');
+      }
+
+      // Dio
       final dio = Dio(
         BaseOptions(
           baseUrl: ApiConfig.baseUrl,
@@ -58,74 +82,188 @@ Future<void> _submitCuti() async {
             'Accept': 'application/json',
           },
           connectTimeout: const Duration(seconds: 10),
+          receiveTimeout: const Duration(seconds: 10),
         ),
       );
 
-      final startFormatted = "${_tanggalMulai.year}-${_tanggalMulai.month.toString().padLeft(2, '0')}-${_tanggalMulai.day.toString().padLeft(2, '0')}";
-      final endFormatted = "${_tanggalSelesai.year}-${_tanggalSelesai.month.toString().padLeft(2, '0')}-${_tanggalSelesai.day.toString().padLeft(2, '0')}";
+      // ========================================================
+      // FORMAT TANGGAL
+      // ========================================================
 
-      // Pastikan jenis_izin bernilai 'izin' atau 'cuti' sesuai validasi Laravel
-      String jenisIzinVal = _tipePengajuan.toLowerCase();
-      if (jenisIzinVal != 'cuti') jenisIzinVal = 'izin'; 
+      final startFormatted =
+          "${_tanggalMulai.year}-"
+          "${_tanggalMulai.month.toString().padLeft(2, '0')}-"
+          "${_tanggalMulai.day.toString().padLeft(2, '0')}";
 
-      FormData formData = FormData.fromMap({
-        'jenis_izin': jenisIzinVal,
-        'tanggal_mulai': startFormatted,
-        'tanggal_selesai': endFormatted,
-        'alasan': _alasanController.text,
-      });
+      final endFormatted =
+          "${_tanggalSelesai.year}-"
+          "${_tanggalSelesai.month.toString().padLeft(2, '0')}-"
+          "${_tanggalSelesai.day.toString().padLeft(2, '0')}";
 
-      if (_selectedFile != null) {
-        formData.files.add(MapEntry(
-          'dokumen_pendukung',
-          await MultipartFile.fromFile(_selectedFile!.path, filename: _fileName),
-        ));
+      // ========================================================
+      // JENIS PENGAJUAN
+      // ========================================================
+
+      String jenisIzinVal =
+      _tipePengajuan.toLowerCase();
+
+      // Backend menerima:
+      // cuti
+      // izin
+      //
+      // Kalau user memilih Sakit,
+      // sementara dikirim sebagai izin.
+
+      if (jenisIzinVal != 'cuti') {
+        jenisIzinVal = 'izin';
       }
 
-      await dio.post('/izindancuti', data: formData);
-    } catch (_) {
-      // Catch network / error server
-    } finally {
-      if (mounted) {
-        setState(() => _isSubmitting = false);
+      // ========================================================
+      // FORM DATA
+      // ========================================================
 
-        submissionHistoryList.value = [
-          {
-            'type': 'Cuti/Izin',
-            'badgeText': _tipePengajuan,
-            'badgeBgColor': const Color(0xFFE0F2FE),
-            'badgeTextColor': const Color(0xFF0284C7),
-            'title': '$_tipePengajuan - $_durasiHari Hari',
-            'statusText': 'Pending Approval L1',
-            'statusBgColor': const Color(0xFFFFEDD5),
-            'statusTextColor': const Color(0xFFC2410C),
-            'dateRange': '${_formatDate(_tanggalMulai)} - ${_formatDate(_tanggalSelesai)}',
-            'submittedDate': 'Diajukan: Hari ini',
-          },
-          ...submissionHistoryList.value,
-        ];
+      final formData = FormData.fromMap({
+        'jenis': jenisIzinVal,
+        'tanggal_mulai': startFormatted,
+        'tanggal_selesai': endFormatted,
+        'alasan': _alasanController.text.trim(),
+      });
 
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Pengajuan berhasil dikirim!'),
-            backgroundColor: Colors.teal,
+      // ========================================================
+      // UPLOAD FILE JIKA ADA
+      // ========================================================
+
+      if (_selectedFile != null) {
+        formData.files.add(
+          MapEntry(
+            'dokumen_pendukung',
+            await MultipartFile.fromFile(
+              _selectedFile!.path,
+              filename: _fileName,
+            ),
           ),
         );
-        Navigator.pop(context);
+      }
+
+      // ========================================================
+      // REQUEST KE LARAVEL
+      // ========================================================
+
+      final response = await dio.post(
+        '/cuti',
+        data: formData,
+      );
+
+      debugPrint(
+        'Submit cuti berhasil: '
+            '${response.statusCode} ${response.data}',
+      );
+
+      // ========================================================
+      // BERHASIL
+      // ========================================================
+
+      if (!mounted) return;
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text(
+            'Pengajuan berhasil dikirim!',
+          ),
+          backgroundColor: Colors.teal,
+        ),
+      );
+
+      Navigator.pop(context);
+
+    } on DioException catch (e) {
+      // ========================================================
+      // ERROR DARI DIO / LARAVEL
+      // ========================================================
+
+      debugPrint(
+        'Submit cuti error: '
+            '${e.response?.statusCode} '
+            '${e.response?.data}',
+      );
+
+      String message =
+          'Gagal mengirim pengajuan';
+
+      if (e.response?.data is Map) {
+        final data = e.response!.data;
+
+        message =
+            data['message']?.toString() ??
+                message;
+      } else if (e.message != null) {
+        message = e.message!;
+      }
+
+      if (!mounted) return;
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            'Gagal: $message',
+          ),
+          backgroundColor: Colors.red,
+        ),
+      );
+
+    } catch (e) {
+      // ========================================================
+      // ERROR LAIN
+      // ========================================================
+
+      debugPrint(
+        'Submit cuti error: $e',
+      );
+
+      if (!mounted) return;
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text(
+            'Terjadi kesalahan, coba lagi',
+          ),
+          backgroundColor: Colors.red,
+        ),
+      );
+
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isSubmitting = false;
+        });
       }
     }
   }
 
-  Future<void> _selectDate(BuildContext context, bool isMulai) async {
-    final DateTime? picked = await showDatePicker(
+  // ============================================================
+  // PILIH TANGGAL
+  // ============================================================
+
+  Future<void> _selectDate(
+      BuildContext context,
+      bool isMulai,
+      ) async {
+    final DateTime? picked =
+    await showDatePicker(
       context: context,
-      initialDate: isMulai ? _tanggalMulai : _tanggalSelesai,
+      initialDate:
+      isMulai
+          ? _tanggalMulai
+          : _tanggalSelesai,
       firstDate: DateTime(2020),
       lastDate: DateTime(2030),
       builder: (context, child) {
         return Theme(
           data: Theme.of(context).copyWith(
-            colorScheme: const ColorScheme.light(primary: Color(0xFF009688)),
+            colorScheme:
+            const ColorScheme.light(
+              primary: Color(0xFF009688),
+            ),
           ),
           child: child!,
         );
@@ -136,12 +274,17 @@ Future<void> _submitCuti() async {
       setState(() {
         if (isMulai) {
           _tanggalMulai = picked;
-          if (_tanggalSelesai.isBefore(_tanggalMulai)) {
-            _tanggalSelesai = _tanggalMulai;
+
+          if (_tanggalSelesai
+              .isBefore(_tanggalMulai)) {
+            _tanggalSelesai =
+                _tanggalMulai;
           }
         } else {
-          if (picked.isBefore(_tanggalMulai)) {
-            _tanggalSelesai = _tanggalMulai;
+          if (picked.isBefore(
+              _tanggalMulai)) {
+            _tanggalSelesai =
+                _tanggalMulai;
           } else {
             _tanggalSelesai = picked;
           }
@@ -150,19 +293,37 @@ Future<void> _submitCuti() async {
     }
   }
 
+  // ============================================================
+  // PILIH FILE
+  // ============================================================
+
   Future<void> _pickFile() async {
-    final result = await FilePicker.pickFiles(
+    final result =
+    await FilePicker.pickFiles(
       type: FileType.custom,
-      allowedExtensions: ['pdf', 'jpg', 'jpeg', 'png'],
+      allowedExtensions: [
+        'pdf',
+        'jpg',
+        'jpeg',
+        'png',
+      ],
     );
 
-    if (result != null && result.files.single.path != null) {
+    if (result != null &&
+        result.files.single.path != null) {
       setState(() {
-        _selectedFile = File(result.files.single.path!);
-        _fileName = result.files.single.name;
+        _selectedFile =
+            File(result.files.single.path!);
+
+        _fileName =
+            result.files.single.name;
       });
     }
   }
+
+  // ============================================================
+  // FORMAT TANGGAL
+  // ============================================================
 
   String _formatDate(DateTime date) {
     final List<String> bulan = [
@@ -179,61 +340,105 @@ Future<void> _submitCuti() async {
       'Nov',
       'Des',
     ];
-    return '${date.day.toString().padLeft(2, '0')} ${bulan[date.month - 1]} ${date.year}';
+
+    return '${date.day.toString().padLeft(2, '0')} '
+        '${bulan[date.month - 1]} '
+        '${date.year}';
   }
+
+  // ============================================================
+  // BUILD
+  // ============================================================
 
   @override
   Widget build(BuildContext context) {
     return Material(
       color: Colors.transparent,
       child: Container(
-        decoration: const BoxDecoration(
+        decoration:
+        const BoxDecoration(
           color: Colors.white,
-          borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+          borderRadius:
+          BorderRadius.vertical(
+            top: Radius.circular(20),
+          ),
         ),
         padding: EdgeInsets.only(
           top: 8,
           left: 14,
           right: 14,
-          bottom: MediaQuery.of(context).viewInsets.bottom + 16,
+          bottom:
+          MediaQuery.of(context)
+              .viewInsets
+              .bottom +
+              16,
         ),
         child: SingleChildScrollView(
           child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize:
+            MainAxisSize.min,
+            crossAxisAlignment:
+            CrossAxisAlignment.start,
             children: [
+              // ==================================================
+              // HANDLE
+              // ==================================================
+
               Center(
                 child: Container(
                   width: 36,
                   height: 4,
-                  margin: const EdgeInsets.symmetric(vertical: 8),
-                  decoration: BoxDecoration(
-                    color: Colors.grey.shade300,
-                    borderRadius: BorderRadius.circular(2),
+                  margin:
+                  const EdgeInsets
+                      .symmetric(
+                    vertical: 8,
+                  ),
+                  decoration:
+                  BoxDecoration(
+                    color:
+                    Colors.grey.shade300,
+                    borderRadius:
+                    BorderRadius.circular(
+                        2),
                   ),
                 ),
               ),
+
               const SizedBox(height: 6),
+
+              // ==================================================
+              // TITLE
+              // ==================================================
 
               const Text(
                 'Ajukan Izin / Cuti Baru',
                 style: TextStyle(
                   fontSize: 14,
-                  fontWeight: FontWeight.bold,
-                  color: Color(0xFF0F172A),
+                  fontWeight:
+                  FontWeight.bold,
+                  color:
+                  Color(0xFF0F172A),
                 ),
               ),
+
               const SizedBox(height: 14),
+
+              // ==================================================
+              // TIPE PENGAJUAN
+              // ==================================================
 
               const Text(
                 'Tipe Pengajuan',
                 style: TextStyle(
                   fontSize: 10,
                   color: Colors.grey,
-                  fontWeight: FontWeight.w500,
+                  fontWeight:
+                  FontWeight.w500,
                 ),
               ),
+
               const SizedBox(height: 6),
+
               Row(
                 children: [
                   _buildTypeRadio('Izin'),
@@ -243,217 +448,391 @@ Future<void> _submitCuti() async {
                   _buildTypeRadio('Sakit'),
                 ],
               ),
+
               const SizedBox(height: 12),
+
+              // ==================================================
+              // TANGGAL
+              // ==================================================
 
               Row(
                 children: [
                   Expanded(
                     child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
+                      crossAxisAlignment:
+                      CrossAxisAlignment
+                          .start,
                       children: [
                         const Text(
                           'Tanggal Mulai',
                           style: TextStyle(
                             fontSize: 10,
-                            color: Colors.grey,
-                            fontWeight: FontWeight.w500,
+                            color:
+                            Colors.grey,
+                            fontWeight:
+                            FontWeight.w500,
                           ),
                         ),
-                        const SizedBox(height: 4),
+
+                        const SizedBox(
+                            height: 4),
+
                         _buildDatePickerField(
-                          _formatDate(_tanggalMulai),
-                          () => _selectDate(context, true),
+                          _formatDate(
+                              _tanggalMulai),
+                              () =>
+                              _selectDate(
+                                context,
+                                true,
+                              ),
                         ),
                       ],
                     ),
                   ),
+
                   const SizedBox(width: 8),
+
                   Expanded(
                     child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
+                      crossAxisAlignment:
+                      CrossAxisAlignment
+                          .start,
                       children: [
                         const Text(
                           'Tanggal Selesai',
                           style: TextStyle(
                             fontSize: 10,
-                            color: Colors.grey,
-                            fontWeight: FontWeight.w500,
+                            color:
+                            Colors.grey,
+                            fontWeight:
+                            FontWeight.w500,
                           ),
                         ),
-                        const SizedBox(height: 4),
+
+                        const SizedBox(
+                            height: 4),
+
                         _buildDatePickerField(
-                          _formatDate(_tanggalSelesai),
-                          () => _selectDate(context, false),
+                          _formatDate(
+                              _tanggalSelesai),
+                              () =>
+                              _selectDate(
+                                context,
+                                false,
+                              ),
                         ),
                       ],
                     ),
                   ),
                 ],
               ),
+
               const SizedBox(height: 10),
+
+              // ==================================================
+              // DURASI
+              // ==================================================
 
               Container(
                 width: double.infinity,
-                padding: const EdgeInsets.symmetric(
+                padding:
+                const EdgeInsets
+                    .symmetric(
                   horizontal: 10,
                   vertical: 8,
                 ),
-                decoration: BoxDecoration(
-                  color: const Color(0xFFE0F2F1),
-                  borderRadius: BorderRadius.circular(8),
+                decoration:
+                BoxDecoration(
+                  color:
+                  const Color(
+                      0xFFE0F2F1),
+                  borderRadius:
+                  BorderRadius.circular(
+                      8),
                 ),
                 child: Text(
                   'Durasi: $_durasiHari Hari Kerja',
-                  style: const TextStyle(
-                    color: Color(0xFF00796B),
-                    fontWeight: FontWeight.bold,
+                  style:
+                  const TextStyle(
+                    color:
+                    Color(0xFF00796B),
+                    fontWeight:
+                    FontWeight.bold,
                     fontSize: 10,
                   ),
                 ),
               ),
+
               const SizedBox(height: 12),
+
+              // ==================================================
+              // ALASAN
+              // ==================================================
 
               const Text(
                 'Alasan Pengajuan',
                 style: TextStyle(
                   fontSize: 10,
                   color: Colors.grey,
-                  fontWeight: FontWeight.w500,
+                  fontWeight:
+                  FontWeight.w500,
                 ),
               ),
+
               const SizedBox(height: 4),
+
               TextField(
-                controller: _alasanController,
+                controller:
+                _alasanController,
                 maxLines: 3,
-                style: const TextStyle(fontSize: 11, color: Color(0xFF0F172A)),
-                decoration: InputDecoration(
-                  hintText: 'Tuliskan alasan pengajuan...',
-                  hintStyle: const TextStyle(fontSize: 11, color: Colors.grey),
-                  contentPadding: const EdgeInsets.all(10),
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(8),
-                    borderSide: BorderSide(color: Colors.grey.shade300),
+                style:
+                const TextStyle(
+                  fontSize: 11,
+                  color:
+                  Color(0xFF0F172A),
+                ),
+                decoration:
+                InputDecoration(
+                  hintText:
+                  'Tuliskan alasan pengajuan...',
+                  hintStyle:
+                  const TextStyle(
+                    fontSize: 11,
+                    color:
+                    Colors.grey,
                   ),
-                  enabledBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(8),
-                    borderSide: BorderSide(color: Colors.grey.shade300),
+                  contentPadding:
+                  const EdgeInsets
+                      .all(10),
+                  border:
+                  OutlineInputBorder(
+                    borderRadius:
+                    BorderRadius.circular(
+                        8),
+                    borderSide:
+                    BorderSide(
+                      color:
+                      Colors.grey.shade300,
+                    ),
+                  ),
+                  enabledBorder:
+                  OutlineInputBorder(
+                    borderRadius:
+                    BorderRadius.circular(
+                        8),
+                    borderSide:
+                    BorderSide(
+                      color:
+                      Colors.grey.shade300,
+                    ),
                   ),
                 ),
               ),
+
               const SizedBox(height: 12),
+
+              // ==================================================
+              // FILE
+              // ==================================================
 
               const Text(
                 'Surat Keterangan / Bukti Pendukung (Opsional)',
                 style: TextStyle(
                   fontSize: 10,
                   color: Colors.grey,
-                  fontWeight: FontWeight.w500,
+                  fontWeight:
+                  FontWeight.w500,
                 ),
               ),
+
               const SizedBox(height: 6),
+
               InkWell(
                 onTap: _pickFile,
-                borderRadius: BorderRadius.circular(8),
+                borderRadius:
+                BorderRadius.circular(
+                    8),
                 child: Container(
                   width: double.infinity,
-                  padding: const EdgeInsets.symmetric(
+                  padding:
+                  const EdgeInsets
+                      .symmetric(
                     vertical: 12,
                     horizontal: 8,
                   ),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFFF8FAFC),
-                    borderRadius: BorderRadius.circular(8),
-                    border: Border.all(
-                      color: const Color(0xFF009688).withOpacity(0.5),
+                  decoration:
+                  BoxDecoration(
+                    color:
+                    const Color(
+                        0xFFF8FAFC),
+                    borderRadius:
+                    BorderRadius.circular(
+                        8),
+                    border:
+                    Border.all(
+                      color:
+                      const Color(
+                          0xFF009688)
+                          .withOpacity(
+                          0.5),
                     ),
                   ),
                   child: Column(
                     children: [
                       Icon(
                         _selectedFile != null
-                            ? Icons.check_circle_rounded
-                            : Icons.arrow_upward_rounded,
+                            ? Icons
+                            .check_circle_rounded
+                            : Icons
+                            .arrow_upward_rounded,
                         size: 18,
-                        color: const Color(0xFF009688),
+                        color:
+                        const Color(
+                            0xFF009688),
                       ),
-                      const SizedBox(height: 4),
+
+                      const SizedBox(
+                          height: 4),
+
                       Text(
-                        _fileName ?? 'Unggah Surat Dokter / Bukti',
+                        _fileName ??
+                            'Unggah Surat Dokter / Bukti',
                         maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: const TextStyle(
+                        overflow:
+                        TextOverflow
+                            .ellipsis,
+                        style:
+                        const TextStyle(
                           fontSize: 11,
-                          fontWeight: FontWeight.bold,
-                          color: Color(0xFF009688),
+                          fontWeight:
+                          FontWeight.bold,
+                          color:
+                          Color(
+                              0xFF009688),
                         ),
                       ),
-                      const SizedBox(height: 2),
+
+                      const SizedBox(
+                          height: 2),
+
                       Text(
-                        _selectedFile != null
+                        _selectedFile !=
+                            null
                             ? 'Klik untuk mengubah berkas'
                             : 'Format PDF, JPG, PNG up to 5MB',
-                        style: const TextStyle(fontSize: 8, color: Colors.grey),
+                        style:
+                        const TextStyle(
+                          fontSize: 8,
+                          color:
+                          Colors.grey,
+                        ),
                       ),
                     ],
                   ),
                 ),
               ),
+
               const SizedBox(height: 16),
+
+              // ==================================================
+              // BUTTON
+              // ==================================================
 
               Row(
                 children: [
                   Expanded(
                     child: SizedBox(
                       height: 38,
-                      child: OutlinedButton(
-                        onPressed: () => Navigator.pop(context),
-                        style: OutlinedButton.styleFrom(
-                          side: BorderSide(color: Colors.grey.shade300),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(8),
+                      child:
+                      OutlinedButton(
+                        onPressed: () =>
+                            Navigator.pop(
+                                context),
+                        style:
+                        OutlinedButton
+                            .styleFrom(
+                          side:
+                          BorderSide(
+                            color: Colors
+                                .grey
+                                .shade300,
+                          ),
+                          shape:
+                          RoundedRectangleBorder(
+                            borderRadius:
+                            BorderRadius
+                                .circular(
+                                8),
                           ),
                         ),
-                        child: const Text(
+                        child:
+                        const Text(
                           'Batal',
-                          style: TextStyle(
-                            color: Colors.grey,
+                          style:
+                          TextStyle(
+                            color:
+                            Colors.grey,
                             fontSize: 11,
-                            fontWeight: FontWeight.bold,
+                            fontWeight:
+                            FontWeight
+                                .bold,
                           ),
                         ),
                       ),
                     ),
                   ),
+
                   const SizedBox(width: 8),
+
                   Expanded(
                     child: SizedBox(
                       height: 38,
-                      child: ElevatedButton(
-                        onPressed: _isSubmitting ? null : _submitCuti,
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: const Color(0xFF009688),
+                      child:
+                      ElevatedButton(
+                        onPressed:
+                        _isSubmitting
+                            ? null
+                            : _submitCuti,
+                        style:
+                        ElevatedButton
+                            .styleFrom(
+                          backgroundColor:
+                          const Color(
+                              0xFF009688),
                           elevation: 0,
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(8),
+                          shape:
+                          RoundedRectangleBorder(
+                            borderRadius:
+                            BorderRadius
+                                .circular(
+                                8),
                           ),
                         ),
                         child: _isSubmitting
                             ? const SizedBox(
-                                width: 16,
-                                height: 16,
-                                child: CircularProgressIndicator(
-                                  color: Colors.white,
-                                  strokeWidth: 2,
-                                ),
-                              )
+                          width: 16,
+                          height: 16,
+                          child:
+                          CircularProgressIndicator(
+                            color:
+                            Colors.white,
+                            strokeWidth:
+                            2,
+                          ),
+                        )
                             : const Text(
-                                'Kirim Pengajuan',
-                                style: TextStyle(
-                                  color: Colors.white,
-                                  fontSize: 11,
-                                  fontWeight: FontWeight.bold,
-                                ),
-                              ),
+                          'Kirim Pengajuan',
+                          style:
+                          TextStyle(
+                            color:
+                            Colors.white,
+                            fontSize:
+                            11,
+                            fontWeight:
+                            FontWeight
+                                .bold,
+                          ),
+                        ),
                       ),
                     ),
                   ),
@@ -466,43 +845,91 @@ Future<void> _submitCuti() async {
     );
   }
 
-  Widget _buildTypeRadio(String type) {
-    final isSelected = _tipePengajuan == type;
+  // ============================================================
+  // RADIO TIPE
+  // ============================================================
+
+  Widget _buildTypeRadio(
+      String type) {
+    final isSelected =
+        _tipePengajuan == type;
+
     return Expanded(
       child: InkWell(
-        onTap: () => setState(() => _tipePengajuan = type),
-        borderRadius: BorderRadius.circular(8),
+        onTap: () {
+          setState(() {
+            _tipePengajuan = type;
+          });
+        },
+        borderRadius:
+        BorderRadius.circular(8),
         child: Container(
-          padding: const EdgeInsets.symmetric(vertical: 6),
-          decoration: BoxDecoration(
-            color: isSelected ? const Color(0xFFE0F2F1) : Colors.white,
-            borderRadius: BorderRadius.circular(8),
-            border: Border.all(
+          padding:
+          const EdgeInsets
+              .symmetric(
+            vertical: 6,
+          ),
+          decoration:
+          BoxDecoration(
+            color: isSelected
+                ? const Color(
+                0xFFE0F2F1)
+                : Colors.white,
+            borderRadius:
+            BorderRadius.circular(
+                8),
+            border:
+            Border.all(
               color: isSelected
-                  ? const Color(0xFF009688)
-                  : Colors.grey.shade300,
-              width: isSelected ? 1.2 : 1.0,
+                  ? const Color(
+                  0xFF009688)
+                  : Colors
+                  .grey
+                  .shade300,
+              width:
+              isSelected
+                  ? 1.2
+                  : 1.0,
             ),
           ),
           child: Row(
-            mainAxisAlignment: MainAxisAlignment.center,
+            mainAxisAlignment:
+            MainAxisAlignment
+                .center,
             children: [
               Icon(
                 isSelected
-                    ? Icons.radio_button_checked
-                    : Icons.radio_button_off,
+                    ? Icons
+                    .radio_button_checked
+                    : Icons
+                    .radio_button_off,
                 size: 12,
-                color: isSelected ? const Color(0xFF009688) : Colors.grey,
+                color: isSelected
+                    ? const Color(
+                    0xFF009688)
+                    : Colors.grey,
               ),
-              const SizedBox(width: 3),
+
+              const SizedBox(
+                  width: 3),
+
               Text(
                 type,
-                style: TextStyle(
+                style:
+                TextStyle(
                   fontSize: 10,
-                  fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                  fontWeight:
+                  isSelected
+                      ? FontWeight
+                      .bold
+                      : FontWeight
+                      .normal,
                   color: isSelected
-                      ? const Color(0xFF009688)
-                      : Colors.grey.shade800,
+                      ? const Color(
+                      0xFF009688)
+                      : Colors
+                      .grey
+                      .shade800,
                 ),
               ),
             ],
@@ -512,35 +939,71 @@ Future<void> _submitCuti() async {
     );
   }
 
-  Widget _buildDatePickerField(String dateText, VoidCallback onTap) {
+  // ============================================================
+  // DATE PICKER FIELD
+  // ============================================================
+
+  Widget _buildDatePickerField(
+      String dateText,
+      VoidCallback onTap,
+      ) {
     return InkWell(
       onTap: onTap,
-      borderRadius: BorderRadius.circular(8),
+      borderRadius:
+      BorderRadius.circular(8),
       child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 8),
-        decoration: BoxDecoration(
+        padding:
+        const EdgeInsets
+            .symmetric(
+          horizontal: 6,
+          vertical: 8,
+        ),
+        decoration:
+        BoxDecoration(
           color: Colors.white,
-          borderRadius: BorderRadius.circular(8),
-          border: Border.all(color: Colors.grey.shade300),
+          borderRadius:
+          BorderRadius.circular(8),
+          border:
+          Border.all(
+            color:
+            Colors.grey.shade300,
+          ),
         ),
         child: Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          mainAxisAlignment:
+          MainAxisAlignment
+              .spaceBetween,
           children: [
             Expanded(
               child: Text(
                 dateText,
-                style: const TextStyle(
+                style:
+                const TextStyle(
                   fontSize: 10,
-                  fontWeight: FontWeight.w600,
-                  color: Color(0xFF0F172A),
+                  fontWeight:
+                  FontWeight.w600,
+                  color:
+                  Color(0xFF0F172A),
                 ),
-                overflow: TextOverflow.ellipsis,
+                overflow:
+                TextOverflow.ellipsis,
               ),
             ),
-            const Icon(Icons.arrow_drop_down, size: 16, color: Colors.grey),
+
+            const Icon(
+              Icons.arrow_drop_down,
+              size: 16,
+              color: Colors.grey,
+            ),
           ],
         ),
       ),
     );
+  }
+
+  @override
+  void dispose() {
+    _alasanController.dispose();
+    super.dispose();
   }
 }

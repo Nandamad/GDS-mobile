@@ -44,8 +44,9 @@ class _LoginScreenState extends State<LoginScreen> {
       // Kirim kedua key (nip dan email) jika backend menerima salah satunya, 
       // atau sesuaikan key utama yang dipakai di API Laravel kamu:
       final response = await dio.post('/login', data: {
-        'nip': input,
+        'username': input,
         'email': input,
+        'nip': input,
         'password': password,
       });
 

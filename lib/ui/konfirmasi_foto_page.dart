@@ -1,80 +1,35 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
-import 'package:dio/dio.dart';
-import 'package:shared_preferences/shared_preferences.dart';
-import '../api_config.dart';
-import 'package:geolocator/geolocator.dart'; // Tambahkan import ini jika diperlukan
+import 'package:latlong2/latlong.dart';
 
 class KonfirmasiFotoScreen extends StatefulWidget {
   final String? imageBase64;
 
-  const KonfirmasiFotoScreen({super.key, this.imageBase64});
+  final LatLng currentLocation;
+  final String namaKantor;
+  final String alamatKantor;
+  final double jarakMeter;
+  final bool isInRadius;
+
+  const KonfirmasiFotoScreen({
+    super.key,
+    this.imageBase64,
+    required this.currentLocation,
+    required this.namaKantor,
+    required this.alamatKantor,
+    required this.jarakMeter,
+    required this.isInRadius,
+  });
 
   @override
-  State<KonfirmasiFotoScreen> createState() => _KonfirmasiFotoScreenState();
+  State<KonfirmasiFotoScreen> createState() =>
+      _KonfirmasiFotoScreenState();
 }
 
 class _KonfirmasiFotoScreenState extends State<KonfirmasiFotoScreen> {
-  bool _isSubmitting = false;
 
-  Future<void> _onConfirm() async {
-    setState(() => _isSubmitting = true);
-
-    try {
-      final prefs = await SharedPreferences.getInstance();
-      final token = prefs.getString('token');
-
-      final dio = Dio(BaseOptions(
-        baseUrl: ApiConfig.baseUrl,
-        headers: {'Authorization': 'Bearer $token'},
-        connectTimeout: const Duration(seconds: 15),
-      ));
-
-      FormData formData = FormData.fromMap({
-        'latitude': '-6.2088',
-        'longitude': '106.8456',
-        'tipe': 'masuk', // Hardcode masuk for simulation
-      });
-
-      if (widget.imageBase64 != null) {
-        final bytes = base64Decode(widget.imageBase64!.split(',').last);
-        formData.files.add(MapEntry(
-          'foto',
-          MultipartFile.fromBytes(bytes, filename: 'selfie.jpg'),
-        ));
-      }
-
-      final response = await dio.post('/absensi', data: formData);
-
-      if (response.statusCode == 200 || response.statusCode == 201) {
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('Presensi Berhasil Dikonfirmasi!'),
-              backgroundColor: Color(0xFF009688),
-            ),
-          );
-          Navigator.pop(context, true); // Kembalikan nilai sukses
-        }
-      }
-    } on DioException catch (e) {
-      if (mounted) {
-        String msg = 'Gagal menyimpan absensi.';
-        if (e.response != null && e.response!.data['message'] != null) {
-          msg = e.response!.data['message'];
-        }
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(msg),
-            backgroundColor: Colors.redAccent,
-          ),
-        );
-      }
-    } finally {
-      if (mounted) {
-        setState(() => _isSubmitting = false);
-      }
-    }
+  void _onConfirm() {
+    Navigator.pop(context, true);
   }
 
   @override
@@ -158,24 +113,28 @@ class _KonfirmasiFotoScreenState extends State<KonfirmasiFotoScreen> {
           const SizedBox(height: 6),
           Row(
             crossAxisAlignment: CrossAxisAlignment.start,
-            children: const [
-              Icon(Icons.location_on_outlined, size: 16, color: Color(0xFF009688)),
-              SizedBox(width: 8),
+            children: [
+              const Icon(
+                Icons.location_on_outlined,
+                size: 16,
+                color: Color(0xFF009688),
+              ),
+              const SizedBox(width: 8),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      'Kantor Pusat',
-                      style: TextStyle(
+                      widget.namaKantor,
+                      style: const TextStyle(
                         fontWeight: FontWeight.bold,
                         fontSize: 11,
                         color: Color(0xFF0F172A),
                       ),
                     ),
                     Text(
-                      'Jl. Sudirman No. 123, Jakarta',
-                      style: TextStyle(
+                      widget.alamatKantor,
+                      style: const TextStyle(
                         fontSize: 10,
                         color: Colors.grey,
                       ),
@@ -184,7 +143,7 @@ class _KonfirmasiFotoScreenState extends State<KonfirmasiFotoScreen> {
                 ),
               ),
             ],
-          ),
+          )
         ],
       ),
     );
@@ -295,13 +254,15 @@ class _KonfirmasiFotoScreenState extends State<KonfirmasiFotoScreen> {
           const Divider(height: 14),
           _buildVerifikasiRow(
             label: 'Koordinat GPS',
-            value: '-6.2088, 106.8456',
+            value:
+                '${widget.currentLocation.latitude.toStringAsFixed(6)}, '
+                '${widget.currentLocation.longitude.toStringAsFixed(6)}',
           ),
           const Divider(height: 14),
           _buildVerifikasiRow(
             label: 'Jarak dari Kantor',
-            value: '45 meter',
-            isVerified: true,
+            value:  '${widget.jarakMeter.toStringAsFixed(0)} meter',
+            isVerified: widget.isInRadius,
           ),
           const Divider(height: 14),
           _buildVerifikasiRow(
@@ -312,8 +273,12 @@ class _KonfirmasiFotoScreenState extends State<KonfirmasiFotoScreen> {
           const Divider(height: 14),
           _buildVerifikasiRow(
             label: 'Status',
-            value: 'Dalam Radius Kantor',
-            valueColor: const Color(0xFF009688),
+            value: widget.isInRadius
+                ? 'Dalam Radius Kantor'
+                : 'Di Luar Radius Kantor',
+            valueColor: widget.isInRadius
+                ? const Color(0xFF009688)
+                : Colors.red,
           ),
         ],
       ),
@@ -367,7 +332,7 @@ class _KonfirmasiFotoScreenState extends State<KonfirmasiFotoScreen> {
           child: SizedBox(
             height: 40,
             child: OutlinedButton(
-              onPressed: _isSubmitting ? null : () => Navigator.pop(context),
+              onPressed: () => Navigator.pop(context),
               style: OutlinedButton.styleFrom(
                 side: const BorderSide(color: Color(0xFF009688)),
                 shape: RoundedRectangleBorder(
@@ -390,7 +355,7 @@ class _KonfirmasiFotoScreenState extends State<KonfirmasiFotoScreen> {
           child: SizedBox(
             height: 40,
             child: ElevatedButton(
-              onPressed: _isSubmitting ? null : _onConfirm,
+              onPressed: _onConfirm,
               style: ElevatedButton.styleFrom(
                 backgroundColor: const Color(0xFF009688),
                 elevation: 0,
@@ -398,13 +363,7 @@ class _KonfirmasiFotoScreenState extends State<KonfirmasiFotoScreen> {
                   borderRadius: BorderRadius.circular(10),
                 ),
               ),
-              child: _isSubmitting
-                  ? const SizedBox(
-                      width: 16,
-                      height: 16,
-                      child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
-                    )
-                  : const Text(
+              child: const Text(
                       'KONFIRMASI',
                       style: TextStyle(
                         color: Colors.white,
