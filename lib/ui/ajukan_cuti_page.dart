@@ -3,7 +3,7 @@ import '../ui/detail_workflow_page.dart';
 import 'package:flutter/material.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:dio/dio.dart';
-import 'package:shared_preferences/shared_preferences.dart';
+import '../services/api_service.dart';
 import '../api_config.dart';
 import '../ui/pengajuan_page.dart';
 
@@ -66,25 +66,14 @@ class _AjukanCutiSheetState extends State<AjukanCutiSheet> {
 
     try {
       // Ambil token login
-      final prefs = await SharedPreferences.getInstance();
-      final token = prefs.getString('token');
+      final token = await ApiService().getToken();
 
-      if (token == null || token.isEmpty) {
+      if (token == null) {
         throw Exception('Token login tidak ditemukan');
       }
 
       // Dio
-      final dio = Dio(
-        BaseOptions(
-          baseUrl: ApiConfig.baseUrl,
-          headers: {
-            'Authorization': 'Bearer $token',
-            'Accept': 'application/json',
-          },
-          connectTimeout: const Duration(seconds: 10),
-          receiveTimeout: const Duration(seconds: 10),
-        ),
-      );
+      final dio = ApiService().dio;
 
       // ========================================================
       // FORMAT TANGGAL

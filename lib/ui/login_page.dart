@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:dio/dio.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 import '../api_config.dart';
+import '../services/api_service.dart';
 import 'main_navigation_page.dart';
 
 class LoginScreen extends StatefulWidget {
@@ -36,10 +36,7 @@ class _LoginScreenState extends State<LoginScreen> {
     setState(() => _isLoading = true);
 
     try {
-      final dio = Dio(BaseOptions(
-        baseUrl: ApiConfig.baseUrl,
-        connectTimeout: const Duration(seconds: 10),
-      ));
+      final dio = ApiService().dio;
 
       // Kirim kedua key (nip dan email) jika backend menerima salah satunya, 
       // atau sesuaikan key utama yang dipakai di API Laravel kamu:
@@ -52,8 +49,9 @@ class _LoginScreenState extends State<LoginScreen> {
 
       if (response.statusCode == 200) {
         final token = response.data['access_token'] ?? response.data['token'];
-        final prefs = await SharedPreferences.getInstance();
-        await prefs.setString('token', token ?? '');
+        if (token != null) {
+          await ApiService().saveToken(token);
+        }
 
         if (mounted) {
           Navigator.pushReplacement(

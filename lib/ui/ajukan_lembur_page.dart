@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:dio/dio.dart';
-import 'package:shared_preferences/shared_preferences.dart';
+import '../services/api_service.dart';
 import '../ui/detail_workflow_page.dart';
 import '../api_config.dart';
 
@@ -75,30 +75,15 @@ class _AjukanLemburSheetState extends State<AjukanLemburSheet> {
     });
 
     try {
-      final prefs =
-      await SharedPreferences.getInstance();
+      final token = await ApiService().getToken();
 
-      final token = prefs.getString('token');
-
-      if (token == null || token.isEmpty) {
+      if (token == null) {
         throw Exception(
           'Token login tidak ditemukan',
         );
       }
 
-      final dio = Dio(
-        BaseOptions(
-          baseUrl: ApiConfig.baseUrl,
-          headers: {
-            'Authorization': 'Bearer $token',
-            'Accept': 'application/json',
-          },
-          connectTimeout:
-          const Duration(seconds: 10),
-          receiveTimeout:
-          const Duration(seconds: 10),
-        ),
-      );
+      final dio = ApiService().dio;
 
       final tanggal =
           '${_tanggalLembur.year}-'

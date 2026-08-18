@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:dio/dio.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 import '../api_config.dart';
+import '../services/api_service.dart';
 import 'detail_log_page.dart'; // Diperbarui: Tambahkan import ini
 
 class RiwayatPresensiScreen extends StatefulWidget {
@@ -26,14 +26,10 @@ class _RiwayatPresensiScreenState extends State<RiwayatPresensiScreen> {
 
   Future<void> _fetchHistoryData() async {
     try {
-      final prefs = await SharedPreferences.getInstance();
-      final token = prefs.getString('token');
+      final token = await ApiService().getToken();
+      if (token == null) return;
 
-      final dio = Dio(BaseOptions(
-        baseUrl: ApiConfig.baseUrl,
-        headers: {'Authorization': 'Bearer $token'},
-        connectTimeout: const Duration(seconds: 15),
-      ));
+      final dio = ApiService().dio;
 
       final response = await dio.get('/history');
 

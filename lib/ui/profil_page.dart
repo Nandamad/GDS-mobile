@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:dio/dio.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 import '../api_config.dart'; // Pastikan path ApiConfig sudah benar
+import '../services/api_service.dart';
 import 'login_page.dart'; // Import layar login untuk aksi logout
 
 class ProfilPage extends StatefulWidget {
@@ -28,23 +28,14 @@ class _ProfilPageState extends State<ProfilPage> {
   // Ambil data profil karyawan yang login dari API
   Future<void> _fetchUserProfile() async {
     try {
-      final prefs = await SharedPreferences.getInstance();
-      final token = prefs.getString('token');
+      final token = await ApiService().getToken();
 
-      if (token == null || token.isEmpty) {
+      if (token == null) {
         _logout();
         return;
       }
 
-      final dio = Dio(
-        BaseOptions(
-          baseUrl: ApiConfig.baseUrl,
-          headers: {
-            'Authorization': 'Bearer $token',
-            'Accept': 'application/json',
-          },
-        ),
-      );
+      final dio = ApiService().dio;
 
       final response = await dio.get('/profile');
 
@@ -68,8 +59,7 @@ class _ProfilPageState extends State<ProfilPage> {
   }
   // Aksi Logout
   Future<void> _logout() async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.remove('token');
+    await ApiService().clearToken();
 
     if (mounted) {
       Navigator.pushAndRemoveUntil(

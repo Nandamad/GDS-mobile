@@ -1,8 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:dio/dio.dart';
-import 'package:shared_preferences/shared_preferences.dart';
-
 import '../api_config.dart';
+import '../services/api_service.dart';
 import '../ui/ajukan_cuti_page.dart';
 import '../ui/ajukan_lembur_page.dart';
 import '../ui/detail_workflow_page.dart';
@@ -41,10 +40,9 @@ class _PengajuanScreenState extends State<PengajuanScreen> {
     }
 
     try {
-      final prefs = await SharedPreferences.getInstance();
-      final token = prefs.getString('token');
+      final token = await ApiService().getToken();
 
-      if (token == null || token.isEmpty) {
+      if (token == null) {
         if (!mounted) return;
 
         setState(() {
@@ -55,17 +53,7 @@ class _PengajuanScreenState extends State<PengajuanScreen> {
         return;
       }
 
-      final dio = Dio(
-        BaseOptions(
-          baseUrl: ApiConfig.baseUrl,
-          headers: {
-            'Authorization': 'Bearer $token',
-            'Accept': 'application/json',
-          },
-          connectTimeout: const Duration(seconds: 10),
-          receiveTimeout: const Duration(seconds: 10),
-        ),
-      );
+      final dio = ApiService().dio;
 
       final List<Map<String, dynamic>> result = [];
 

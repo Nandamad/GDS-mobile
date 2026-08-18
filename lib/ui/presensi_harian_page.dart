@@ -2,12 +2,13 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:typed_data';
 import 'package:flutter/material.dart';
+import 'package:image_picker/image_picker.dart';
 import 'package:dio/dio.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
 import '../api_config.dart';
+import '../services/api_service.dart';
 import 'kamera_page.dart';
 import 'konfirmasi_foto_page.dart';
 
@@ -105,22 +106,10 @@ class _PresensiScreenState extends State<PresensiScreen> {
 
   Future<void> _loadOfficeLocation() async {
     try {
-      final prefs = await SharedPreferences.getInstance();
-      final token = prefs.getString('token');
-
-      if (token == null || token.isEmpty) {
-        return;
-      }
-
-      final dio = Dio(
-        BaseOptions(
-          baseUrl: ApiConfig.baseUrl,
-          headers: {
-            'Authorization': 'Bearer $token',
-            'Accept': 'application/json',
-          },
-        ),
-      );
+      final token = await ApiService().getToken();
+      if (token == null) return;
+      
+      final dio = ApiService().dio;
 
       final response = await dio.get('/profile');
 
@@ -187,10 +176,8 @@ class _PresensiScreenState extends State<PresensiScreen> {
     required String fotoBase64,
   }) async {
     try {
-      final prefs = await SharedPreferences.getInstance();
-      final token = prefs.getString('token');
-
-      if (token == null || token.isEmpty) {
+      final token = await ApiService().getToken();
+      if (token == null) {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(
@@ -220,15 +207,7 @@ class _PresensiScreenState extends State<PresensiScreen> {
         'tipe': tipe,
       });
 
-      final dio = Dio(
-        BaseOptions(
-          baseUrl: ApiConfig.baseUrl,
-          headers: {
-            'Authorization': 'Bearer $token',
-            'Accept': 'application/json',
-          },
-        ),
-      );
+      final dio = ApiService().dio;
 
       final response = await dio.post(
         '/absensi',
@@ -271,20 +250,10 @@ class _PresensiScreenState extends State<PresensiScreen> {
 
   Future<void> _checkTodayAttendance() async {
     try {
-      final prefs = await SharedPreferences.getInstance();
-      final token = prefs.getString('token');
+      final token = await ApiService().getToken();
+      if (token == null) return;
 
-      if (token == null || token.isEmpty) return;
-
-      final dio = Dio(
-        BaseOptions(
-          baseUrl: ApiConfig.baseUrl,
-          headers: {
-            'Authorization': 'Bearer $token',
-            'Accept': 'application/json',
-          },
-        ),
-      );
+      final dio = ApiService().dio;
 
       final response = await dio.get('/absensi/today');
 

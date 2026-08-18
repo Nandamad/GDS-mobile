@@ -41,7 +41,9 @@ class Kantor {
       longitude: json['longitude'] != null
           ? double.tryParse(json['longitude'].toString())
           : null,
-      radiusMeter: json['radius_meter'] as int?,
+      radiusMeter: json['radius_toleransi_meter'] != null 
+          ? int.tryParse(json['radius_toleransi_meter'].toString())
+          : null,
       statusAktif: json['status_aktif'] is bool
           ? json['status_aktif']
           : (json['status_aktif'] == 1 || json['status_aktif'] == '1'),

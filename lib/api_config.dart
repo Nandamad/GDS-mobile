@@ -1,15 +1,7 @@
-import 'package:flutter/foundation.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 
 class ApiConfig {
-  // PENTING: Sesuaikan URL ini dengan URL Laravel Anda!
-  // Jika Anda mengakses backend/admin di "http://127.0.0.1:8000", gunakan URL tersebut.
-  // Jika menggunakan XAMPP (contoh: "http://localhost/gds/public"), ganti port-nya.
-  
   static String get baseUrl {
-    if (kIsWeb) {
-      return 'http://127.0.0.1:8000/api'; // URL untuk Web (Coba ganti ke localhost jika gagal)
-    } else {
-      return 'http://192.168.18.79:8000/api'; // URL untuk Android Emulator
-    }
+    return dotenv.env['API_BASE_URL'] ?? 'http://127.0.0.1:8000/api';
   }
 }

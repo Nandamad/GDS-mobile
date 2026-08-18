@@ -45,8 +45,8 @@ class Absensi {
       jamMasuk: json['jam_masuk'] != null
           ? DateTime.tryParse(json['jam_masuk'])
           : null,
-      jamPulang: json['jam_pulang'] != null
-          ? DateTime.tryParse(json['jam_pulang'])
+      jamPulang: json['jam_keluar'] != null
+          ? DateTime.tryParse(json['jam_keluar'])
           : null,
       status: json['status'] as String?,
       lokasiMasuk: json['lokasi_masuk'] as String?,

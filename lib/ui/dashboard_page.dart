@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:dio/dio.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 import '../api_config.dart';
+import '../services/api_service.dart';
 import 'kinerja_presensi_page.dart';
 import 'login_page.dart';
 import 'profil_page.dart';
@@ -27,16 +27,10 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
   Future<void> _fetchDashboardData() async {
     try {
-      final prefs = await SharedPreferences.getInstance();
-      final token = prefs.getString('token');
+      final token = await ApiService().getToken();
+      if (token == null) return;
 
-      final dio = Dio(
-        BaseOptions(
-          baseUrl: ApiConfig.baseUrl,
-          headers: {'Authorization': 'Bearer $token'},
-          connectTimeout: const Duration(seconds: 10),
-        ),
-      );
+      final dio = ApiService().dio;
 
       final response = await dio.get('/dashboard');
       if (response.statusCode == 200 && response.data['data'] != null) {
@@ -69,8 +63,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
   }
 
   Future<void> _handleLogout() async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.remove('token');
+    await ApiService().clearToken();
 
     if (mounted) {
       Navigator.pushAndRemoveUntil(

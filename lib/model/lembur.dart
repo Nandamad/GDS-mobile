@@ -8,7 +8,7 @@ class Lembur {
   final DateTime? tanggal;
   final DateTime? jamMulaiLembur;
   final DateTime? jamSelesaiLembur;
-  final String? alasanLembur;
+  final String? alasan;
   final String? status; // e.g., 'pending', 'approved', 'rejected'
   final int? approvedByL1;
   final DateTime? approvedAtL1;
@@ -30,7 +30,7 @@ class Lembur {
     this.tanggal,
     this.jamMulaiLembur,
     this.jamSelesaiLembur,
-    this.alasanLembur,
+    this.alasan,
     this.status,
     this.approvedByL1,
     this.approvedAtL1,
@@ -58,7 +58,7 @@ class Lembur {
       jamSelesaiLembur: json['jam_selesai_lembur'] != null
           ? DateTime.tryParse(json['jam_selesai_lembur'])
           : null,
-      alasanLembur: json['alasan_lembur'] as String?,
+      alasan: json['alasan'] as String?,
       status: json['status'] as String?,
       approvedByL1: json['approved_by_l1'] as int?,
       approvedAtL1: json['approved_at_l1'] != null
@@ -99,7 +99,7 @@ class Lembur {
       'tanggal': tanggal?.toIso8601String().split('T').first,
       'jam_mulai_lembur': jamMulaiLembur?.toIso8601String(),
       'jam_selesai_lembur': jamSelesaiLembur?.toIso8601String(),
-      'alasan_lembur': alasanLembur,
+      'alasan': alasan,
       'status': status,
       'approved_by_l1': approvedByL1,
       'approved_at_l1': approvedAtL1?.toIso8601String(),
