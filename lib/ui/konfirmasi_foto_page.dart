@@ -4,7 +4,6 @@ import 'package:latlong2/latlong.dart';
 
 class KonfirmasiFotoScreen extends StatefulWidget {
   final String? imageBase64;
-
   final LatLng currentLocation;
   final String namaKantor;
   final String alamatKantor;
@@ -22,11 +21,51 @@ class KonfirmasiFotoScreen extends StatefulWidget {
   });
 
   @override
-  State<KonfirmasiFotoScreen> createState() =>
-      _KonfirmasiFotoScreenState();
+  State<KonfirmasiFotoScreen> createState() => _KonfirmasiFotoScreenState();
 }
 
 class _KonfirmasiFotoScreenState extends State<KonfirmasiFotoScreen> {
+  late DateTime _now;
+
+  @override
+  void initState() {
+    super.initState();
+    _now = DateTime.now();
+  }
+
+  String _formatTime(DateTime date) {
+    final hour = date.hour.toString().padLeft(2, '0');
+    final minute = date.minute.toString().padLeft(2, '0');
+    final second = date.second.toString().padLeft(2, '0');
+    return '$hour:$minute:$second WIB';
+  }
+
+  String _formatDate(DateTime date) {
+    final List<String> hari = [
+      'Senin',
+      'Selasa',
+      'Rabu',
+      'Kamis',
+      'Jumat',
+      'Sabtu',
+      'Minggu',
+    ];
+    final List<String> bulan = [
+      'Januari',
+      'Februari',
+      'Maret',
+      'April',
+      'Mei',
+      'Juni',
+      'Juli',
+      'Agustus',
+      'September',
+      'Oktober',
+      'November',
+      'Desember',
+    ];
+    return '${hari[date.weekday - 1]}, ${date.day.toString().padLeft(2, '0')} ${bulan[date.month - 1]} ${date.year}';
+  }
 
   void _onConfirm() {
     Navigator.pop(context, true);
@@ -66,19 +105,12 @@ class _KonfirmasiFotoScreenState extends State<KonfirmasiFotoScreen> {
         padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 12.0),
         child: Column(
           children: [
-            // Top Info Card (Waktu & Lokasi)
             _buildTopInfoCard(),
             const SizedBox(height: 16),
-
-            // Preview Foto Selfie dengan Frame Deteksi Wajah
             _buildCameraPreviewCard(),
             const SizedBox(height: 16),
-
-            // Card Data Verifikasi
             _buildDataVerifikasiCard(),
             const SizedBox(height: 20),
-
-            // Tombol Aksi Bottom
             _buildActionButtons(),
           ],
         ),
@@ -97,12 +129,12 @@ class _KonfirmasiFotoScreenState extends State<KonfirmasiFotoScreen> {
       child: Column(
         children: [
           Row(
-            children: const [
-              Icon(Icons.access_time_rounded, size: 16, color: Color(0xFF009688)),
-              SizedBox(width: 8),
+            children: [
+              const Icon(Icons.access_time_rounded, size: 16, color: Color(0xFF009688)),
+              const SizedBox(width: 8),
               Text(
-                '08:45:12 WIB',
-                style: TextStyle(
+                _formatTime(_now),
+                style: const TextStyle(
                   fontWeight: FontWeight.bold,
                   fontSize: 13,
                   color: Color(0xFF0F172A),
@@ -164,22 +196,19 @@ class _KonfirmasiFotoScreenState extends State<KonfirmasiFotoScreen> {
         child: Stack(
           alignment: Alignment.center,
           children: [
-            // Image Preview Selfie
             hasBase64
                 ? Image.memory(
-                    base64Decode(widget.imageBase64!.split(',').last),
-                    width: double.infinity,
-                    height: double.infinity,
-                    fit: BoxFit.cover,
-                  )
-                : Image.network(
-                    'https://i.pravatar.cc/400?img=11',
-                    width: double.infinity,
-                    height: double.infinity,
-                    fit: BoxFit.cover,
-                  ),
-
-            // Face Detection Bounding Box Frame
+              base64Decode(widget.imageBase64!.split(',').last),
+              width: double.infinity,
+              height: double.infinity,
+              fit: BoxFit.cover,
+            )
+                : Container(
+              color: Colors.grey.shade300,
+              child: const Center(
+                child: Icon(Icons.person, size: 50, color: Colors.grey),
+              ),
+            ),
             Container(
               width: 110,
               height: 110,
@@ -188,8 +217,6 @@ class _KonfirmasiFotoScreenState extends State<KonfirmasiFotoScreen> {
                 borderRadius: BorderRadius.circular(10),
               ),
             ),
-
-            // Badge Wajah Terdeteksi
             Positioned(
               bottom: 12,
               child: Container(
@@ -243,25 +270,25 @@ class _KonfirmasiFotoScreenState extends State<KonfirmasiFotoScreen> {
           const SizedBox(height: 10),
           _buildVerifikasiRow(
             label: 'Waktu Server',
-            value: '08:45:12 WIB',
+            value: _formatTime(_now),
             isVerified: true,
           ),
           const Divider(height: 14),
           _buildVerifikasiRow(
             label: 'Tanggal',
-            value: 'Rabu, 05 Agustus 2026',
+            value: _formatDate(_now),
           ),
           const Divider(height: 14),
           _buildVerifikasiRow(
             label: 'Koordinat GPS',
             value:
-                '${widget.currentLocation.latitude.toStringAsFixed(6)}, '
+            '${widget.currentLocation.latitude.toStringAsFixed(6)}, '
                 '${widget.currentLocation.longitude.toStringAsFixed(6)}',
           ),
           const Divider(height: 14),
           _buildVerifikasiRow(
             label: 'Jarak dari Kantor',
-            value:  '${widget.jarakMeter.toStringAsFixed(0)} meter',
+            value: '${widget.jarakMeter.toStringAsFixed(0)} meter',
             isVerified: widget.isInRadius,
           ),
           const Divider(height: 14),
@@ -364,13 +391,13 @@ class _KonfirmasiFotoScreenState extends State<KonfirmasiFotoScreen> {
                 ),
               ),
               child: const Text(
-                      'KONFIRMASI',
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontSize: 10,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
+                'KONFIRMASI',
+                style: TextStyle(
+                  color: Colors.white,
+                  fontSize: 10,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
             ),
           ),
         ),

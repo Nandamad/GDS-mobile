@@ -1,6 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:dio/dio.dart';
-import '../api_config.dart';
 import '../services/api_service.dart';
 import '../model/absensi.dart';
 import 'detail_log_page.dart';
@@ -55,26 +53,37 @@ class _RiwayatPresensiScreenState extends State<RiwayatPresensiScreen> {
           final absensiObj = Absensi.fromJson(item);
 
           final isCuti = item['tipe'] != null && item['tipe'] != 'Kehadiran';
+          final rawStatus = (absensiObj.status ?? item['status'] ?? 'hadir').toString().toLowerCase();
+
           Color bgColor = const Color(0xFFE8F5E9);
           Color txtColor = const Color(0xFF2E7D32);
-          String statusTxt = absensiObj.status ?? 'hadir';
-          String statusCat = isCuti ? 'Izin' : statusTxt;
+          String statusTxt = 'HADIR';
+          String statusCat = 'On Time';
 
-          if (statusTxt.toLowerCase() == 'terlambat' || statusTxt.toLowerCase() == 'rejected') {
+          if (isCuti) {
+            statusCat = 'Izin';
+            statusTxt = 'IZIN / CUTI';
+            bgColor = const Color(0xFFE0F2F1);
+            txtColor = const Color(0xFF00695C);
+          } else if (rawStatus.contains('terlambat') || rawStatus.contains('late')) {
+            statusCat = 'Terlambat';
+            statusTxt = 'TERLAMBAT';
             bgColor = const Color(0xFFFFF3E0);
             txtColor = const Color(0xFFE65100);
-          } else if (statusTxt.toLowerCase() == 'pending') {
+          } else if (rawStatus.contains('pending')) {
+            statusCat = 'Pending';
+            statusTxt = 'PENDING';
             bgColor = const Color(0xFFFFF9C4);
             txtColor = const Color(0xFFF57F17);
           }
 
           return {
-            'absensi_model': absensiObj, // Simpan model asli
+            'absensi_model': absensiObj,
             'month': 'Agustus 2026',
-            'date': absensiObj.tanggal != null 
+            'date': absensiObj.tanggal != null
                 ? '${absensiObj.tanggal!.day.toString().padLeft(2, '0')}-${absensiObj.tanggal!.month.toString().padLeft(2, '0')}-${absensiObj.tanggal!.year}'
                 : (item['tanggal'] ?? '-'),
-            'statusText': statusTxt.toUpperCase(),
+            'statusText': statusTxt,
             'statusCategory': statusCat,
             'statusBgColor': bgColor,
             'statusTextColor': txtColor,
@@ -117,36 +126,36 @@ class _RiwayatPresensiScreenState extends State<RiwayatPresensiScreen> {
           ),
         ),
       ),
-      body: _isLoading 
-        ? const Center(child: CircularProgressIndicator(color: Color(0xFF009688)))
-        : SingleChildScrollView(
-            padding: const EdgeInsets.symmetric(horizontal: 14.0, vertical: 12.0),
-            child: Column(
+      body: _isLoading
+          ? const Center(child: CircularProgressIndicator(color: Color(0xFF009688)))
+          : SingleChildScrollView(
+        padding: const EdgeInsets.symmetric(horizontal: 14.0, vertical: 12.0),
+        child: Column(
+          children: [
+            Row(
               children: [
-                Row(
-                  children: [
-                    Expanded(
-                      child: _buildDropdown(
-                        value: _selectedMonth,
-                        items: ['Agustus 2026', 'Juli 2026', 'Juni 2026'],
-                        onChanged: (val) => setState(() => _selectedMonth = val!),
-                      ),
-                    ),
-                    const SizedBox(width: 8),
-                    Expanded(
-                      child: _buildDropdown(
-                        value: _selectedStatus,
-                        items: ['Semua Status', 'On Time', 'Terlambat', 'Izin'],
-                        onChanged: (val) => setState(() => _selectedStatus = val!),
-                      ),
-                    ),
-                  ],
+                Expanded(
+                  child: _buildDropdown(
+                    value: _selectedMonth,
+                    items: ['Agustus 2026', 'Juli 2026', 'Juni 2026'],
+                    onChanged: (val) => setState(() => _selectedMonth = val!),
+                  ),
                 ),
-                const SizedBox(height: 14),
-                _buildHistoryList(),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: _buildDropdown(
+                    value: _selectedStatus,
+                    items: ['Semua Status', 'On Time', 'Terlambat', 'Izin'],
+                    onChanged: (val) => setState(() => _selectedStatus = val!),
+                  ),
+                ),
               ],
             ),
-          ),
+            const SizedBox(height: 14),
+            _buildHistoryList(),
+          ],
+        ),
+      ),
     );
   }
 
@@ -278,7 +287,6 @@ class _RiwayatPresensiScreenState extends State<RiwayatPresensiScreen> {
             ],
           ),
           const SizedBox(height: 10),
-
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
@@ -287,7 +295,6 @@ class _RiwayatPresensiScreenState extends State<RiwayatPresensiScreen> {
               _buildTimeColumn('Durasi', duration),
             ],
           ),
-
           if (hasDetailButton) ...[
             const SizedBox(height: 10),
             SizedBox(

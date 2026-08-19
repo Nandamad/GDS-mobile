@@ -12,19 +12,18 @@ class DetailLogScreen extends StatefulWidget {
 }
 
 class _DetailLogScreenState extends State<DetailLogScreen> {
-  int _selectedNavIndex = 3; // Index Riwayat (Active)
+  int _selectedNavIndex = 3;
 
-  // Helper membuat URL penuh foto dari storage Laravel
-  String _getPhotoUrl(String? path) {
-    if (path == null || path.isEmpty) {
-      return 'https://i.pravatar.cc/300?img=11';
-    }
+  String? _getPhotoUrl(String? path) {
+    if (path == null || path.isEmpty) return null;
     if (path.startsWith('http://') || path.startsWith('https://')) {
       return path;
     }
-    // Gabungkan dengan ApiConfig.baseUrl
     final base = ApiConfig.baseUrl.replaceAll('/api', '');
-    final cleanPath = path.startsWith('/') ? path : '/$path';
+    String cleanPath = path.startsWith('/') ? path : '/$path';
+    if (!cleanPath.startsWith('/storage') && !cleanPath.startsWith('storage')) {
+      cleanPath = '/storage$cleanPath';
+    }
     return '$base$cleanPath';
   }
 
@@ -36,7 +35,7 @@ class _DetailLogScreenState extends State<DetailLogScreen> {
   }
 
   String _formatDate(DateTime? date) {
-    if (date == null) return 'Rabu, 05 Agustus 2026';
+    if (date == null) return 'Rabu, 19 Agustus 2026';
     final List<String> hari = [
       'Senin',
       'Selasa',
@@ -72,7 +71,8 @@ class _DetailLogScreenState extends State<DetailLogScreen> {
     return '$hours Jam $minutes Menit';
   }
 
-  void _showPhotoPreview(String title, String imageUrl) {
+  void _showPhotoPreview(String title, String? imageUrl) {
+    if (imageUrl == null) return;
     showDialog(
       context: context,
       builder: (context) => Dialog(
@@ -145,27 +145,22 @@ class _DetailLogScreenState extends State<DetailLogScreen> {
           children: [
             _buildHeaderCard(),
             const SizedBox(height: 14),
-
             _buildSectionTitle('REKAP WAKTU'),
             const SizedBox(height: 6),
             _buildRekapWaktuRow(),
             const SizedBox(height: 14),
-
             _buildSectionTitle('TOTAL DURASI KERJA'),
             const SizedBox(height: 6),
             _buildDurasiBanner(),
             const SizedBox(height: 14),
-
             _buildSectionTitle('DETAIL LOKASI GPS'),
             const SizedBox(height: 6),
             _buildGpsCard(),
             const SizedBox(height: 14),
-
             _buildSectionTitle('FOTO VERIFIKASI'),
             const SizedBox(height: 6),
             _buildFotoVerifikasiRow(),
             const SizedBox(height: 14),
-
             _buildSectionTitle('CATATAN'),
             const SizedBox(height: 6),
             _buildCatatanCard(),
@@ -267,12 +262,15 @@ class _DetailLogScreenState extends State<DetailLogScreen> {
                 'GPS Masuk: ',
                 style: TextStyle(fontSize: 10, color: Colors.grey),
               ),
-              Text(
-                widget.absensi?.lokasiMasuk ?? 'Lokasi tidak terekam',
-                style: const TextStyle(
-                  fontSize: 10,
-                  fontWeight: FontWeight.w600,
-                  color: Color(0xFF0F172A),
+              Expanded(
+                child: Text(
+                  widget.absensi?.lokasiMasuk ?? 'Lokasi tidak terekam',
+                  style: const TextStyle(
+                    fontSize: 10,
+                    fontWeight: FontWeight.w600,
+                    color: Color(0xFF0F172A),
+                  ),
+                  overflow: TextOverflow.ellipsis,
                 ),
               ),
             ],
@@ -522,7 +520,7 @@ class _DetailLogScreenState extends State<DetailLogScreen> {
     );
   }
 
-  Widget _buildFotoCard(String label, String time, String imageUrl) {
+  Widget _buildFotoCard(String label, String time, String? imageUrl) {
     return Expanded(
       child: InkWell(
         onTap: () => _showPhotoPreview(label, imageUrl),
@@ -531,7 +529,8 @@ class _DetailLogScreenState extends State<DetailLogScreen> {
           children: [
             ClipRRect(
               borderRadius: BorderRadius.circular(10),
-              child: Image.network(
+              child: imageUrl != null
+                  ? Image.network(
                 imageUrl,
                 height: 120,
                 width: double.infinity,
@@ -539,7 +538,24 @@ class _DetailLogScreenState extends State<DetailLogScreen> {
                 errorBuilder: (context, error, stackTrace) => Container(
                   height: 120,
                   color: Colors.grey.shade200,
-                  child: const Icon(Icons.person, color: Colors.grey),
+                  child: const Icon(Icons.no_photography, color: Colors.grey),
+                ),
+              )
+                  : Container(
+                height: 120,
+                color: Colors.grey.shade200,
+                child: const Center(
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(Icons.person_outline, color: Colors.grey, size: 32),
+                      SizedBox(height: 4),
+                      Text(
+                        'Belum ada foto',
+                        style: TextStyle(fontSize: 9, color: Colors.grey),
+                      ),
+                    ],
+                  ),
                 ),
               ),
             ),
