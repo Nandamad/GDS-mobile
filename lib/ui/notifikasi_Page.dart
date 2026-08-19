@@ -60,7 +60,25 @@ class _NotifikasiScreenState extends State<NotifikasiScreen> {
       appBar: AppBar(
         backgroundColor: Colors.white,
         elevation: 0,
-        automaticallyImplyLeading: false,
+        // TOMBOL BACK LINGKARAN DI SEBELAH KIRI
+        leading: Padding(
+          padding: const EdgeInsets.all(8.0),
+          child: InkWell(
+            onTap: () => Navigator.pop(context),
+            borderRadius: BorderRadius.circular(20),
+            child: Container(
+              decoration: BoxDecoration(
+                color: Colors.grey.shade100,
+                shape: BoxShape.circle,
+              ),
+              child: const Icon(
+                Icons.arrow_back,
+                size: 18,
+                color: Color(0xFF0F172A),
+              ),
+            ),
+          ),
+        ),
         title: const Text(
           'Notifikasi',
           style: TextStyle(
@@ -69,6 +87,7 @@ class _NotifikasiScreenState extends State<NotifikasiScreen> {
             fontSize: 16,
           ),
         ),
+        centerTitle: true,
         actions: [
           Padding(
             padding: const EdgeInsets.only(right: 12.0),

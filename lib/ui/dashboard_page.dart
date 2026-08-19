@@ -2,8 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:dio/dio.dart';
 import '../services/api_service.dart';
 import 'kinerja_presensi_page.dart';
-import 'login_page.dart';
-import 'profil_page.dart';
 
 class DashboardScreen extends StatefulWidget {
   final VoidCallback? onNotificationTap;
@@ -45,8 +43,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
         final data = payload is Map && payload['data'] is Map
             ? Map<String, dynamic>.from(payload['data'])
             : payload is Map
-                ? Map<String, dynamic>.from(payload)
-                : null;
+            ? Map<String, dynamic>.from(payload)
+            : null;
 
         if (data == null) {
           throw Exception('Format data dashboard tidak valid');
@@ -90,18 +88,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
     }
   }
 
-  Future<void> _handleLogout() async {
-    await ApiService().clearToken();
-
-    if (mounted) {
-      Navigator.pushAndRemoveUntil(
-        context,
-        MaterialPageRoute(builder: (context) => const LoginScreen()),
-        (route) => false,
-      );
-    }
-  }
-
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -109,98 +95,98 @@ class _DashboardScreenState extends State<DashboardScreen> {
       body: SafeArea(
         child: _isLoading
             ? const Center(
-                child: CircularProgressIndicator(color: Color(0xFF009688)),
-              )
+          child: CircularProgressIndicator(color: Color(0xFF009688)),
+        )
             : _errorMessage.isNotEmpty
-                ? Center(
-                    child: Padding(
-                      padding: const EdgeInsets.all(20),
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Text(
-                            _errorMessage,
-                            textAlign: TextAlign.center,
-                            style: const TextStyle(
-                              color: Color(0xFF475569),
-                              fontSize: 12,
-                            ),
+            ? Center(
+          child: Padding(
+            padding: const EdgeInsets.all(20),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Text(
+                  _errorMessage,
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(
+                    color: Color(0xFF475569),
+                    fontSize: 12,
+                  ),
+                ),
+                const SizedBox(height: 12),
+                ElevatedButton(
+                  onPressed: () {
+                    setState(() => _isLoading = true);
+                    _fetchDashboardData();
+                  },
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFF009688),
+                  ),
+                  child: const Text('Coba Lagi', style: TextStyle(color: Colors.white, fontSize: 12)),
+                )
+              ],
+            ),
+          ),
+        )
+            : RefreshIndicator(
+          onRefresh: _fetchDashboardData,
+          color: const Color(0xFF009688),
+          child: SingleChildScrollView(
+            physics: const AlwaysScrollableScrollPhysics(),
+            padding: const EdgeInsets.symmetric(
+              horizontal: 14.0,
+              vertical: 10.0,
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                _buildHeader(),
+                const SizedBox(height: 12),
+                _buildStatusBanners(),
+                const SizedBox(height: 14),
+
+                // Header Ringkasan Kehadiran yang bisa diklik
+                InkWell(
+                  onTap: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => KinerjaPresensiScreen(
+                          attendanceData: _dashboardData?['attendance_month'],
+                        ),
+                      ),
+                    );
+                  },
+                  borderRadius: BorderRadius.circular(6),
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 4.0),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: const [
+                        Text(
+                          'Ringkasan Kehadiran Bulan Ini',
+                          style: TextStyle(
+                            fontWeight: FontWeight.bold,
+                            fontSize: 12,
+                            color: Color(0xFF1E293B),
                           ),
-                          const SizedBox(height: 12),
-                          ElevatedButton(
-                            onPressed: () {
-                              setState(() => _isLoading = true);
-                              _fetchDashboardData();
-                            },
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: const Color(0xFF009688),
-                            ),
-                            child: const Text('Coba Lagi', style: TextStyle(color: Colors.white, fontSize: 12)),
-                          )
-                        ],
-                      ),
-                    ),
-                  )
-                : RefreshIndicator(
-                    onRefresh: _fetchDashboardData,
-                    color: const Color(0xFF009688),
-                    child: SingleChildScrollView(
-                      physics: const AlwaysScrollableScrollPhysics(),
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 14.0,
-                        vertical: 10.0,
-                      ),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          _buildHeader(),
-                          const SizedBox(height: 12),
-                          _buildStatusBanners(),
-                          const SizedBox(height: 14),
-                          
-                          // Header Ringkasan Kehadiran yang bisa diklik
-                          InkWell(
-                            onTap: () {
-                              Navigator.push(
-                                context,
-                                MaterialPageRoute(
-                                  builder: (context) => KinerjaPresensiScreen(
-                                    attendanceData: _dashboardData?['attendance_month'],
-                                  ),
-                                ),
-                              );
-                            },
-                            borderRadius: BorderRadius.circular(6),
-                            child: Padding(
-                              padding: const EdgeInsets.symmetric(vertical: 4.0),
-                              child: Row(
-                                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                                children: const [
-                                  Text(
-                                    'Ringkasan Kehadiran Bulan Ini',
-                                    style: TextStyle(
-                                      fontWeight: FontWeight.bold,
-                                      fontSize: 12,
-                                      color: Color(0xFF1E293B),
-                                    ),
-                                  ),
-                                  Icon(
-                                    Icons.chevron_right,
-                                    size: 18,
-                                    color: Colors.grey,
-                                  ),
-                                ],
-                              ),
-                            ),
-                          ),
-                          const SizedBox(height: 8),
-                          _buildAttendanceGrid(),
-                          const SizedBox(height: 14),
-                          _buildAttendanceChart(),
-                        ],
-                      ),
+                        ),
+                        Icon(
+                          Icons.chevron_right,
+                          size: 18,
+                          color: Colors.grey,
+                        ),
+                      ],
                     ),
                   ),
+                ),
+                const SizedBox(height: 8),
+                _buildAttendanceGrid(),
+                const SizedBox(height: 14),
+                _buildAttendanceChart(),
+              ],
+            ),
+          ),
+        ),
       ),
     );
   }
@@ -212,53 +198,43 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
     return Row(
       children: [
+        // BAGIAN PROFIL (CUMA PAJANGAN - TIDAK BISA DIKLIK)
         Expanded(
-          child: InkWell(
-            onTap: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (context) => const ProfilPage(),
-                ),
-              );
-            },
-            borderRadius: BorderRadius.circular(8),
-            child: Row(
-              children: [
-                const CircleAvatar(
-                  radius: 18,
-                  backgroundColor: Color(0xFFCCFBF1),
-                  child: Icon(Icons.person, size: 20, color: Color(0xFF009688)),
-                ),
-                const SizedBox(width: 10),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        'Selamat Pagi, $nama!',
-                        style: const TextStyle(
-                          fontWeight: FontWeight.bold,
-                          fontSize: 14,
-                          color: Color(0xFF0F172A),
-                        ),
+          child: Row(
+            children: [
+              const CircleAvatar(
+                radius: 18,
+                backgroundColor: Color(0xFFCCFBF1),
+                child: Icon(Icons.person, size: 20, color: Color(0xFF009688)),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Selamat Pagi, $nama!',
+                      style: const TextStyle(
+                        fontWeight: FontWeight.bold,
+                        fontSize: 14,
+                        color: Color(0xFF0F172A),
                       ),
-                      Text(
-                        jabatan,
-                        style: const TextStyle(
-                          color: Colors.grey,
-                          fontSize: 11,
-                        ),
+                    ),
+                    Text(
+                      jabatan,
+                      style: const TextStyle(
+                        color: Colors.grey,
+                        fontSize: 11,
                       ),
-                    ],
-                  ),
+                    ),
+                  ],
                 ),
-              ],
-            ),
+              ),
+            ],
           ),
         ),
 
-        // Icon Notifikasi
+        // ICON NOTIFIKASI
         InkWell(
           onTap: widget.onNotificationTap,
           borderRadius: BorderRadius.circular(20),
@@ -296,62 +272,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 ),
               ),
             ],
-          ),
-        ),
-        const SizedBox(width: 8),
-
-        // Tombol Logout
-        InkWell(
-          onTap: () {
-            showDialog(
-              context: context,
-              builder: (context) => AlertDialog(
-                title: const Text(
-                  'Logout',
-                  style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold),
-                ),
-                content: const Text(
-                  'Apakah Anda yakin ingin keluar?',
-                  style: TextStyle(fontSize: 12),
-                ),
-                actions: [
-                  TextButton(
-                    onPressed: () => Navigator.pop(context),
-                    child: const Text(
-                      'Batal',
-                      style: TextStyle(color: Colors.grey, fontSize: 12),
-                    ),
-                  ),
-                  ElevatedButton(
-                    onPressed: () {
-                      Navigator.pop(context);
-                      _handleLogout();
-                    },
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.redAccent,
-                      elevation: 0,
-                    ),
-                    child: const Text(
-                      'Keluar',
-                      style: TextStyle(color: Colors.white, fontSize: 12),
-                    ),
-                  ),
-                ],
-              ),
-            );
-          },
-          borderRadius: BorderRadius.circular(20),
-          child: Container(
-            padding: const EdgeInsets.all(6),
-            decoration: BoxDecoration(
-              shape: BoxShape.circle,
-              border: Border.all(color: Colors.red.shade200),
-            ),
-            child: const Icon(
-              Icons.logout_rounded,
-              size: 18,
-              color: Colors.redAccent,
-            ),
           ),
         ),
       ],

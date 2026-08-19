@@ -2,71 +2,144 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:typed_data';
 import 'package:flutter/material.dart';
-import 'package:image_picker/image_picker.dart';
 import 'package:dio/dio.dart';
 import 'package:geolocator/geolocator.dart';
-import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
-import '../api_config.dart';
 import '../services/api_service.dart';
-import '../model/jam_kerja.dart'; 
 import 'kamera_page.dart';
 import 'konfirmasi_foto_page.dart';
 
 class PresensiScreen extends StatefulWidget {
-  const PresensiScreen({super.key});
+  final VoidCallback? onNotificationTap;
+
+  const PresensiScreen({super.key, this.onNotificationTap});
 
   @override
   State<PresensiScreen> createState() => _PresensiScreenState();
 }
 
 class _PresensiScreenState extends State<PresensiScreen> {
-  final Color primaryTeal = const Color(0xFF009688);
-  final Color lightTealAccent = const Color(0xFFE0F2F1);
+  bool _isLoading = true;
+  Map<String, dynamic>? _dashboardData;
 
   late Timer _timer;
-  String _currentTime = '';
+  String _currentTime = '00:00';
 
-  // Variable State untuk menampung Model JamKerja
-  JamKerja? _jamKerja;
-
-  String _jamMasuk = 'Belum Absen';
-  String _jamKeluar = 'Belum Absen';
   bool _isSudahAbsenMasuk = false;
   bool _isSudahAbsenKeluar = false;
 
   LatLng? _officeLocation;
-
   double _radiusMeters = 0.0;
   double _maxRadiusMeters = 0.0;
   bool _isInRadius = false;
 
-  String _namaKantor = 'Memuat lokasi kantor...';
+  String _namaKantor = 'Kantor';
   String _alamatKantor = '';
 
   LatLng _currentLocation = const LatLng(-7.7279, 109.0089);
-  bool _isLoadingLocation = true;
 
   @override
   void initState() {
     super.initState();
 
     _updateTime();
-
     _timer = Timer.periodic(
       const Duration(seconds: 1),
-      (timer) => _updateTime(),
+          (timer) => _updateTime(),
     );
 
-    _loadOfficeLocation();
     _determinePosition();
-    _checkTodayAttendance();
+    _fetchPresensiData();
+  }
+
+  void _updateTime() {
+    final now = DateTime.now();
+    final hour = now.hour.toString().padLeft(2, '0');
+    final minute = now.minute.toString().padLeft(2, '0');
+
+    if (mounted) {
+      setState(() {
+        _currentTime = '$hour:$minute';
+      });
+    }
+  }
+
+  Future<void> _fetchPresensiData() async {
+    try {
+      final dio = ApiService().dio;
+
+      // 1. Fetch Today Status
+      final todayRes = await dio.get('/absensi/today');
+      if (todayRes.statusCode == 200) {
+        final resData = todayRes.data;
+        final data = resData['data'];
+        final kantor = resData['kantor'];
+
+        if (kantor != null) {
+          final lat = double.tryParse(kantor['latitude'].toString());
+          final lng = double.tryParse(kantor['longitude'].toString());
+          final rad = double.tryParse(kantor['radius_toleransi_meter'].toString());
+
+          if (lat != null && lng != null) _officeLocation = LatLng(lat, lng);
+          if (rad != null) _maxRadiusMeters = rad;
+
+          _namaKantor = kantor['nama_kantor']?.toString() ?? 'Kantor';
+          _alamatKantor = kantor['alamat']?.toString() ?? '';
+        }
+
+        if (data != null && data is Map) {
+          _isSudahAbsenMasuk = data['jam_masuk'] != null && data['jam_masuk'].toString().isNotEmpty;
+          _isSudahAbsenKeluar = data['jam_keluar'] != null && data['jam_keluar'].toString().isNotEmpty;
+        }
+      }
+
+      // 2. Fetch Dashboard Summary
+      final dashRes = await dio.get('/dashboard');
+      if (dashRes.statusCode == 200) {
+        final payload = dashRes.data;
+        _dashboardData = payload is Map && payload['data'] is Map ? payload['data'] : payload;
+      }
+
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+      }
+
+      _calculateOfficeDistance();
+    } catch (e) {
+      debugPrint('ERROR FETCHING PRESENSI: $e');
+      if (mounted) setState(() => _isLoading = false);
+    }
+  }
+
+  Future<void> _determinePosition() async {
+    bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
+    if (!serviceEnabled) return;
+
+    LocationPermission permission = await Geolocator.checkPermission();
+    if (permission == LocationPermission.denied) {
+      permission = await Geolocator.requestPermission();
+      if (permission == LocationPermission.denied) return;
+    }
+
+    try {
+      final position = await Geolocator.getCurrentPosition(
+        desiredAccuracy: LocationAccuracy.high,
+      );
+
+      if (!mounted) return;
+
+      setState(() {
+        _currentLocation = LatLng(position.latitude, position.longitude);
+      });
+
+      _calculateOfficeDistance();
+    } catch (_) {}
   }
 
   void _calculateOfficeDistance() {
-    if (_officeLocation == null || _maxRadiusMeters <= 0) {
-      return;
-    }
+    if (_officeLocation == null || _maxRadiusMeters <= 0) return;
 
     final distance = Geolocator.distanceBetween(
       _currentLocation.latitude,
@@ -81,96 +154,6 @@ class _PresensiScreenState extends State<PresensiScreen> {
       _radiusMeters = distance;
       _isInRadius = distance <= _maxRadiusMeters;
     });
-
-    debugPrint(
-      'GPS USER: ${_currentLocation.latitude}, ${_currentLocation.longitude}',
-    );
-    debugPrint(
-      'GPS KANTOR: ${_officeLocation!.latitude}, ${_officeLocation!.longitude}',
-    );
-    debugPrint(
-      'JARAK: ${distance.toStringAsFixed(2)} meter',
-    );
-    debugPrint(
-      'RADIUS: ${_maxRadiusMeters.toStringAsFixed(2)} meter',
-    );
-  }
-
-  void _updateTime() {
-    final now = DateTime.now();
-    final hour = now.hour.toString().padLeft(2, '0');
-    final minute = now.minute.toString().padLeft(2, '0');
-    final second = now.second.toString().padLeft(2, '0');
-    if (mounted) {
-      setState(() {
-        _currentTime = '$hour:$minute:$second WIB';
-      });
-    }
-  }
-
-  Future<void> _loadOfficeLocation() async {
-    try {
-      final token = await ApiService().getToken();
-      if (token == null) return;
-
-      final dio = ApiService().dio;
-
-      final response = await dio.get('/profile');
-
-      if (response.statusCode == 200) {
-        final data = response.data['data'];
-        final karyawan = data['karyawan'];
-        final kantor = karyawan?['kantor'];
-
-        if (kantor == null) {
-          throw Exception('Data kantor karyawan belum tersedia.');
-        }
-
-        final latitude = double.tryParse(
-          kantor['latitude'].toString(),
-        );
-
-        final longitude = double.tryParse(
-          kantor['longitude'].toString(),
-        );
-
-        final radius = double.tryParse(
-          kantor['radius_toleransi_meter'].toString(),
-        );
-
-        if (latitude == null || longitude == null || radius == null) {
-          throw Exception('Koordinat atau radius kantor tidak valid.');
-        }
-
-        if (!mounted) return;
-
-        setState(() {
-          _officeLocation = LatLng(
-            latitude,
-            longitude,
-          );
-
-          _maxRadiusMeters = radius;
-
-          _namaKantor =
-              kantor['nama_kantor']?.toString() ?? 'Kantor';
-
-          _alamatKantor =
-              kantor['alamat_lengkap']?.toString() ?? '';
-        });
-
-        if (!_isLoadingLocation) {
-          _calculateOfficeDistance();
-        }
-      }
-    } on DioException catch (e) {
-      debugPrint(
-        'Gagal mengambil lokasi kantor: '
-            '${e.response?.data ?? e.message}',
-      );
-    } catch (e) {
-      debugPrint('Error lokasi kantor: $e');
-    }
   }
 
   Future<bool> _submitAbsensi({
@@ -178,20 +161,9 @@ class _PresensiScreenState extends State<PresensiScreen> {
     required String fotoBase64,
   }) async {
     try {
-      final token = await ApiService().getToken();
-      if (token == null) {
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('Sesi login tidak ditemukan. Silakan login ulang.'),
-            ),
-          );
-        }
-        return false;
-      }
+      final dio = ApiService().dio;
 
       String base64String = fotoBase64;
-
       if (base64String.contains(',')) {
         base64String = base64String.split(',').last;
       }
@@ -208,214 +180,53 @@ class _PresensiScreenState extends State<PresensiScreen> {
         'tipe': tipe,
       });
 
-      final dio = ApiService().dio;
-
-      final response = await dio.post(
-        '/absensi',
-        data: formData,
-      );
-
-      if (response.statusCode == 200 || response.statusCode == 201) {
-        return true;
-      }
-
-      return false;
-
-    } on DioException catch (e) {
-
-      final message =
-          e.response?.data?['message']?.toString() ??
-              'Gagal mengirim presensi ke server.';
-
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(message)),
-        );
-      }
-
-      return false;
-
+      final response = await dio.post('/absensi', data: formData);
+      return response.statusCode == 200 || response.statusCode == 201;
     } catch (e) {
-
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Terjadi kesalahan: $e'),
-          ),
-        );
-      }
-
       return false;
     }
   }
 
-  Future<void> _checkTodayAttendance() async {
-    try {
-      final token = await ApiService().getToken();
-      if (token == null) return;
+  Future<void> _handleAbsenProcess() async {
+    final String tipe = !_isSudahAbsenMasuk ? 'masuk' : 'pulang';
 
-      final dio = ApiService().dio;
+    final resultImage = await Navigator.push<String>(
+      context,
+      MaterialPageRoute(builder: (context) => const KameraScreen()),
+    );
 
-      final response = await dio.get('/absensi/today');
+    if (resultImage == null || !mounted) return;
 
-      debugPrint('RESPON API ABSENSI: ${jsonEncode(response.data)}');
+    final isConfirmed = await Navigator.push<bool>(
+      context,
+      MaterialPageRoute(
+        builder: (context) => KonfirmasiFotoScreen(
+          imageBase64: resultImage,
+          currentLocation: _currentLocation,
+          namaKantor: _namaKantor,
+          alamatKantor: _alamatKantor,
+          jarakMeter: _radiusMeters,
+          isInRadius: _isInRadius,
+        ),
+      ),
+    );
 
-      if (response.statusCode != 200) return;
+    if (isConfirmed != true || !mounted) return;
 
-      final responseData = response.data;
+    final berhasil = await _submitAbsensi(
+      tipe: tipe,
+      fotoBase64: resultImage,
+    );
 
-      final data = responseData['data'];
-      final kantor = responseData['kantor'];
-      final jamKerjaJson = responseData['jam_kerja']; // Ambil root jam_kerja
+    if (!berhasil || !mounted) return;
 
-      if (!mounted) return;
+    await _fetchPresensiData();
 
-      setState(() {
-        // =========================
-        // 1. DATA JAM KERJA
-        // =========================
-        if (jamKerjaJson != null) {
-          _jamKerja = JamKerja.fromJson(jamKerjaJson);
-        }
+    if (!mounted) return;
 
-        // =========================
-        // 2. DATA KANTOR DARI SERVER
-        // =========================
-        if (kantor != null) {
-          final latitude = double.tryParse(
-            kantor['latitude'].toString(),
-          );
-
-          final longitude = double.tryParse(
-            kantor['longitude'].toString(),
-          );
-
-          final radius = double.tryParse(
-            kantor['radius_toleransi_meter'].toString(),
-          );
-
-          if (latitude != null && longitude != null) {
-            _officeLocation = LatLng(
-              latitude,
-              longitude,
-            );
-          }
-
-          if (radius != null) {
-            _maxRadiusMeters = radius;
-          }
-
-          _namaKantor =
-              kantor['nama_kantor']?.toString() ?? 'Kantor';
-
-          _alamatKantor =
-              kantor['alamat']?.toString() ?? '';
-        }
-
-        // =========================
-        // 3. DATA ABSENSI
-        // =========================
-        if (data != null && data is Map) {
-          final jamMasuk = data['jam_masuk'];
-
-          if (jamMasuk != null &&
-              jamMasuk.toString().isNotEmpty) {
-            _jamMasuk = jamMasuk.toString();
-            _isSudahAbsenMasuk = true;
-          }
-
-          final jamKeluar = data['jam_keluar'];
-
-          if (jamKeluar != null &&
-              jamKeluar.toString().isNotEmpty) {
-            _jamKeluar = jamKeluar.toString();
-            _isSudahAbsenKeluar = true;
-          }
-        }
-      });
-
-      _calculateOfficeDistance();
-
-    } on DioException catch (e) {
-      debugPrint(
-        'ERROR TODAY: ${e.response?.data}',
-      );
-
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(
-              e.response?.data?['message']?.toString() ??
-                  'Gagal mengambil data presensi.',
-            ),
-          ),
-        );
-      }
-
-    } catch (e) {
-      debugPrint('ERROR TODAY: $e');
-    }
-  }
-
-  Future<void> _determinePosition() async {
-    bool serviceEnabled;
-    LocationPermission permission;
-
-    serviceEnabled = await Geolocator.isLocationServiceEnabled();
-
-    if (!serviceEnabled) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Layanan GPS/Lokasi tidak aktif.'),
-          ),
-        );
-      }
-      return;
-    }
-
-    permission = await Geolocator.checkPermission();
-
-    if (permission == LocationPermission.denied) {
-      permission = await Geolocator.requestPermission();
-
-      if (permission == LocationPermission.denied) {
-        return;
-      }
-    }
-
-    if (permission == LocationPermission.deniedForever) {
-      return;
-    }
-
-    try {
-      final position = await Geolocator.getCurrentPosition(
-        desiredAccuracy: LocationAccuracy.high,
-      );
-
-      if (!mounted) return;
-
-      setState(() {
-        _currentLocation = LatLng(
-          position.latitude,
-          position.longitude,
-        );
-
-        _isLoadingLocation = false;
-      });
-
-      if (_officeLocation != null) {
-        _calculateOfficeDistance();
-      }
-    } catch (e) {
-      debugPrint('Gagal mendapatkan GPS: $e');
-
-      if (mounted) {
-        setState(() {
-          _isLoadingLocation = false;
-        });
-      }
-    }
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text('Absen $tipe berhasil disimpan.')),
+    );
   }
 
   @override
@@ -424,401 +235,465 @@ class _PresensiScreenState extends State<PresensiScreen> {
     super.dispose();
   }
 
-  Future<void> _handleAbsenMasuk() async {
-    final resultImage = await Navigator.push<String>(
-      context,
-      MaterialPageRoute(
-        builder: (context) => const KameraScreen(),
-      ),
-    );
-
-    if (resultImage == null || !mounted) return;
-
-    final isConfirmed = await Navigator.push<bool>(
-      context,
-      MaterialPageRoute(
-        builder: (context) => KonfirmasiFotoScreen(
-          imageBase64: resultImage,
-          currentLocation: _currentLocation,
-          namaKantor: _namaKantor,
-          alamatKantor: _alamatKantor,
-          jarakMeter: _radiusMeters,
-          isInRadius: _isInRadius,
-        ),
-      ),
-    );
-
-    if (isConfirmed != true || !mounted) return;
-
-    final berhasil = await _submitAbsensi(
-      tipe: 'masuk',
-      fotoBase64: resultImage,
-    );
-
-    if (!berhasil || !mounted) return;
-
-    await _checkTodayAttendance();
-
-    if (!mounted) return;
-
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('Absen masuk berhasil disimpan.'),
-      ),
-    );
-  }
-
-  Future<void> _handleAbsenKeluar() async {
-    final resultImage = await Navigator.push<String>(
-      context,
-      MaterialPageRoute(
-        builder: (context) => const KameraScreen(),
-      ),
-    );
-
-    if (resultImage == null || !mounted) return;
-
-    final isConfirmed = await Navigator.push<bool>(
-      context,
-      MaterialPageRoute(
-        builder: (context) => KonfirmasiFotoScreen(
-          imageBase64: resultImage,
-          currentLocation: _currentLocation,
-          namaKantor: _namaKantor,
-          alamatKantor: _alamatKantor,
-          jarakMeter: _radiusMeters,
-          isInRadius: _isInRadius,
-        ),
-      ),
-    );
-
-    if (isConfirmed != true || !mounted) return;
-
-    final berhasil = await _submitAbsensi(
-      tipe: 'pulang',
-      fotoBase64: resultImage,
-    );
-
-    if (!berhasil || !mounted) return;
-
-    await _checkTodayAttendance();
-
-    if (!mounted) return;
-
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('Absen pulang berhasil disimpan.'),
-      ),
-    );
-  }
-
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.white,
-      body: SingleChildScrollView(
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Padding(
-              padding: const EdgeInsets.all(20.0),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Text(
-                    'Presensi Harian',
-                    style: TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.bold,
-                      color: Color(0xFF263238),
-                    ),
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    _currentTime.isEmpty ? '08:45:12 WIB' : _currentTime,
-                    style: TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.bold,
-                      color: primaryTeal,
-                    ),
-                  ),
-                ],
-              ),
+      backgroundColor: const Color(0xFFF8FAFC),
+      body: SafeArea(
+        child: _isLoading
+            ? const Center(
+          child: CircularProgressIndicator(color: Color(0xFF009688)),
+        )
+            : RefreshIndicator(
+          onRefresh: _fetchPresensiData,
+          color: const Color(0xFF009688),
+          child: SingleChildScrollView(
+            physics: const AlwaysScrollableScrollPhysics(),
+            padding: const EdgeInsets.symmetric(
+              horizontal: 16.0,
+              vertical: 16.0,
             ),
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 20.0),
-              child: Card(
-                elevation: 2,
-                shadowColor: Colors.black12,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: Padding(
-                  padding: const EdgeInsets.all(16.0),
-                  child: Column(
-                    children: [
-                      _buildInfoRow(
-                        Icons.location_on_outlined,
-                        'Lokasi Kantor',
-                        _alamatKantor.isNotEmpty
-                            ? '$_namaKantor ($_alamatKantor)'
-                            : _namaKantor,
-                      ),
-                      const Divider(height: 24),
-                      // Memanggil getter formattedSchedule dari _jamKerja
-                      _buildInfoRow(
-                        Icons.access_time_outlined,
-                        'Jadwal Shift',
-                        _jamKerja?.formattedSchedule ?? 'Belum ada jadwal',
-                      ),
-                      const Divider(height: 24),
-                      _buildInfoRow(
-                        Icons.not_listed_location_outlined,
-                        'Radius Toleransi: ${_maxRadiusMeters.toStringAsFixed(0)} Meter',
-                      ),
-                    ],
-                  ),
-                ),
-              ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.center,
+              children: [
+                _buildSkorKehadiranCard(),
+                const SizedBox(height: 20),
+                _buildDigitalClock(),
+                const SizedBox(height: 16),
+                _buildAbsenButton(),
+                const SizedBox(height: 16),
+                _buildRadiusBadge(),
+                const SizedBox(height: 16),
+                _buildStatusHariIniCard(),
+                const SizedBox(height: 20),
+                _buildLogKeterlambatanSection(),
+              ],
             ),
-            const SizedBox(height: 20),
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 20.0),
-              child: ClipRRect(
-                borderRadius: const BorderRadius.only(
-                  topLeft: Radius.circular(12),
-                  topRight: Radius.circular(12),
-                ),
-                child: AspectRatio(
-                  aspectRatio: 2.2,
-                  child: _isLoadingLocation
-                      ? Container(
-                          color: Colors.grey[200],
-                          child: const Center(
-                            child: CircularProgressIndicator(),
-                          ),
-                        )
-                      : FlutterMap(
-                          options: MapOptions(
-                            initialCenter: _currentLocation,
-                            initialZoom: 16.0,
-                          ),
-                          children: [
-                            TileLayer(
-                              urlTemplate:
-                                  'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
-                              userAgentPackageName: 'com.presensiku.app',
-                            ),
-                            MarkerLayer(
-                              markers: [
-                                Marker(
-                                  point: _currentLocation,
-                                  width: 40,
-                                  height: 40,
-                                  child: const Icon(
-                                    Icons.location_pin,
-                                    color: Colors.blue,
-                                    size: 35,
-                                  ),
-                                ),
-                                if (_officeLocation != null)
-                                  Marker(
-                                    point: _officeLocation!,
-                                    width: 40,
-                                    height: 40,
-                                    child: const Icon(
-                                      Icons.location_on,
-                                      color: Colors.red,
-                                      size: 35,
-                                    ),
-                                  ),
-                              ],
-                            ),
-                          ],
-                        ),
-                ),
-              ),
-            ),
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 20.0),
-              child: Container(
-                width: double.infinity,
-                padding: const EdgeInsets.symmetric(vertical: 8),
-                decoration: BoxDecoration(
-                  color: _isInRadius ? const Color(0xFFE8F5E9) : const Color(0xFFFFEBEE),
-                  borderRadius: const BorderRadius.only(
-                    bottomLeft: Radius.circular(12),
-                    bottomRight: Radius.circular(12),
-                  ),
-                ),
-                child: Text(
-                  _isLoadingLocation
-                      ? 'Mendeteksi lokasi GPS...'
-                      : _isInRadius
-                          ? 'Dalam Radius Kantor (${_radiusMeters.toStringAsFixed(0)}m ≤ ${_maxRadiusMeters.toStringAsFixed(0)}m)'
-                          : 'Di Luar Radius Kantor (${_radiusMeters.toStringAsFixed(0)}m > ${_maxRadiusMeters.toStringAsFixed(0)}m)',
-                  textAlign: TextAlign.center,
-                  style: TextStyle(
-                    color: _isInRadius ? const Color(0xFF2E7D32) : const Color(0xFFC62828),
-                    fontSize: 12,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-              ),
-            ),
-            const SizedBox(height: 20),
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 20.0),
-              child: Row(
-                children: [
-                  _buildTimeStatusCard('Jam Masuk', _jamMasuk, isDone: _isSudahAbsenMasuk),
-                  const SizedBox(width: 16),
-                  _buildTimeStatusCard('Jam Pulang', _jamKeluar, isDone: _isSudahAbsenKeluar),
-                ],
-              ),
-            ),
-            const SizedBox(height: 20),
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 20.0),
-              child: SizedBox(
-                width: double.infinity,
-                height: 50,
-                child: ElevatedButton.icon(
-                  onPressed: _isSudahAbsenMasuk ? null : _handleAbsenMasuk,
-                  icon: const Icon(Icons.camera_alt_outlined),
-                  label: Text(
-                    _isSudahAbsenMasuk ? 'SUDAH ABSEN MASUK' : 'ABSEN MASUK',
-                    style: const TextStyle(
-                      fontWeight: FontWeight.bold,
-                      letterSpacing: 1.0,
-                    ),
-                  ),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: primaryTeal,
-                    elevation: 1,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(10),
-                    ),
-                  ),
-                ),
-              ),
-            ),
-            const SizedBox(height: 12),
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 20.0),
-              child: SizedBox(
-                width: double.infinity,
-                height: 50,
-                child: OutlinedButton.icon(
-                  onPressed: (_isSudahAbsenMasuk && !_isSudahAbsenKeluar)
-                      ? _handleAbsenKeluar
-                      : null,
-                  icon: Icon(
-                    Icons.camera_alt_outlined,
-                    color: (_isSudahAbsenMasuk && !_isSudahAbsenKeluar)
-                        ? primaryTeal
-                        : Colors.grey[400],
-                  ),
-                  label: Text(
-                    _isSudahAbsenKeluar ? 'SUDAH ABSEN KELUAR' : 'ABSEN KELUAR',
-                    style: TextStyle(
-                      color: (_isSudahAbsenMasuk && !_isSudahAbsenKeluar)
-                          ? primaryTeal
-                          : Colors.grey[400],
-                      fontWeight: FontWeight.bold,
-                      letterSpacing: 1.0,
-                    ),
-                  ),
-                  style: OutlinedButton.styleFrom(
-                    backgroundColor: (_isSudahAbsenMasuk && !_isSudahAbsenKeluar)
-                        ? lightTealAccent
-                        : Colors.grey[100],
-                    side: BorderSide(
-                        color: (_isSudahAbsenMasuk && !_isSudahAbsenKeluar)
-                            ? primaryTeal
-                            : Colors.grey[200]!),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(10),
-                    ),
-                  ),
-                ),
-              ),
-            ),
-            const SizedBox(height: 20),
-          ],
+          ),
         ),
       ),
     );
   }
 
-  Widget _buildInfoRow(IconData icon, String title, [String? subtitle]) {
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Icon(icon, color: primaryTeal, size: 22),
-        const SizedBox(width: 12),
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
+  // =========================================================
+  // WIDGET 1: SKOR KEHADIRAN CARD
+  // =========================================================
+  Widget _buildSkorKehadiranCard() {
+    final attn = _dashboardData?['attendance_month'] ?? {};
+    final total = attn['total_hari_kerja'] ?? 25;
+    final hadir = attn['hadir'] ?? 18;
+    final pct = total > 0 ? ((hadir / total) * 100).round() : 72;
+
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: Colors.grey.shade200),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Text(
-                title,
-                style: const TextStyle(
-                  fontSize: 13,
-                  fontWeight: FontWeight.w500,
-                  color: Color(0xFF546E7A),
+              const Text(
+                'Skor Kehadiran',
+                style: TextStyle(
+                  fontWeight: FontWeight.bold,
+                  fontSize: 12,
+                  color: Color(0xFF0F172A),
                 ),
               ),
-              if (subtitle != null) ...[
-                const SizedBox(height: 2),
-                Text(
-                  subtitle,
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFE0F2F1),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Text(
+                  '$pct%',
                   style: const TextStyle(
-                    fontSize: 13,
+                    color: Color(0xFF009688),
                     fontWeight: FontWeight.bold,
-                    color: Colors.black,
+                    fontSize: 10,
                   ),
                 ),
-              ],
+              ),
             ],
+          ),
+          const SizedBox(height: 12),
+          Row(
+            children: [
+              SizedBox(
+                width: 65,
+                height: 65,
+                child: Stack(
+                  alignment: Alignment.center,
+                  children: [
+                    CircularProgressIndicator(
+                      value: pct / 100,
+                      strokeWidth: 8,
+                      backgroundColor: Colors.grey.shade200,
+                      color: const Color(0xFF009688),
+                    ),
+                    Text(
+                      '$pct%',
+                      style: const TextStyle(
+                        fontWeight: FontWeight.bold,
+                        fontSize: 12,
+                        color: Color(0xFF0F172A),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(width: 16),
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text(
+                    'Kehadiran bulan ini',
+                    style: TextStyle(fontSize: 10, color: Colors.grey),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    '$hadir hari dari $total hari kerja',
+                    style: const TextStyle(
+                      fontWeight: FontWeight.bold,
+                      fontSize: 12,
+                      color: Color(0xFF0F172A),
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  // =========================================================
+  // WIDGET 2: JAM DIGITAL REALTIME
+  // =========================================================
+  Widget _buildDigitalClock() {
+    return Column(
+      children: [
+        Text(
+          _currentTime,
+          style: const TextStyle(
+            fontSize: 32,
+            fontWeight: FontWeight.bold,
+            color: Color(0xFF0F172A),
+            letterSpacing: 1,
+          ),
+        ),
+        const SizedBox(height: 2),
+        const Text(
+          'WIB • Hari ini',
+          style: TextStyle(
+            fontSize: 10,
+            color: Colors.grey,
+            fontWeight: FontWeight.w500,
           ),
         ),
       ],
     );
   }
 
-  Widget _buildTimeStatusCard(String title, String status, {bool isDone = false}) {
-    return Expanded(
+  // =========================================================
+  // WIDGET 3: TOMBOL LINGKARAN DINAMIS (MASUK / KELUAR)
+  // =========================================================
+  Widget _buildAbsenButton() {
+    Color btnColor;
+    String btnText;
+
+    if (!_isSudahAbsenMasuk) {
+      btnColor = const Color(0xFF009688); // Hijau / Tosca
+      btnText = 'Absen Masuk';
+    } else if (!_isSudahAbsenKeluar) {
+      btnColor = const Color(0xFFC62828); // Merah
+      btnText = 'Absen Keluar';
+    } else {
+      btnColor = Colors.grey;
+      btnText = 'Sudah Absen';
+    }
+
+    return GestureDetector(
+      onTap: (_isSudahAbsenMasuk && _isSudahAbsenKeluar) ? null : _handleAbsenProcess,
       child: Container(
-        padding: const EdgeInsets.all(16),
+        width: 170,
+        height: 170,
         decoration: BoxDecoration(
-          color: Colors.grey[50],
-          borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: Colors.grey[200]!),
+          color: btnColor,
+          shape: BoxShape.circle,
+          boxShadow: [
+            BoxShadow(
+              color: btnColor.withOpacity(0.3),
+              blurRadius: 20,
+              spreadRadius: 4,
+              offset: const Offset(0, 8),
+            ),
+          ],
         ),
         child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Text(
-              title,
-              style: const TextStyle(
-                fontSize: 13,
-                fontWeight: FontWeight.w500,
-                color: Color(0xFF78909C),
-              ),
+            const Icon(
+              Icons.login_rounded,
+              color: Colors.white,
+              size: 28,
             ),
             const SizedBox(height: 6),
             Text(
-              status,
-              style: TextStyle(
-                fontSize: 14,
+              btnText,
+              style: const TextStyle(
+                color: Colors.white,
                 fontWeight: FontWeight.bold,
-                color: isDone ? const Color(0xFF2E7D32) : const Color(0xFFD32F2F),
+                fontSize: 15,
               ),
             ),
           ],
         ),
       ),
+    );
+  }
+
+  // =========================================================
+  // WIDGET 4: RADIUS KANTOR BADGE
+  // =========================================================
+  Widget _buildRadiusBadge() {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+      decoration: BoxDecoration(
+        color: _isInRadius ? const Color(0xFFE0F2F1) : const Color(0xFFFFEBEE),
+        borderRadius: BorderRadius.circular(20),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(
+            Icons.location_on,
+            size: 14,
+            color: _isInRadius ? const Color(0xFF009688) : Colors.red,
+          ),
+          const SizedBox(width: 4),
+          Text(
+            _isInRadius ? 'Dalam radius kantor' : 'Di luar radius kantor',
+            style: TextStyle(
+              color: _isInRadius ? const Color(0xFF009688) : Colors.red,
+              fontSize: 10,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // =========================================================
+  // WIDGET 5: CARD STATUS HARI INI
+  // =========================================================
+  Widget _buildStatusHariIniCard() {
+    String statusText = 'Belum Absen Masuk';
+    String descText = 'Silakan tekan tombol Absen Masuk untuk memulai shift hari ini.';
+    Color badgeBg = const Color(0xFFFFF3E0);
+    Color badgeTxt = const Color(0xFFE65100);
+
+    if (_isSudahAbsenMasuk && !_isSudahAbsenKeluar) {
+      statusText = 'Sudah Absen Masuk';
+      descText = 'Jangan lupa tekan tombol Absen Keluar saat selesai jam kerja.';
+      badgeBg = const Color(0xFFE8F5E9);
+      badgeTxt = const Color(0xFF2E7D32);
+    } else if (_isSudahAbsenMasuk && _isSudahAbsenKeluar) {
+      statusText = 'Presensi Selesai';
+      descText = 'Terima kasih atas kerja keras Anda hari ini!';
+      badgeBg = const Color(0xFFE0F2F1);
+      badgeTxt = const Color(0xFF00695C);
+    }
+
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: Colors.grey.shade200),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              const Text(
+                'Status hari ini',
+                style: TextStyle(
+                  fontWeight: FontWeight.bold,
+                  fontSize: 12,
+                  color: Color(0xFF0F172A),
+                ),
+              ),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                decoration: BoxDecoration(
+                  color: badgeBg,
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: Row(
+                  children: [
+                    Container(
+                      width: 5,
+                      height: 5,
+                      decoration: BoxDecoration(
+                        color: badgeTxt,
+                        shape: BoxShape.circle,
+                      ),
+                    ),
+                    const SizedBox(width: 4),
+                    Text(
+                      statusText,
+                      style: TextStyle(
+                        color: badgeTxt,
+                        fontWeight: FontWeight.bold,
+                        fontSize: 9,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          Text(
+            descText,
+            style: const TextStyle(
+              fontSize: 10,
+              color: Colors.grey,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // =========================================================
+  // WIDGET 6: LOG KETERLAMBATAN & PULANG AWAL
+  // =========================================================
+  Widget _buildLogKeterlambatanSection() {
+    final List<dynamic> logs = _dashboardData?['late_logs'] ?? [
+      {
+        'date': '04 Agt',
+        'type': 'Terlambat',
+        'diff': '+15m',
+        'atasan': 'Pending',
+        'hrd': 'Waiting',
+      },
+      {
+        'date': '01 Agt',
+        'type': 'Pulang Awal',
+        'diff': '-30m',
+        'atasan': 'OK',
+        'hrd': 'Pending',
+      },
+    ];
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Align(
+          alignment: Alignment.centerLeft,
+          child: Text(
+            'Log Keterlambatan & Pulang Awal',
+            style: TextStyle(
+              fontWeight: FontWeight.bold,
+              fontSize: 12,
+              color: Color(0xFF0F172A),
+            ),
+          ),
+        ),
+        const SizedBox(height: 10),
+        Column(
+          children: logs.map((log) {
+            final isLate = (log['type'] ?? '').toString().contains('Terlambat');
+
+            return Container(
+              margin: const EdgeInsets.only(bottom: 8),
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: Colors.grey.shade200),
+              ),
+              child: Column(
+                children: [
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Row(
+                        children: [
+                          Text(
+                            log['date'] ?? '-',
+                            style: const TextStyle(
+                              fontWeight: FontWeight.bold,
+                              fontSize: 12,
+                              color: Color(0xFF0F172A),
+                            ),
+                          ),
+                          const SizedBox(width: 6),
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 6, vertical: 2),
+                            decoration: BoxDecoration(
+                              color: isLate
+                                  ? const Color(0xFFFFEDD5)
+                                  : const Color(0xFFFEE2E2),
+                              borderRadius: BorderRadius.circular(4),
+                            ),
+                            child: Text(
+                              log['type'] ?? '-',
+                              style: TextStyle(
+                                color: isLate
+                                    ? const Color(0xFFC2410C)
+                                    : const Color(0xFFDC2626),
+                                fontWeight: FontWeight.bold,
+                                fontSize: 8,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                      Text(
+                        log['diff'] ?? '-',
+                        style: TextStyle(
+                          color: isLate
+                              ? const Color(0xFFC2410C)
+                              : const Color(0xFFDC2626),
+                          fontWeight: FontWeight.bold,
+                          fontSize: 12,
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 8),
+                  Row(
+                    children: [
+                      Text(
+                        'Persetujuan:   Atasan: ${log['atasan'] ?? '-'}   HRD: ${log['hrd'] ?? '-'}',
+                        style: const TextStyle(
+                          fontSize: 10,
+                          color: Colors.grey,
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            );
+          }).toList(),
+        ),
+      ],
     );
   }
 }
