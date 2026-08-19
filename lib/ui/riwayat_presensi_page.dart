@@ -2,7 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:dio/dio.dart';
 import '../api_config.dart';
 import '../services/api_service.dart';
-import 'detail_log_page.dart'; // Diperbarui: Tambahkan import ini
+import '../model/absensi.dart';
+import 'detail_log_page.dart';
 
 class RiwayatPresensiScreen extends StatefulWidget {
   const RiwayatPresensiScreen({super.key});
@@ -24,43 +25,63 @@ class _RiwayatPresensiScreenState extends State<RiwayatPresensiScreen> {
     _fetchHistoryData();
   }
 
+  String _formatTime(DateTime? date) {
+    if (date == null) return '-';
+    final hour = date.hour.toString().padLeft(2, '0');
+    final minute = date.minute.toString().padLeft(2, '0');
+    return '$hour:$minute';
+  }
+
+  String _calculateDuration(DateTime? inTime, DateTime? outTime) {
+    if (inTime == null || outTime == null) return '-';
+    final diff = outTime.difference(inTime);
+    if (diff.isNegative) return '-';
+    final hours = diff.inHours;
+    final minutes = diff.inMinutes.remainder(60);
+    return '${hours}j ${minutes}m';
+  }
+
   Future<void> _fetchHistoryData() async {
     try {
       final token = await ApiService().getToken();
       if (token == null) return;
 
       final dio = ApiService().dio;
-
       final response = await dio.get('/history');
 
       if (response.statusCode == 200) {
-        final List<dynamic> data = response.data['data'];
+        final List<dynamic> data = response.data['data'] ?? [];
         final parsedData = data.map((item) {
-          final isCuti = item['tipe'] != 'Kehadiran';
+          final absensiObj = Absensi.fromJson(item);
+
+          final isCuti = item['tipe'] != null && item['tipe'] != 'Kehadiran';
           Color bgColor = const Color(0xFFE8F5E9);
           Color txtColor = const Color(0xFF2E7D32);
-          String statusTxt = item['status_kehadiran'] ?? '-';
+          String statusTxt = absensiObj.status ?? 'hadir';
           String statusCat = isCuti ? 'Izin' : statusTxt;
 
-          if (statusTxt == 'terlambat' || statusTxt == 'rejected') {
+          if (statusTxt.toLowerCase() == 'terlambat' || statusTxt.toLowerCase() == 'rejected') {
             bgColor = const Color(0xFFFFF3E0);
             txtColor = const Color(0xFFE65100);
-          } else if (statusTxt == 'pending') {
+          } else if (statusTxt.toLowerCase() == 'pending') {
             bgColor = const Color(0xFFFFF9C4);
             txtColor = const Color(0xFFF57F17);
           }
 
           return {
+            'absensi_model': absensiObj, // Simpan model asli
             'month': 'Agustus 2026',
-            'date': item['tanggal'] ?? '-',
+            'date': absensiObj.tanggal != null 
+                ? '${absensiObj.tanggal!.day.toString().padLeft(2, '0')}-${absensiObj.tanggal!.month.toString().padLeft(2, '0')}-${absensiObj.tanggal!.year}'
+                : (item['tanggal'] ?? '-'),
             'statusText': statusTxt.toUpperCase(),
             'statusCategory': statusCat,
             'statusBgColor': bgColor,
             'statusTextColor': txtColor,
-            'checkIn': item['jam_masuk'] ?? '-',
-            'checkOut': item['jam_pulang'] ?? '-',
-            'duration': '-',
-            'hasDetailButton': true, // Diperbarui: Aktifkan tombol detail log
+            'checkIn': _formatTime(absensiObj.jamMasuk),
+            'checkOut': _formatTime(absensiObj.jamPulang),
+            'duration': _calculateDuration(absensiObj.jamMasuk, absensiObj.jamPulang),
+            'hasDetailButton': true,
           };
         }).toList();
 
@@ -102,7 +123,6 @@ class _RiwayatPresensiScreenState extends State<RiwayatPresensiScreen> {
             padding: const EdgeInsets.symmetric(horizontal: 14.0, vertical: 12.0),
             child: Column(
               children: [
-                // Dropdown Filter
                 Row(
                   children: [
                     Expanded(
@@ -123,8 +143,6 @@ class _RiwayatPresensiScreenState extends State<RiwayatPresensiScreen> {
                   ],
                 ),
                 const SizedBox(height: 14),
-
-                // List Cards Riwayat
                 _buildHistoryList(),
               ],
             ),
@@ -196,6 +214,7 @@ class _RiwayatPresensiScreenState extends State<RiwayatPresensiScreen> {
         return Padding(
           padding: const EdgeInsets.only(bottom: 10.0),
           child: _buildAttendanceCard(
+            absensi: item['absensi_model'] as Absensi,
             date: item['date'],
             statusText: item['statusText'],
             statusBgColor: item['statusBgColor'],
@@ -211,6 +230,7 @@ class _RiwayatPresensiScreenState extends State<RiwayatPresensiScreen> {
   }
 
   Widget _buildAttendanceCard({
+    required Absensi absensi,
     required String date,
     required String statusText,
     required Color statusBgColor,
@@ -268,7 +288,6 @@ class _RiwayatPresensiScreenState extends State<RiwayatPresensiScreen> {
             ],
           ),
 
-          // Tombol Detail Log
           if (hasDetailButton) ...[
             const SizedBox(height: 10),
             SizedBox(
@@ -276,11 +295,10 @@ class _RiwayatPresensiScreenState extends State<RiwayatPresensiScreen> {
               height: 32,
               child: ElevatedButton.icon(
                 onPressed: () {
-                  // Diperbarui: Pindah ke halaman DetailLogPresensiScreen
                   Navigator.push(
                     context,
                     MaterialPageRoute(
-                      builder: (context) => const DetailLogScreen(),
+                      builder: (context) => DetailLogScreen(absensi: absensi),
                     ),
                   );
                 },

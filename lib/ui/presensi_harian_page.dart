@@ -9,6 +9,7 @@ import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
 import '../api_config.dart';
 import '../services/api_service.dart';
+import '../model/jam_kerja.dart'; 
 import 'kamera_page.dart';
 import 'konfirmasi_foto_page.dart';
 
@@ -25,6 +26,9 @@ class _PresensiScreenState extends State<PresensiScreen> {
 
   late Timer _timer;
   String _currentTime = '';
+
+  // Variable State untuk menampung Model JamKerja
+  JamKerja? _jamKerja;
 
   String _jamMasuk = 'Belum Absen';
   String _jamKeluar = 'Belum Absen';
@@ -51,7 +55,7 @@ class _PresensiScreenState extends State<PresensiScreen> {
 
     _timer = Timer.periodic(
       const Duration(seconds: 1),
-          (timer) => _updateTime(),
+      (timer) => _updateTime(),
     );
 
     _loadOfficeLocation();
@@ -108,7 +112,7 @@ class _PresensiScreenState extends State<PresensiScreen> {
     try {
       final token = await ApiService().getToken();
       if (token == null) return;
-      
+
       final dio = ApiService().dio;
 
       final response = await dio.get('/profile');
@@ -155,8 +159,6 @@ class _PresensiScreenState extends State<PresensiScreen> {
               kantor['alamat_lengkap']?.toString() ?? '';
         });
 
-        // Kalau GPS user sudah berhasil didapat,
-        // hitung jarak ke kantor
         if (!_isLoadingLocation) {
           _calculateOfficeDistance();
         }
@@ -188,7 +190,6 @@ class _PresensiScreenState extends State<PresensiScreen> {
         return false;
       }
 
-      // Bersihkan prefix base64 jika ada
       String base64String = fotoBase64;
 
       if (base64String.contains(',')) {
@@ -257,21 +258,29 @@ class _PresensiScreenState extends State<PresensiScreen> {
 
       final response = await dio.get('/absensi/today');
 
+      debugPrint('RESPON API ABSENSI: ${jsonEncode(response.data)}');
+
       if (response.statusCode != 200) return;
 
       final responseData = response.data;
 
       final data = responseData['data'];
       final kantor = responseData['kantor'];
+      final jamKerjaJson = responseData['jam_kerja']; // Ambil root jam_kerja
 
       if (!mounted) return;
 
       setState(() {
+        // =========================
+        // 1. DATA JAM KERJA
+        // =========================
+        if (jamKerjaJson != null) {
+          _jamKerja = JamKerja.fromJson(jamKerjaJson);
+        }
 
         // =========================
-        // DATA KANTOR DARI SERVER
+        // 2. DATA KANTOR DARI SERVER
         // =========================
-
         if (kantor != null) {
           final latitude = double.tryParse(
             kantor['latitude'].toString(),
@@ -304,16 +313,13 @@ class _PresensiScreenState extends State<PresensiScreen> {
         }
 
         // =========================
-        // DATA ABSENSI
+        // 3. DATA ABSENSI
         // =========================
-
         if (data != null && data is Map) {
-
           final jamMasuk = data['jam_masuk'];
 
           if (jamMasuk != null &&
               jamMasuk.toString().isNotEmpty) {
-
             _jamMasuk = jamMasuk.toString();
             _isSudahAbsenMasuk = true;
           }
@@ -322,19 +328,15 @@ class _PresensiScreenState extends State<PresensiScreen> {
 
           if (jamKeluar != null &&
               jamKeluar.toString().isNotEmpty) {
-
             _jamKeluar = jamKeluar.toString();
             _isSudahAbsenKeluar = true;
           }
         }
       });
 
-      // Setelah lokasi kantor didapat,
-      // hitung ulang jaraknya
       _calculateOfficeDistance();
 
     } on DioException catch (e) {
-
       debugPrint(
         'ERROR TODAY: ${e.response?.data}',
       );
@@ -351,7 +353,6 @@ class _PresensiScreenState extends State<PresensiScreen> {
       }
 
     } catch (e) {
-
       debugPrint('ERROR TODAY: $e');
     }
   }
@@ -403,7 +404,6 @@ class _PresensiScreenState extends State<PresensiScreen> {
         _isLoadingLocation = false;
       });
 
-      // Kantor sudah berhasil diambil?
       if (_officeLocation != null) {
         _calculateOfficeDistance();
       }
@@ -450,7 +450,6 @@ class _PresensiScreenState extends State<PresensiScreen> {
 
     if (isConfirmed != true || !mounted) return;
 
-    // KIRIM KE BACKEND
     final berhasil = await _submitAbsensi(
       tipe: 'masuk',
       fotoBase64: resultImage,
@@ -458,7 +457,6 @@ class _PresensiScreenState extends State<PresensiScreen> {
 
     if (!berhasil || !mounted) return;
 
-    // Ambil ulang data dari server
     await _checkTodayAttendance();
 
     if (!mounted) return;
@@ -567,15 +565,16 @@ class _PresensiScreenState extends State<PresensiScreen> {
                             : _namaKantor,
                       ),
                       const Divider(height: 24),
+                      // Memanggil getter formattedSchedule dari _jamKerja
                       _buildInfoRow(
                         Icons.access_time_outlined,
                         'Jadwal Shift',
-                        '08:00 - 17:00 WIB (8 Jam)',
+                        _jamKerja?.formattedSchedule ?? 'Belum ada jadwal',
                       ),
                       const Divider(height: 24),
-                  _buildInfoRow(
-                    Icons.not_listed_location_outlined,
-                    'Radius Toleransi: ${_maxRadiusMeters.toStringAsFixed(0)} Meter',
+                      _buildInfoRow(
+                        Icons.not_listed_location_outlined,
+                        'Radius Toleransi: ${_maxRadiusMeters.toStringAsFixed(0)} Meter',
                       ),
                     ],
                   ),
@@ -594,54 +593,52 @@ class _PresensiScreenState extends State<PresensiScreen> {
                   aspectRatio: 2.2,
                   child: _isLoadingLocation
                       ? Container(
-                    color: Colors.grey[200],
-                    child: const Center(
-                      child: CircularProgressIndicator(),
-                    ),
-                  )
-                      : FlutterMap(
-                    options: MapOptions(
-                      initialCenter: _currentLocation,
-                      initialZoom: 16.0,
-                    ),
-                    children: [
-                      TileLayer(
-                        urlTemplate:
-                        'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
-                        userAgentPackageName: 'com.presensiku.app',
-                      ),
-
-                      MarkerLayer(
-                        markers: [
-                          Marker(
-                            point: _currentLocation,
-                            width: 40,
-                            height: 40,
-                            child: const Icon(
-                              Icons.location_pin,
-                              color: Colors.blue,
-                              size: 35,
-                            ),
+                          color: Colors.grey[200],
+                          child: const Center(
+                            child: CircularProgressIndicator(),
                           ),
-
-                          if (_officeLocation != null)
-                            Marker(
-                              point: _officeLocation!,
-                              width: 40,
-                              height: 40,
-                              child: const Icon(
-                                Icons.location_on,
-                                color: Colors.red,
-                                size: 35,
-                              ),
+                        )
+                      : FlutterMap(
+                          options: MapOptions(
+                            initialCenter: _currentLocation,
+                            initialZoom: 16.0,
+                          ),
+                          children: [
+                            TileLayer(
+                              urlTemplate:
+                                  'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+                              userAgentPackageName: 'com.presensiku.app',
                             ),
-                        ],
-                      ),
-                    ],
-                  ),
-                  ),
+                            MarkerLayer(
+                              markers: [
+                                Marker(
+                                  point: _currentLocation,
+                                  width: 40,
+                                  height: 40,
+                                  child: const Icon(
+                                    Icons.location_pin,
+                                    color: Colors.blue,
+                                    size: 35,
+                                  ),
+                                ),
+                                if (_officeLocation != null)
+                                  Marker(
+                                    point: _officeLocation!,
+                                    width: 40,
+                                    height: 40,
+                                    child: const Icon(
+                                      Icons.location_on,
+                                      color: Colors.red,
+                                      size: 35,
+                                    ),
+                                  ),
+                              ],
+                            ),
+                          ],
+                        ),
                 ),
               ),
+            ),
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 20.0),
               child: Container(
@@ -658,8 +655,8 @@ class _PresensiScreenState extends State<PresensiScreen> {
                   _isLoadingLocation
                       ? 'Mendeteksi lokasi GPS...'
                       : _isInRadius
-                      ? 'Dalam Radius Kantor (${_radiusMeters.toStringAsFixed(0)}m ≤ ${_maxRadiusMeters.toStringAsFixed(0)}m)'
-                      : 'Di Luar Radius Kantor (${_radiusMeters.toStringAsFixed(0)}m > ${_maxRadiusMeters.toStringAsFixed(0)}m)',
+                          ? 'Dalam Radius Kantor (${_radiusMeters.toStringAsFixed(0)}m ≤ ${_maxRadiusMeters.toStringAsFixed(0)}m)'
+                          : 'Di Luar Radius Kantor (${_radiusMeters.toStringAsFixed(0)}m > ${_maxRadiusMeters.toStringAsFixed(0)}m)',
                   textAlign: TextAlign.center,
                   style: TextStyle(
                     color: _isInRadius ? const Color(0xFF2E7D32) : const Color(0xFFC62828),

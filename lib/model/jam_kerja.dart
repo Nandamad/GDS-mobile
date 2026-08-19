@@ -64,4 +64,35 @@ class JamKerja {
       'shift': shift?.toJson(),
     };
   }
+
+  String get formattedSchedule {
+    if (jamMasuk == null || jamPulang == null) {
+      return 'Belum diatur';
+    }
+
+    // Ambil jam:menit (potong detik jika dari DB berformat 08:00:00)
+    final start = jamMasuk!.length >= 5 ? jamMasuk!.substring(0, 5) : jamMasuk!;
+    final end = jamPulang!.length >= 5
+        ? jamPulang!.substring(0, 5)
+        : jamPulang!;
+
+    // Hitung total jam kerja
+    int durasiJam = 0;
+    try {
+      final startParts = start.split(':').map(int.parse).toList();
+      final endParts = end.split(':').map(int.parse).toList();
+
+      final startTime = DateTime(2026, 1, 1, startParts[0], startParts[1]);
+      var endTime = DateTime(2026, 1, 1, endParts[0], endParts[1]);
+
+      // Handle jika shift melewati tengah malam (misal 22:00 - 06:00)
+      if (endTime.isBefore(startTime)) {
+        endTime = endTime.add(const Duration(days: 1));
+      }
+
+      durasiJam = endTime.difference(startTime).inHours;
+    } catch (_) {}
+
+    return '$start - $end WIB ($durasiJam Jam)';
+  }
 }

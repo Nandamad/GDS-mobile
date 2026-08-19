@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../model/absensi.dart';
+import '../api_config.dart';
 
 class DetailLogScreen extends StatefulWidget {
   final Absensi? absensi;
@@ -13,7 +14,20 @@ class DetailLogScreen extends StatefulWidget {
 class _DetailLogScreenState extends State<DetailLogScreen> {
   int _selectedNavIndex = 3; // Index Riwayat (Active)
 
-  // Format Jam Sederhana dari DateTime
+  // Helper membuat URL penuh foto dari storage Laravel
+  String _getPhotoUrl(String? path) {
+    if (path == null || path.isEmpty) {
+      return 'https://i.pravatar.cc/300?img=11';
+    }
+    if (path.startsWith('http://') || path.startsWith('https://')) {
+      return path;
+    }
+    // Gabungkan dengan ApiConfig.baseUrl
+    final base = ApiConfig.baseUrl.replaceAll('/api', '');
+    final cleanPath = path.startsWith('/') ? path : '/$path';
+    return '$base$cleanPath';
+  }
+
   String _formatTime(DateTime? date) {
     if (date == null) return '--:-- WIB';
     final hour = date.hour.toString().padLeft(2, '0');
@@ -21,7 +35,6 @@ class _DetailLogScreenState extends State<DetailLogScreen> {
     return '$hour:$minute WIB';
   }
 
-  // Format Tanggal
   String _formatDate(DateTime? date) {
     if (date == null) return 'Rabu, 05 Agustus 2026';
     final List<String> hari = [
@@ -50,7 +63,15 @@ class _DetailLogScreenState extends State<DetailLogScreen> {
     return '${hari[date.weekday - 1]}, ${date.day.toString().padLeft(2, '0')} ${bulan[date.month - 1]} ${date.year}';
   }
 
-  // Pop up pratinjau foto
+  String _calculateDuration(DateTime? inTime, DateTime? outTime) {
+    if (inTime == null || outTime == null) return 'Belum Selesai';
+    final diff = outTime.difference(inTime);
+    if (diff.isNegative) return '0 Jam 0 Menit';
+    final hours = diff.inHours;
+    final minutes = diff.inMinutes.remainder(60);
+    return '$hours Jam $minutes Menit';
+  }
+
   void _showPhotoPreview(String title, String imageUrl) {
     showDialog(
       context: context,
@@ -122,35 +143,29 @@ class _DetailLogScreenState extends State<DetailLogScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Header Info Card
             _buildHeaderCard(),
             const SizedBox(height: 14),
 
-            // Section Rekap Waktu
             _buildSectionTitle('REKAP WAKTU'),
             const SizedBox(height: 6),
             _buildRekapWaktuRow(),
             const SizedBox(height: 14),
 
-            // Section Total Durasi Kerja
             _buildSectionTitle('TOTAL DURASI KERJA'),
             const SizedBox(height: 6),
             _buildDurasiBanner(),
             const SizedBox(height: 14),
 
-            // Section Detail Lokasi GPS
             _buildSectionTitle('DETAIL LOKASI GPS'),
             const SizedBox(height: 6),
             _buildGpsCard(),
             const SizedBox(height: 14),
 
-            // Section Foto Verifikasi
             _buildSectionTitle('FOTO VERIFIKASI'),
             const SizedBox(height: 6),
             _buildFotoVerifikasiRow(),
             const SizedBox(height: 14),
 
-            // Section Catatan
             _buildSectionTitle('CATATAN'),
             const SizedBox(height: 6),
             _buildCatatanCard(),
@@ -175,7 +190,7 @@ class _DetailLogScreenState extends State<DetailLogScreen> {
   }
 
   Widget _buildHeaderCard() {
-    final status = widget.absensi?.status ?? 'Terlambat';
+    final status = widget.absensi?.status ?? 'hadir';
     final isLate = status.toLowerCase().contains('terlambat');
 
     return Container(
@@ -230,7 +245,7 @@ class _DetailLogScreenState extends State<DetailLogScreen> {
                 style: TextStyle(fontSize: 10, color: Colors.grey),
               ),
               Text(
-                '08:00 - 17:00 WIB (8 Jam)',
+                'Shift Pagi / Reguler',
                 style: TextStyle(
                   fontSize: 10,
                   fontWeight: FontWeight.w600,
@@ -249,11 +264,11 @@ class _DetailLogScreenState extends State<DetailLogScreen> {
               ),
               const SizedBox(width: 6),
               const Text(
-                'Lokasi: ',
+                'GPS Masuk: ',
                 style: TextStyle(fontSize: 10, color: Colors.grey),
               ),
               Text(
-                widget.absensi?.lokasiMasuk ?? 'Kantor Pusat',
+                widget.absensi?.lokasiMasuk ?? 'Lokasi tidak terekam',
                 style: const TextStyle(
                   fontSize: 10,
                   fontWeight: FontWeight.w600,
@@ -268,9 +283,10 @@ class _DetailLogScreenState extends State<DetailLogScreen> {
   }
 
   Widget _buildRekapWaktuRow() {
+    final isLate = (widget.absensi?.status ?? '').toLowerCase().contains('terlambat');
+
     return Row(
       children: [
-        // Card Jam Masuk
         Expanded(
           child: Container(
             padding: const EdgeInsets.all(10),
@@ -301,19 +317,16 @@ class _DetailLogScreenState extends State<DetailLogScreen> {
                 ),
                 const SizedBox(height: 4),
                 Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 4,
-                    vertical: 2,
-                  ),
+                  padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
                   decoration: BoxDecoration(
-                    color: const Color(0xFFFEF2F2),
+                    color: isLate ? const Color(0xFFFEF2F2) : const Color(0xFFDCFCE7),
                     borderRadius: BorderRadius.circular(4),
                   ),
-                  child: const Text(
-                    'Masuk Tepat',
+                  child: Text(
+                    isLate ? 'Terlambat' : 'Tepat Waktu',
                     style: TextStyle(
                       fontSize: 8,
-                      color: Color(0xFFDC2626),
+                      color: isLate ? const Color(0xFFDC2626) : const Color(0xFF15803D),
                       fontWeight: FontWeight.bold,
                     ),
                   ),
@@ -323,8 +336,6 @@ class _DetailLogScreenState extends State<DetailLogScreen> {
           ),
         ),
         const SizedBox(width: 8),
-
-        // Card Jam Pulang
         Expanded(
           child: Container(
             padding: const EdgeInsets.all(10),
@@ -355,10 +366,7 @@ class _DetailLogScreenState extends State<DetailLogScreen> {
                 ),
                 const SizedBox(height: 4),
                 Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 4,
-                    vertical: 2,
-                  ),
+                  padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
                   decoration: BoxDecoration(
                     color: const Color(0xFFDCFCE7),
                     borderRadius: BorderRadius.circular(4),
@@ -390,9 +398,9 @@ class _DetailLogScreenState extends State<DetailLogScreen> {
       ),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: const [
+        children: [
           Row(
-            children: [
+            children: const [
               Icon(Icons.badge_outlined, size: 16, color: Color(0xFF0F766E)),
               SizedBox(width: 6),
               Text(
@@ -406,8 +414,8 @@ class _DetailLogScreenState extends State<DetailLogScreen> {
             ],
           ),
           Text(
-            '8 Jam 50 Menit',
-            style: TextStyle(
+            _calculateDuration(widget.absensi?.jamMasuk, widget.absensi?.jamPulang),
+            style: const TextStyle(
               fontSize: 12,
               fontWeight: FontWeight.bold,
               color: Color(0xFF0F766E),
@@ -430,17 +438,13 @@ class _DetailLogScreenState extends State<DetailLogScreen> {
         children: [
           _buildGpsItem(
             title: 'Lokasi Masuk',
-            address:
-                widget.absensi?.lokasiMasuk ??
-                'Kantor Pusat (Jl. Sudirman No. 123)',
+            address: widget.absensi?.lokasiMasuk ?? 'Lokasi GPS Tidak Ada',
             distance: 'Jarak: Dalam Radius Safe-Zone',
           ),
           const Divider(height: 20),
           _buildGpsItem(
             title: 'Lokasi Pulang',
-            address:
-                widget.absensi?.lokasiPulang ??
-                'Kantor Pusat (Jl. Sudirman No. 123)',
+            address: widget.absensi?.lokasiPulang ?? 'Lokasi GPS Tidak Ada',
             distance: 'Jarak: Dalam Radius Safe-Zone',
           ),
         ],
@@ -498,23 +502,21 @@ class _DetailLogScreenState extends State<DetailLogScreen> {
   }
 
   Widget _buildFotoVerifikasiRow() {
-    final fotoMasuk =
-        widget.absensi?.fotoMasuk ?? 'https://i.pravatar.cc/300?img=11';
-    final fotoPulang =
-        widget.absensi?.fotoPulang ?? 'https://i.pravatar.cc/300?img=12';
+    final fotoMasukUrl = _getPhotoUrl(widget.absensi?.fotoMasuk);
+    final fotoPulangUrl = _getPhotoUrl(widget.absensi?.fotoPulang);
 
     return Row(
       children: [
         _buildFotoCard(
           'Foto Masuk',
           _formatTime(widget.absensi?.jamMasuk),
-          fotoMasuk,
+          fotoMasukUrl,
         ),
         const SizedBox(width: 8),
         _buildFotoCard(
           'Foto Pulang',
           _formatTime(widget.absensi?.jamPulang),
-          fotoPulang,
+          fotoPulangUrl,
         ),
       ],
     );
