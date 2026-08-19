@@ -1,3 +1,22 @@
+int? _safeInt(dynamic value) {
+  if (value == null) return null;
+  if (value is int) return value;
+  if (value is num) return value.toInt();
+  return int.tryParse(value.toString());
+}
+
+bool _safeBool(dynamic value) {
+  if (value is bool) return value;
+  if (value == null) return true;
+  final text = value.toString().toLowerCase();
+  return text == '1' || text == 'true' || text == 'yes';
+}
+
+String? _safeString(dynamic value) {
+  if (value == null) return null;
+  return value.toString();
+}
+
 class Divisi {
   final int? id;
   final int? tenantId;
@@ -17,17 +36,15 @@ class Divisi {
 
   factory Divisi.fromJson(Map<String, dynamic> json) {
     return Divisi(
-      id: json['id'] as int?,
-      tenantId: json['tenant_id'] as int?,
-      namaDivisi: json['nama_divisi'] as String?,
-      statusAktif: json['status_aktif'] is bool
-          ? json['status_aktif']
-          : (json['status_aktif'] == 1 || json['status_aktif'] == '1'),
+      id: _safeInt(json['id']),
+      tenantId: _safeInt(json['tenant_id']),
+      namaDivisi: _safeString(json['nama_divisi']),
+      statusAktif: _safeBool(json['status_aktif']),
       createdAt: json['created_at'] != null
-          ? DateTime.tryParse(json['created_at'])
+          ? DateTime.tryParse(json['created_at'].toString())
           : null,
       updatedAt: json['updated_at'] != null
-          ? DateTime.tryParse(json['updated_at'])
+          ? DateTime.tryParse(json['updated_at'].toString())
           : null,
     );
   }

@@ -1,8 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:dio/dio.dart';
-import '../api_config.dart'; // Pastikan path ApiConfig sudah benar
 import '../services/api_service.dart';
-import 'login_page.dart'; // Import layar login untuk aksi logout
+import 'login_page.dart';
 
 class ProfilPage extends StatefulWidget {
   const ProfilPage({super.key});
@@ -40,23 +39,53 @@ class _ProfilPageState extends State<ProfilPage> {
       final response = await dio.get('/profile');
 
       if (response.statusCode == 200) {
+        final dynamic payload = response.data;
+
+        Map<String, dynamic>? extractProfile(dynamic data) {
+          if (data is! Map) return null;
+
+          final map = Map<String, dynamic>.from(data);
+
+          for (final key in ['data', 'user', 'profile']) {
+            final value = map[key];
+            if (value is Map) {
+              return Map<String, dynamic>.from(value);
+            }
+          }
+
+          return map;
+        }
+
+        final profile = extractProfile(payload);
+
+        if (profile != null) {
+          setState(() {
+            _userProfile = profile;
+            _isLoading = false;
+          });
+          return;
+        }
+
         setState(() {
-          _userProfile = response.data['data'] ?? response.data;
+          _errorMessage = 'Format data profil tidak valid.';
           _isLoading = false;
         });
       }
     } on DioException catch (e) {
+      debugPrint(
+        'PROFILE ERROR: ${e.response?.statusCode} ${e.response?.data}',
+      );
+
       setState(() {
-        _errorMessage =
-        e.response?.data is Map
+        _errorMessage = e.response?.data is Map
             ? e.response?.data['message']?.toString() ??
-            'Gagal memuat data profil.'
-            : e.response?.data?.toString() ??
-            'Gagal memuat data profil.';
+                  'Gagal memuat data profil.'
+            : e.response?.data?.toString() ?? 'Gagal memuat data profil.';
         _isLoading = false;
       });
     }
   }
+
   // Aksi Logout
   Future<void> _logout() async {
     await ApiService().clearToken();
@@ -65,7 +94,7 @@ class _ProfilPageState extends State<ProfilPage> {
       Navigator.pushAndRemoveUntil(
         context,
         MaterialPageRoute(builder: (context) => const LoginScreen()),
-            (route) => false,
+        (route) => false,
       );
     }
   }
@@ -91,30 +120,35 @@ class _ProfilPageState extends State<ProfilPage> {
           : _errorMessage.isNotEmpty
           ? Center(child: Text(_errorMessage))
           : SingleChildScrollView(
-        padding: const EdgeInsets.all(16.0),
-        child: Column(
-          children: [
-            _buildProfileHeaderCard(),
-            const SizedBox(height: 16),
-            _buildInformasiPekerjaanCard(),
-            const SizedBox(height: 16),
-            _buildPengaturanAkunCard(),
-            const SizedBox(height: 20),
-            _buildTombolKeluar(),
-            const SizedBox(height: 16),
-          ],
-        ),
-      ),
+              padding: const EdgeInsets.all(16.0),
+              child: Column(
+                children: [
+                  _buildProfileHeaderCard(),
+                  const SizedBox(height: 16),
+                  _buildInformasiPekerjaanCard(),
+                  const SizedBox(height: 16),
+                  _buildPengaturanAkunCard(),
+                  const SizedBox(height: 20),
+                  _buildTombolKeluar(),
+                  const SizedBox(height: 16),
+                ],
+              ),
+            ),
     );
   }
 
   // Card Header Profil (Dinamis)
   Widget _buildProfileHeaderCard() {
     final karyawan = _userProfile?['karyawan'] ?? _userProfile;
-    final nama = karyawan?['nama_lengkap'] ?? _userProfile?['name'] ?? 'Karyawan';
-    final jabatan = karyawan?['jabatan']?['nama_jabatan'] ?? 'Staff';
-    final divisi = karyawan?['divisi']?['nama_divisi'] ?? 'Umum';
-    final foto = karyawan?['foto_url'] ?? 'https://i.pravatar.cc/300?img=11';
+
+    final nama =
+        (karyawan?['nama_lengkap'] ?? _userProfile?['name'] ?? 'Karyawan')
+            .toString();
+
+    final jabatan = (karyawan?['jabatan'] ?? 'Staff').toString();
+    final divisi = (karyawan?['divisi'] ?? 'Umum').toString();
+    final foto = (karyawan?['foto_url'] ?? 'https://i.pravatar.cc/300?img=11')
+        .toString();
 
     return Container(
       width: double.infinity,
@@ -149,10 +183,7 @@ class _ProfilPageState extends State<ProfilPage> {
           const SizedBox(height: 4),
           Text(
             jabatan,
-            style: const TextStyle(
-              fontSize: 12,
-              color: Color(0xFF64748B),
-            ),
+            style: const TextStyle(fontSize: 12, color: Color(0xFF64748B)),
           ),
           const SizedBox(height: 8),
           Container(
@@ -179,6 +210,12 @@ class _ProfilPageState extends State<ProfilPage> {
   Widget _buildInformasiPekerjaanCard() {
     final karyawan = _userProfile?['karyawan'] ?? _userProfile;
 
+    final email = (_userProfile?['email'] ?? karyawan?['email'] ?? '-')
+        .toString();
+    final noHp = (karyawan?['no_hp'] ?? '-').toString();
+    final tanggalMulai = (karyawan?['tanggal_mulai_kerja'] ?? '-').toString();
+    final nip = (karyawan?['nip'] ?? '-').toString();
+
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
@@ -198,13 +235,13 @@ class _ProfilPageState extends State<ProfilPage> {
             ),
           ),
           const SizedBox(height: 12),
-          _buildInfoRow('NIP', karyawan?['nip'] ?? '-'),
+          _buildInfoRow('NIP', nip),
           const Divider(height: 20),
-          _buildInfoRow('Email', _userProfile?['email'] ?? karyawan?['email'] ?? '-'),
+          _buildInfoRow('Email', email),
           const Divider(height: 20),
-          _buildInfoRow('No. HP', karyawan?['no_hp'] ?? '-'),
+          _buildInfoRow('No. HP', noHp),
           const Divider(height: 20),
-          _buildInfoRow('Tanggal Bergabung', karyawan?['tanggal_mulai_kerja'] ?? '-'),
+          _buildInfoRow('Tanggal Bergabung', tanggalMulai),
         ],
       ),
     );

@@ -1,6 +1,7 @@
 import 'package:dio/dio.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import '../api_config.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 class ApiService {
   static final ApiService _instance = ApiService._internal();
@@ -36,6 +37,10 @@ class ApiService {
         return handler.next(e);
       },
     ));
+  }
+
+  Future<void> clearToken() async {
+    await storage.delete(key: 'auth_token');
   }
 
   Future<void> saveToken(String token) async {

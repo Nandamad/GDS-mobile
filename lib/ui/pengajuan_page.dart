@@ -6,6 +6,72 @@ import '../ui/ajukan_cuti_page.dart';
 import '../ui/ajukan_lembur_page.dart';
 import '../ui/detail_workflow_page.dart';
 
+List<Map<String, dynamic>> normalizeSubmissionList(
+  dynamic body, {
+  String? preferredKey,
+}) {
+  if (body == null) {
+    return const [];
+  }
+
+  if (body is List) {
+    return body
+        .whereType<Map>()
+        .map((item) => Map<String, dynamic>.from(item))
+        .toList();
+  }
+
+  if (body is Map) {
+    final itemMap = Map<String, dynamic>.from(body);
+    final candidateKeys = [
+      preferredKey,
+      'data',
+      'items',
+      'result',
+      'records',
+      'pengajuan',
+      'cuti',
+      'lembur',
+    ];
+
+    for (final key in candidateKeys) {
+      if (key == null || !itemMap.containsKey(key)) {
+        continue;
+      }
+
+      final value = itemMap[key];
+      if (value is List) {
+        return value
+            .whereType<Map>()
+            .map((item) => Map<String, dynamic>.from(item))
+            .toList();
+      }
+
+      if (value is Map) {
+        final nested = value['data'] ?? value['items'] ?? value['records'];
+        if (nested is List) {
+          return nested
+              .whereType<Map>()
+              .map((item) => Map<String, dynamic>.from(item))
+              .toList();
+        }
+      }
+    }
+
+    final directSubmission =
+        itemMap.containsKey('id') ||
+        itemMap.containsKey('tanggal') ||
+        itemMap.containsKey('tanggal_mulai') ||
+        itemMap.containsKey('jam_mulai_lembur');
+
+    if (directSubmission) {
+      return [itemMap];
+    }
+  }
+
+  return const [];
+}
+
 class PengajuanScreen extends StatefulWidget {
   const PengajuanScreen({super.key});
 
@@ -65,27 +131,24 @@ class _PengajuanScreenState extends State<PengajuanScreen> {
         final response = await dio.get('/cuti');
 
         final body = response.data;
+        final entries = normalizeSubmissionList(body, preferredKey: 'data');
 
-        if (body is Map && body['data'] is List) {
-          for (final item in body['data']) {
-            if (item is Map) {
-              final raw = Map<String, dynamic>.from(item);
+        for (final item in entries) {
+          final raw = Map<String, dynamic>.from(item);
 
-              result.add({
-                'id': raw['id'],
-                'type': 'Cuti/Izin',
-                'rawData': raw,
-                'title': _getCutiTitle(raw),
-                'badgeText': _getJenisCuti(raw),
-                'badgeBgColor': const Color(0xFFE0F2FE),
-                'badgeTextColor': const Color(0xFF0284C7),
-                'statusText': _getCutiStatus(raw),
-                'dateRange': _getCutiDateRange(raw),
-                'submittedDate': 'Diajukan: ${_formatDate(raw['created_at'])}',
-                'sortDate': _parseDate(raw['created_at']),
-              });
-            }
-          }
+          result.add({
+            'id': raw['id'],
+            'type': 'Cuti/Izin',
+            'rawData': raw,
+            'title': _getCutiTitle(raw),
+            'badgeText': _getJenisCuti(raw),
+            'badgeBgColor': const Color(0xFFE0F2FE),
+            'badgeTextColor': const Color(0xFF0284C7),
+            'statusText': _getCutiStatus(raw),
+            'dateRange': _getCutiDateRange(raw),
+            'submittedDate': 'Diajukan: ${_formatDate(raw['created_at'])}',
+            'sortDate': _parseDate(raw['created_at']),
+          });
         }
       } on DioException catch (e) {
         debugPrint('GET /cuti ERROR: ${e.response?.data}');
@@ -99,27 +162,24 @@ class _PengajuanScreenState extends State<PengajuanScreen> {
         final response = await dio.get('/lembur');
 
         final body = response.data;
+        final entries = normalizeSubmissionList(body, preferredKey: 'data');
 
-        if (body is Map && body['data'] is List) {
-          for (final item in body['data']) {
-            if (item is Map) {
-              final raw = Map<String, dynamic>.from(item);
+        for (final item in entries) {
+          final raw = Map<String, dynamic>.from(item);
 
-              result.add({
-                'id': raw['id'],
-                'type': 'Lembur',
-                'rawData': raw,
-                'title': _getLemburTitle(raw),
-                'badgeText': 'Lembur',
-                'badgeBgColor': const Color(0xFFFEF3C7),
-                'badgeTextColor': const Color(0xFFD97706),
-                'statusText': _getLemburStatus(raw),
-                'dateRange': _getLemburDateRange(raw),
-                'submittedDate': 'Diajukan: ${_formatDate(raw['created_at'])}',
-                'sortDate': _parseDate(raw['created_at']),
-              });
-            }
-          }
+          result.add({
+            'id': raw['id'],
+            'type': 'Lembur',
+            'rawData': raw,
+            'title': _getLemburTitle(raw),
+            'badgeText': 'Lembur',
+            'badgeBgColor': const Color(0xFFFEF3C7),
+            'badgeTextColor': const Color(0xFFD97706),
+            'statusText': _getLemburStatus(raw),
+            'dateRange': _getLemburDateRange(raw),
+            'submittedDate': 'Diajukan: ${_formatDate(raw['created_at'])}',
+            'sortDate': _parseDate(raw['created_at']),
+          });
         }
       } on DioException catch (e) {
         debugPrint('GET /lembur ERROR: ${e.response?.data}');

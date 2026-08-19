@@ -1,3 +1,22 @@
+int? _safeInt(dynamic value) {
+  if (value == null) return null;
+  if (value is int) return value;
+  if (value is num) return value.toInt();
+  return int.tryParse(value.toString());
+}
+
+bool _safeBool(dynamic value) {
+  if (value is bool) return value;
+  if (value == null) return true;
+  final text = value.toString().toLowerCase();
+  return text == '1' || text == 'true' || text == 'yes';
+}
+
+String? _safeString(dynamic value) {
+  if (value == null) return null;
+  return value.toString();
+}
+
 class Jabatan {
   final int? id;
   final int? tenantId;
@@ -12,29 +31,23 @@ class Jabatan {
     this.tenantId,
     this.namaJabatan,
     this.levelTingkat,
-    this.statusAktif = true, // Default true jika null dari JSON
+    this.statusAktif = true,
     this.createdAt,
     this.updatedAt,
   });
 
-  // Method untuk mengubah data JSON (Map) menjadi Object Jabatan
   factory Jabatan.fromJson(Map<String, dynamic> json) {
     return Jabatan(
-      id: json['id'] as int?,
-      tenantId: json['tenant_id'] as int?,
-      namaJabatan: json['nama_jabatan'] as String?,
-      levelTingkat: json['level_tingkat'] as int?,
-      
-      // Handling tinyint(1) atau boolean dari MySQL/Laravel
-      statusAktif: json['status_aktif'] is bool
-          ? json['status_aktif']
-          : (json['status_aktif'] == 1 || json['status_aktif'] == '1'),
-          
+      id: _safeInt(json['id']),
+      tenantId: _safeInt(json['tenant_id']),
+      namaJabatan: _safeString(json['nama_jabatan']),
+      levelTingkat: _safeInt(json['level_tingkat']),
+      statusAktif: _safeBool(json['status_aktif']),
       createdAt: json['created_at'] != null
-          ? DateTime.tryParse(json['created_at'])
+          ? DateTime.tryParse(json['created_at'].toString())
           : null,
       updatedAt: json['updated_at'] != null
-          ? DateTime.tryParse(json['updated_at'])
+          ? DateTime.tryParse(json['updated_at'].toString())
           : null,
     );
   }

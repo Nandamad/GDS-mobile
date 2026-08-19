@@ -30,33 +30,38 @@ class Kantor {
   });
 
   factory Kantor.fromJson(Map<String, dynamic> json) {
+    final id = json['id'];
+    final tenantId = json['tenant_id'];
+    final namaKantor = json['nama_kantor'];
+    final alamat = json['alamat'];
+
     return Kantor(
-      id: json['id'] as int?,
-      tenantId: json['tenant_id'] as int?,
-      namaKantor: json['nama_kantor'] as String?,
-      alamat: json['alamat'] as String?,
+      id: id is int ? id : int.tryParse(id.toString()),
+      tenantId: tenantId is int ? tenantId : int.tryParse(tenantId.toString()),
+      namaKantor: namaKantor is String ? namaKantor : namaKantor?.toString(),
+      alamat: alamat is String ? alamat : alamat?.toString(),
       latitude: json['latitude'] != null
           ? double.tryParse(json['latitude'].toString())
           : null,
       longitude: json['longitude'] != null
           ? double.tryParse(json['longitude'].toString())
           : null,
-      radiusMeter: json['radius_toleransi_meter'] != null 
+      radiusMeter: json['radius_toleransi_meter'] != null
           ? int.tryParse(json['radius_toleransi_meter'].toString())
           : null,
       statusAktif: json['status_aktif'] is bool
           ? json['status_aktif']
           : (json['status_aktif'] == 1 || json['status_aktif'] == '1'),
       createdAt: json['created_at'] != null
-          ? DateTime.tryParse(json['created_at'])
+          ? DateTime.tryParse(json['created_at'].toString())
           : null,
       updatedAt: json['updated_at'] != null
-          ? DateTime.tryParse(json['updated_at'])
+          ? DateTime.tryParse(json['updated_at'].toString())
           : null,
       karyawans: json['karyawans'] != null
           ? (json['karyawans'] as List)
-              .map((e) => Karyawan.fromJson(e))
-              .toList()
+                .map((e) => Karyawan.fromJson(e))
+                .toList()
           : null,
     );
   }

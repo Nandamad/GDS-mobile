@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:dio/dio.dart';
-import '../api_config.dart';
 import '../services/api_service.dart';
 import 'main_navigation_page.dart';
 
@@ -38,25 +37,56 @@ class _LoginScreenState extends State<LoginScreen> {
     try {
       final dio = ApiService().dio;
 
-      // Kirim kedua key (nip dan email) jika backend menerima salah satunya, 
-      // atau sesuaikan key utama yang dipakai di API Laravel kamu:
-      final response = await dio.post('/login', data: {
-        'username': input,
-        'email': input,
-        'nip': input,
-        'password': password,
-      });
+      final response = await dio.post(
+        '/login',
+        data: {
+          'username': input,
+          'email': input,
+          'nip': input,
+          'password': password,
+        },
+      );
 
       if (response.statusCode == 200) {
-        final token = response.data['access_token'] ?? response.data['token'];
-        if (token != null) {
+        final dynamic payload = response.data;
+
+        String? extractToken(dynamic data) {
+          if (data is! Map) return null;
+
+          final map = Map<String, dynamic>.from(data);
+
+          for (final key in ['access_token', 'token', 'authorization']) {
+            final value = map[key];
+            if (value is String && value.trim().isNotEmpty) {
+              return value.trim();
+            }
+          }
+
+          for (final key in ['data', 'user', 'auth']) {
+            final nested = map[key];
+            if (nested is Map) {
+              final nestedToken = extractToken(nested);
+              if (nestedToken != null) return nestedToken;
+            }
+          }
+
+          return null;
+        }
+
+        final token = extractToken(payload);
+
+        if (token != null && token.isNotEmpty) {
           await ApiService().saveToken(token);
+        } else {
+          debugPrint('LOGIN TOKEN TIDAK DITEMUKAN: $payload');
         }
 
         if (mounted) {
           Navigator.pushReplacement(
             context,
-            MaterialPageRoute(builder: (context) => const MainNavigationScreen()),
+            MaterialPageRoute(
+              builder: (context) => const MainNavigationScreen(),
+            ),
           );
         }
       }
@@ -75,13 +105,10 @@ class _LoginScreenState extends State<LoginScreen> {
           errorMsg = 'Error server: ${e.response!.statusCode}';
         }
       }
-      
+
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(errorMsg),
-            backgroundColor: Colors.redAccent,
-          ),
+          SnackBar(content: Text(errorMsg), backgroundColor: Colors.redAccent),
         );
       }
     } finally {
@@ -155,10 +182,7 @@ class _LoginScreenState extends State<LoginScreen> {
                       const SizedBox(height: 4),
                       const Text(
                         'Masukkan kredensial Anda untuk melanjutkan',
-                        style: TextStyle(
-                          fontSize: 11,
-                          color: Colors.grey,
-                        ),
+                        style: TextStyle(fontSize: 11, color: Colors.grey),
                       ),
                       const SizedBox(height: 24),
 
@@ -173,14 +197,27 @@ class _LoginScreenState extends State<LoginScreen> {
                       const SizedBox(height: 6),
                       TextField(
                         controller: _nipController,
-                        style: const TextStyle(fontSize: 12, color: Color(0xFF0F172A)),
+                        style: const TextStyle(
+                          fontSize: 12,
+                          color: Color(0xFF0F172A),
+                        ),
                         decoration: InputDecoration(
                           hintText: 'Contoh: 199403101...',
-                          hintStyle: TextStyle(fontSize: 12, color: Colors.grey.shade400),
-                          prefixIcon: Icon(Icons.person_outline_rounded, size: 18, color: Colors.grey.shade400),
+                          hintStyle: TextStyle(
+                            fontSize: 12,
+                            color: Colors.grey.shade400,
+                          ),
+                          prefixIcon: Icon(
+                            Icons.person_outline_rounded,
+                            size: 18,
+                            color: Colors.grey.shade400,
+                          ),
                           filled: true,
                           fillColor: const Color(0xFFF8FAFC),
-                          contentPadding: const EdgeInsets.symmetric(vertical: 12, horizontal: 12),
+                          contentPadding: const EdgeInsets.symmetric(
+                            vertical: 12,
+                            horizontal: 12,
+                          ),
                           border: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(20),
                             borderSide: BorderSide(color: Colors.grey.shade200),
@@ -191,7 +228,9 @@ class _LoginScreenState extends State<LoginScreen> {
                           ),
                           focusedBorder: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(20),
-                            borderSide: const BorderSide(color: Color(0xFF009688)),
+                            borderSide: const BorderSide(
+                              color: Color(0xFF009688),
+                            ),
                           ),
                         ),
                       ),
@@ -209,14 +248,26 @@ class _LoginScreenState extends State<LoginScreen> {
                       TextField(
                         controller: _passwordController,
                         obscureText: _obscurePassword,
-                        style: const TextStyle(fontSize: 12, color: Color(0xFF0F172A)),
+                        style: const TextStyle(
+                          fontSize: 12,
+                          color: Color(0xFF0F172A),
+                        ),
                         decoration: InputDecoration(
                           hintText: '••••••••••••',
-                          hintStyle: TextStyle(fontSize: 12, color: Colors.grey.shade400),
-                          prefixIcon: Icon(Icons.lock_outline_rounded, size: 18, color: Colors.grey.shade400),
+                          hintStyle: TextStyle(
+                            fontSize: 12,
+                            color: Colors.grey.shade400,
+                          ),
+                          prefixIcon: Icon(
+                            Icons.lock_outline_rounded,
+                            size: 18,
+                            color: Colors.grey.shade400,
+                          ),
                           suffixIcon: IconButton(
                             icon: Icon(
-                              _obscurePassword ? Icons.visibility_off_outlined : Icons.visibility_outlined,
+                              _obscurePassword
+                                  ? Icons.visibility_off_outlined
+                                  : Icons.visibility_outlined,
                               size: 18,
                               color: Colors.grey.shade400,
                             ),
@@ -228,7 +279,10 @@ class _LoginScreenState extends State<LoginScreen> {
                           ),
                           filled: true,
                           fillColor: const Color(0xFFF8FAFC),
-                          contentPadding: const EdgeInsets.symmetric(vertical: 12, horizontal: 12),
+                          contentPadding: const EdgeInsets.symmetric(
+                            vertical: 12,
+                            horizontal: 12,
+                          ),
                           border: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(20),
                             borderSide: BorderSide(color: Colors.grey.shade200),
@@ -239,7 +293,9 @@ class _LoginScreenState extends State<LoginScreen> {
                           ),
                           focusedBorder: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(20),
-                            borderSide: const BorderSide(color: Color(0xFF009688)),
+                            borderSide: const BorderSide(
+                              color: Color(0xFF009688),
+                            ),
                           ),
                         ),
                       ),
@@ -251,7 +307,9 @@ class _LoginScreenState extends State<LoginScreen> {
                           onPressed: () {
                             ScaffoldMessenger.of(context).showSnackBar(
                               const SnackBar(
-                                content: Text('Silakan hubungi admin HRD untuk reset password.'),
+                                content: Text(
+                                  'Silakan hubungi admin HRD untuk reset password.',
+                                ),
                               ),
                             );
                           },
@@ -311,10 +369,7 @@ class _LoginScreenState extends State<LoginScreen> {
                 padding: EdgeInsets.only(bottom: 12.0),
                 child: Text(
                   'v1.0.0',
-                  style: TextStyle(
-                    fontSize: 10,
-                    color: Colors.grey,
-                  ),
+                  style: TextStyle(fontSize: 10, color: Colors.grey),
                 ),
               ),
             ],

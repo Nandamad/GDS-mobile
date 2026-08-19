@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:dio/dio.dart';
-import '../api_config.dart';
 import '../services/api_service.dart';
 import 'kinerja_presensi_page.dart';
 import 'login_page.dart';
@@ -18,6 +17,7 @@ class DashboardScreen extends StatefulWidget {
 class _DashboardScreenState extends State<DashboardScreen> {
   bool _isLoading = true;
   Map<String, dynamic>? _dashboardData;
+  String _errorMessage = '';
 
   @override
   void initState() {
@@ -28,35 +28,66 @@ class _DashboardScreenState extends State<DashboardScreen> {
   Future<void> _fetchDashboardData() async {
     try {
       final token = await ApiService().getToken();
-      if (token == null) return;
-
-      final dio = ApiService().dio;
-
-      final response = await dio.get('/dashboard');
-      if (response.statusCode == 200 && response.data['data'] != null) {
+      if (token == null) {
+        if (!mounted) return;
         setState(() {
-          _dashboardData = response.data['data'];
+          _errorMessage = 'Sesi login tidak ditemukan.';
           _isLoading = false;
         });
         return;
       }
-    } catch (_) {}
 
-    if (mounted) {
+      final dio = ApiService().dio;
+      final response = await dio.get('/dashboard');
+
+      if (response.statusCode == 200) {
+        final payload = response.data;
+        final data = payload is Map && payload['data'] is Map
+            ? Map<String, dynamic>.from(payload['data'])
+            : payload is Map
+            ? Map<String, dynamic>.from(payload)
+            : null;
+
+        if (data == null) {
+          throw Exception('Format data dashboard tidak valid');
+        }
+
+        if (!mounted) return;
+
+        setState(() {
+          _dashboardData = data;
+          _errorMessage = '';
+          _isLoading = false;
+        });
+        return;
+      }
+
+      throw DioException(
+        requestOptions: RequestOptions(path: '/dashboard'),
+        response: response,
+        error: 'Dashboard request failed',
+      );
+    } on DioException catch (e) {
+      debugPrint(
+        'DASHBOARD ERROR: ${e.response?.statusCode} ${e.response?.data}',
+      );
+
+      if (!mounted) return;
+
       setState(() {
-        _dashboardData = {
-          'user': {'nama': 'Budi', 'jabatan': 'Senior Developer - IT'},
-          'summary': {'sisa_cuti': 8, 'status_kesehatan': 'Baik'},
-          'attendance_month': {
-            'hadir': 18,
-            'terlambat': 3,
-            'izin': 2,
-            'cuti': 2,
-            'sakit': 0,
-            'alpha': 0,
-            'total_hari_kerja': 25,
-          },
-        };
+        _errorMessage = e.response?.data is Map
+            ? e.response?.data['message']?.toString() ??
+                  'Gagal memuat dashboard.'
+            : 'Gagal memuat dashboard.';
+        _isLoading = false;
+      });
+    } catch (e) {
+      debugPrint('DASHBOARD ERROR: $e');
+
+      if (!mounted) return;
+
+      setState(() {
+        _errorMessage = 'Format data dashboard tidak valid.';
         _isLoading = false;
       });
     }
@@ -82,6 +113,20 @@ class _DashboardScreenState extends State<DashboardScreen> {
         child: _isLoading
             ? const Center(
                 child: CircularProgressIndicator(color: Color(0xFF009688)),
+              )
+            : _errorMessage.isNotEmpty
+            ? Center(
+                child: Padding(
+                  padding: const EdgeInsets.all(20),
+                  child: Text(
+                    _errorMessage,
+                    textAlign: TextAlign.center,
+                    style: const TextStyle(
+                      color: Color(0xFF475569),
+                      fontSize: 12,
+                    ),
+                  ),
+                ),
               )
             : SingleChildScrollView(
                 padding: const EdgeInsets.symmetric(
@@ -136,8 +181,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
   Widget _buildHeader() {
     final user = _dashboardData?['user'] ?? {};
-    final nama = user['nama'] ?? 'Budi';
-    final jabatan = user['jabatan'] ?? 'Senior Developer - IT';
+    final nama = (user['nama'] ?? user['name'] ?? 'Budi').toString();
+    final jabatan = (user['jabatan'] ?? user['role'] ?? 'Senior Developer - IT')
+        .toString();
 
     return Row(
       children: [
@@ -148,7 +194,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
               Navigator.push(
                 context,
                 MaterialPageRoute(
-                  builder: (context) => const ProfilPage(), // Ganti dengan nama Class halaman profil kamu
+                  builder: (context) =>
+                      const ProfilPage(), // Ganti dengan nama Class halaman profil kamu
                 ),
               );
             },
@@ -175,7 +222,10 @@ class _DashboardScreenState extends State<DashboardScreen> {
                       ),
                       Text(
                         jabatan,
-                        style: const TextStyle(color: Colors.grey, fontSize: 11),
+                        style: const TextStyle(
+                          color: Colors.grey,
+                          fontSize: 11,
+                        ),
                       ),
                     ],
                   ),
