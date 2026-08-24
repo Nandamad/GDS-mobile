@@ -11,7 +11,8 @@ class RiwayatPresensiScreen extends StatefulWidget {
 }
 
 class _RiwayatPresensiScreenState extends State<RiwayatPresensiScreen> {
-  String _selectedMonth = 'Agustus 2026';
+  final DateTime _now = DateTime.now();
+  late DateTime _selectedPeriod;
   String _selectedStatus = 'Semua Status';
 
   bool _isLoading = true;
@@ -20,8 +21,30 @@ class _RiwayatPresensiScreenState extends State<RiwayatPresensiScreen> {
   @override
   void initState() {
     super.initState();
+    _selectedPeriod = DateTime(_now.year, _now.month);
     _fetchHistoryData();
   }
+
+  static const _monthNames = [
+    'Januari',
+    'Februari',
+    'Maret',
+    'April',
+    'Mei',
+    'Juni',
+    'Juli',
+    'Agustus',
+    'September',
+    'Oktober',
+    'November',
+    'Desember',
+  ];
+
+  String _formatMonth(DateTime date) =>
+      '${_monthNames[date.month - 1]} ${date.year}';
+
+  List<DateTime> get _periodOptions =>
+      List.generate(12, (index) => DateTime(_now.year, _now.month - index));
 
   String _formatTime(DateTime? date) {
     if (date == null) return '-';
@@ -45,7 +68,13 @@ class _RiwayatPresensiScreenState extends State<RiwayatPresensiScreen> {
       if (token == null) return;
 
       final dio = ApiService().dio;
-      final response = await dio.get('/history');
+      final response = await dio.get(
+        '/history',
+        queryParameters: {
+          'month': _selectedPeriod.month,
+          'year': _selectedPeriod.year,
+        },
+      );
 
       if (response.statusCode == 200) {
         final List<dynamic> data = response.data['data'] ?? [];
@@ -53,7 +82,9 @@ class _RiwayatPresensiScreenState extends State<RiwayatPresensiScreen> {
           final absensiObj = Absensi.fromJson(item);
 
           final isCuti = item['tipe'] != null && item['tipe'] != 'Kehadiran';
-          final rawStatus = (absensiObj.status ?? item['status'] ?? 'hadir').toString().toLowerCase();
+          final rawStatus = (absensiObj.status ?? item['status'] ?? 'hadir')
+              .toString()
+              .toLowerCase();
 
           Color bgColor = const Color(0xFFE8F5E9);
           Color txtColor = const Color(0xFF2E7D32);
@@ -65,7 +96,8 @@ class _RiwayatPresensiScreenState extends State<RiwayatPresensiScreen> {
             statusTxt = 'IZIN / CUTI';
             bgColor = const Color(0xFFE0F2F1);
             txtColor = const Color(0xFF00695C);
-          } else if (rawStatus.contains('terlambat') || rawStatus.contains('late')) {
+          } else if (rawStatus.contains('terlambat') ||
+              rawStatus.contains('late')) {
             statusCat = 'Terlambat';
             statusTxt = 'TERLAMBAT';
             bgColor = const Color(0xFFFFF3E0);
@@ -79,7 +111,9 @@ class _RiwayatPresensiScreenState extends State<RiwayatPresensiScreen> {
 
           return {
             'absensi_model': absensiObj,
-            'month': 'Agustus 2026',
+            'month': absensiObj.tanggal == null
+                ? _formatMonth(_selectedPeriod)
+                : _formatMonth(absensiObj.tanggal!),
             'date': absensiObj.tanggal != null
                 ? '${absensiObj.tanggal!.day.toString().padLeft(2, '0')}-${absensiObj.tanggal!.month.toString().padLeft(2, '0')}-${absensiObj.tanggal!.year}'
                 : (item['tanggal'] ?? '-'),
@@ -89,7 +123,10 @@ class _RiwayatPresensiScreenState extends State<RiwayatPresensiScreen> {
             'statusTextColor': txtColor,
             'checkIn': _formatTime(absensiObj.jamMasuk),
             'checkOut': _formatTime(absensiObj.jamPulang),
-            'duration': _calculateDuration(absensiObj.jamMasuk, absensiObj.jamPulang),
+            'duration': _calculateDuration(
+              absensiObj.jamMasuk,
+              absensiObj.jamPulang,
+            ),
             'hasDetailButton': true,
           };
         }).toList();
@@ -127,35 +164,56 @@ class _RiwayatPresensiScreenState extends State<RiwayatPresensiScreen> {
         ),
       ),
       body: _isLoading
-          ? const Center(child: CircularProgressIndicator(color: Color(0xFF009688)))
+          ? const Center(
+              child: CircularProgressIndicator(color: Color(0xFF009688)),
+            )
           : SingleChildScrollView(
-        padding: const EdgeInsets.symmetric(horizontal: 14.0, vertical: 12.0),
-        child: Column(
-          children: [
-            Row(
-              children: [
-                Expanded(
-                  child: _buildDropdown(
-                    value: _selectedMonth,
-                    items: ['Agustus 2026', 'Juli 2026', 'Juni 2026'],
-                    onChanged: (val) => setState(() => _selectedMonth = val!),
+              padding: const EdgeInsets.symmetric(
+                horizontal: 14.0,
+                vertical: 12.0,
+              ),
+              child: Column(
+                children: [
+                  Row(
+                    children: [
+                      Expanded(
+                        child: _buildDropdown(
+                          value: _formatMonth(_selectedPeriod),
+                          items: _periodOptions.map(_formatMonth).toList(),
+                          onChanged: (val) async {
+                            final index = _periodOptions
+                                .map(_formatMonth)
+                                .toList()
+                                .indexOf(val!);
+                            if (index < 0) return;
+                            setState(
+                              () => _selectedPeriod = _periodOptions[index],
+                            );
+                            await _fetchHistoryData();
+                          },
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: _buildDropdown(
+                          value: _selectedStatus,
+                          items: [
+                            'Semua Status',
+                            'On Time',
+                            'Terlambat',
+                            'Izin',
+                          ],
+                          onChanged: (val) =>
+                              setState(() => _selectedStatus = val!),
+                        ),
+                      ),
+                    ],
                   ),
-                ),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: _buildDropdown(
-                    value: _selectedStatus,
-                    items: ['Semua Status', 'On Time', 'Terlambat', 'Izin'],
-                    onChanged: (val) => setState(() => _selectedStatus = val!),
-                  ),
-                ),
-              ],
+                  const SizedBox(height: 14),
+                  _buildHistoryList(),
+                ],
+              ),
             ),
-            const SizedBox(height: 14),
-            _buildHistoryList(),
-          ],
-        ),
-      ),
     );
   }
 
@@ -175,7 +233,11 @@ class _RiwayatPresensiScreenState extends State<RiwayatPresensiScreen> {
         child: DropdownButton<String>(
           value: value,
           isExpanded: true,
-          icon: const Icon(Icons.keyboard_arrow_down, color: Colors.grey, size: 18),
+          icon: const Icon(
+            Icons.keyboard_arrow_down,
+            color: Colors.grey,
+            size: 18,
+          ),
           style: const TextStyle(
             color: Color(0xFF0F172A),
             fontSize: 11,
@@ -183,10 +245,7 @@ class _RiwayatPresensiScreenState extends State<RiwayatPresensiScreen> {
           ),
           onChanged: onChanged,
           items: items.map((String item) {
-            return DropdownMenuItem<String>(
-              value: item,
-              child: Text(item),
-            );
+            return DropdownMenuItem<String>(value: item, child: Text(item));
           }).toList(),
         ),
       ),
@@ -195,8 +254,9 @@ class _RiwayatPresensiScreenState extends State<RiwayatPresensiScreen> {
 
   Widget _buildHistoryList() {
     final filteredData = _allHistoryData.where((item) {
-      final matchesMonth = item['month'] == _selectedMonth;
-      final matchesStatus = _selectedStatus == 'Semua Status' ||
+      final matchesMonth = item['month'] == _formatMonth(_selectedPeriod);
+      final matchesStatus =
+          _selectedStatus == 'Semua Status' ||
           item['statusCategory'] == _selectedStatus;
       return matchesMonth && matchesStatus;
     }).toList();
@@ -207,7 +267,11 @@ class _RiwayatPresensiScreenState extends State<RiwayatPresensiScreen> {
         alignment: Alignment.center,
         child: const Column(
           children: [
-            Icon(Icons.history_toggle_off_rounded, size: 40, color: Colors.grey),
+            Icon(
+              Icons.history_toggle_off_rounded,
+              size: 40,
+              color: Colors.grey,
+            ),
             SizedBox(height: 8),
             Text(
               'Tidak ada data riwayat presensi',
@@ -334,13 +398,7 @@ class _RiwayatPresensiScreenState extends State<RiwayatPresensiScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(
-          label,
-          style: const TextStyle(
-            color: Colors.grey,
-            fontSize: 9,
-          ),
-        ),
+        Text(label, style: const TextStyle(color: Colors.grey, fontSize: 9)),
         const SizedBox(height: 2),
         Text(
           time,

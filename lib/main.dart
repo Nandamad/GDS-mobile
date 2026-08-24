@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
+import 'services/api_service.dart';
 import 'ui/login_page.dart';
 
 Future<void> main() async {
@@ -16,10 +17,12 @@ class MyApp extends StatelessWidget {
     return MaterialApp(
       title: 'PresensiKu',
       debugShowCheckedModeBanner: false,
+      navigatorKey: navigatorKey,
       theme: ThemeData(
         fontFamily: 'Sans-Serif',
         scaffoldBackgroundColor: const Color(0xFFF8FAFC),
       ),
+      routes: {'/login': (context) => const LoginScreen()},
       home: const LoginScreen(),
     );
   }

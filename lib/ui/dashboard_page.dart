@@ -66,13 +66,16 @@ class _DashboardScreenState extends State<DashboardScreen> {
         error: 'Dashboard request failed',
       );
     } on DioException catch (e) {
-      debugPrint('DASHBOARD ERROR: ${e.response?.statusCode} ${e.response?.data}');
+      debugPrint(
+        'DASHBOARD ERROR: ${e.response?.statusCode} ${e.response?.data}',
+      );
 
       if (!mounted) return;
 
       setState(() {
         _errorMessage = e.response?.data is Map
-            ? e.response?.data['message']?.toString() ?? 'Gagal memuat dashboard.'
+            ? e.response?.data['message']?.toString() ??
+                  'Gagal memuat dashboard.'
             : 'Gagal memuat dashboard.';
         _isLoading = false;
       });
@@ -95,98 +98,102 @@ class _DashboardScreenState extends State<DashboardScreen> {
       body: SafeArea(
         child: _isLoading
             ? const Center(
-          child: CircularProgressIndicator(color: Color(0xFF009688)),
-        )
+                child: CircularProgressIndicator(color: Color(0xFF009688)),
+              )
             : _errorMessage.isNotEmpty
             ? Center(
-          child: Padding(
-            padding: const EdgeInsets.all(20),
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Text(
-                  _errorMessage,
-                  textAlign: TextAlign.center,
-                  style: const TextStyle(
-                    color: Color(0xFF475569),
-                    fontSize: 12,
-                  ),
-                ),
-                const SizedBox(height: 12),
-                ElevatedButton(
-                  onPressed: () {
-                    setState(() => _isLoading = true);
-                    _fetchDashboardData();
-                  },
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFF009688),
-                  ),
-                  child: const Text('Coba Lagi', style: TextStyle(color: Colors.white, fontSize: 12)),
-                )
-              ],
-            ),
-          ),
-        )
-            : RefreshIndicator(
-          onRefresh: _fetchDashboardData,
-          color: const Color(0xFF009688),
-          child: SingleChildScrollView(
-            physics: const AlwaysScrollableScrollPhysics(),
-            padding: const EdgeInsets.symmetric(
-              horizontal: 14.0,
-              vertical: 10.0,
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                _buildHeader(),
-                const SizedBox(height: 12),
-                _buildStatusBanners(),
-                const SizedBox(height: 14),
-
-                // Header Ringkasan Kehadiran yang bisa diklik
-                InkWell(
-                  onTap: () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (context) => KinerjaPresensiScreen(
-                          attendanceData: _dashboardData?['attendance_month'],
+                child: Padding(
+                  padding: const EdgeInsets.all(20),
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Text(
+                        _errorMessage,
+                        textAlign: TextAlign.center,
+                        style: const TextStyle(
+                          color: Color(0xFF475569),
+                          fontSize: 12,
                         ),
                       ),
-                    );
-                  },
-                  borderRadius: BorderRadius.circular(6),
-                  child: Padding(
-                    padding: const EdgeInsets.symmetric(vertical: 4.0),
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: const [
-                        Text(
-                          'Ringkasan Kehadiran Bulan Ini',
-                          style: TextStyle(
-                            fontWeight: FontWeight.bold,
-                            fontSize: 12,
-                            color: Color(0xFF1E293B),
-                          ),
+                      const SizedBox(height: 12),
+                      ElevatedButton(
+                        onPressed: () {
+                          setState(() => _isLoading = true);
+                          _fetchDashboardData();
+                        },
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: const Color(0xFF009688),
                         ),
-                        Icon(
-                          Icons.chevron_right,
-                          size: 18,
-                          color: Colors.grey,
+                        child: const Text(
+                          'Coba Lagi',
+                          style: TextStyle(color: Colors.white, fontSize: 12),
                         ),
-                      ],
-                    ),
+                      ),
+                    ],
                   ),
                 ),
-                const SizedBox(height: 8),
-                _buildAttendanceGrid(),
-                const SizedBox(height: 14),
-                _buildAttendanceChart(),
-              ],
-            ),
-          ),
-        ),
+              )
+            : RefreshIndicator(
+                onRefresh: _fetchDashboardData,
+                color: const Color(0xFF009688),
+                child: SingleChildScrollView(
+                  physics: const AlwaysScrollableScrollPhysics(),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 14.0,
+                    vertical: 10.0,
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      _buildHeader(),
+                      const SizedBox(height: 12),
+                      _buildStatusBanners(),
+                      const SizedBox(height: 14),
+
+                      // Header Ringkasan Kehadiran yang bisa diklik
+                      InkWell(
+                        onTap: () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) => KinerjaPresensiScreen(
+                                attendanceData:
+                                    _dashboardData?['attendance_month'],
+                              ),
+                            ),
+                          );
+                        },
+                        borderRadius: BorderRadius.circular(6),
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(vertical: 4.0),
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: const [
+                              Text(
+                                'Ringkasan Kehadiran Bulan Ini',
+                                style: TextStyle(
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 12,
+                                  color: Color(0xFF1E293B),
+                                ),
+                              ),
+                              Icon(
+                                Icons.chevron_right,
+                                size: 18,
+                                color: Colors.grey,
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      _buildAttendanceGrid(),
+                      const SizedBox(height: 14),
+                      _buildAttendanceChart(),
+                    ],
+                  ),
+                ),
+              ),
       ),
     );
   }
@@ -222,10 +229,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                     ),
                     Text(
                       jabatan,
-                      style: const TextStyle(
-                        color: Colors.grey,
-                        fontSize: 11,
-                      ),
+                      style: const TextStyle(color: Colors.grey, fontSize: 11),
                     ),
                   ],
                 ),
@@ -403,7 +407,19 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
   Widget _buildAttendanceChart() {
     final days = ['Sen', 'Sel', 'Rab', 'Kam', 'Jum', 'Sab', 'Min'];
-    final List<dynamic> chartData = _dashboardData?['weekly_chart'] ?? [0.8, 0.9, 0.82, 0.88, 0.85, 0.08, 0.08];
+    final chartData = _dashboardData?['chart_trend'];
+    final fallbackData = <String, double>{
+      'Sen': 0.8,
+      'Sel': 0.9,
+      'Rab': 0.82,
+      'Kam': 0.88,
+      'Jum': 0.85,
+      'Sab': 0.08,
+      'Min': 0.08,
+    };
+    final trend = chartData is Map
+        ? Map<String, dynamic>.from(chartData)
+        : fallbackData;
 
     return Container(
       padding: const EdgeInsets.all(12),
@@ -436,9 +452,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
               crossAxisAlignment: CrossAxisAlignment.end,
               children: List.generate(7, (index) {
                 final isWeekend = index >= 5;
-                final double heightVal = (index < chartData.length)
-                    ? (double.tryParse(chartData[index].toString()) ?? 0.1)
-                    : 0.1;
+                final double heightVal =
+                    double.tryParse(trend[days[index]]?.toString() ?? '0') ??
+                    0.1;
 
                 return Column(
                   mainAxisAlignment: MainAxisAlignment.end,

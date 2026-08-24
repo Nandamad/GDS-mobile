@@ -12,8 +12,6 @@ class DetailLogScreen extends StatefulWidget {
 }
 
 class _DetailLogScreenState extends State<DetailLogScreen> {
-  int _selectedNavIndex = 3;
-
   String? _getPhotoUrl(String? path) {
     if (path == null || path.isEmpty) return null;
     if (path.startsWith('http://') || path.startsWith('https://')) {
@@ -168,7 +166,6 @@ class _DetailLogScreenState extends State<DetailLogScreen> {
           ],
         ),
       ),
-      bottomNavigationBar: _buildBottomNavigationBar(),
     );
   }
 
@@ -281,7 +278,9 @@ class _DetailLogScreenState extends State<DetailLogScreen> {
   }
 
   Widget _buildRekapWaktuRow() {
-    final isLate = (widget.absensi?.status ?? '').toLowerCase().contains('terlambat');
+    final isLate = (widget.absensi?.status ?? '').toLowerCase().contains(
+      'terlambat',
+    );
 
     return Row(
       children: [
@@ -315,16 +314,23 @@ class _DetailLogScreenState extends State<DetailLogScreen> {
                 ),
                 const SizedBox(height: 4),
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 4,
+                    vertical: 2,
+                  ),
                   decoration: BoxDecoration(
-                    color: isLate ? const Color(0xFFFEF2F2) : const Color(0xFFDCFCE7),
+                    color: isLate
+                        ? const Color(0xFFFEF2F2)
+                        : const Color(0xFFDCFCE7),
                     borderRadius: BorderRadius.circular(4),
                   ),
                   child: Text(
                     isLate ? 'Terlambat' : 'Tepat Waktu',
                     style: TextStyle(
                       fontSize: 8,
-                      color: isLate ? const Color(0xFFDC2626) : const Color(0xFF15803D),
+                      color: isLate
+                          ? const Color(0xFFDC2626)
+                          : const Color(0xFF15803D),
                       fontWeight: FontWeight.bold,
                     ),
                   ),
@@ -364,7 +370,10 @@ class _DetailLogScreenState extends State<DetailLogScreen> {
                 ),
                 const SizedBox(height: 4),
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 4,
+                    vertical: 2,
+                  ),
                   decoration: BoxDecoration(
                     color: const Color(0xFFDCFCE7),
                     borderRadius: BorderRadius.circular(4),
@@ -412,7 +421,10 @@ class _DetailLogScreenState extends State<DetailLogScreen> {
             ],
           ),
           Text(
-            _calculateDuration(widget.absensi?.jamMasuk, widget.absensi?.jamPulang),
+            _calculateDuration(
+              widget.absensi?.jamMasuk,
+              widget.absensi?.jamPulang,
+            ),
             style: const TextStyle(
               fontSize: 12,
               fontWeight: FontWeight.bold,
@@ -531,33 +543,40 @@ class _DetailLogScreenState extends State<DetailLogScreen> {
               borderRadius: BorderRadius.circular(10),
               child: imageUrl != null
                   ? Image.network(
-                imageUrl,
-                height: 120,
-                width: double.infinity,
-                fit: BoxFit.cover,
-                errorBuilder: (context, error, stackTrace) => Container(
-                  height: 120,
-                  color: Colors.grey.shade200,
-                  child: const Icon(Icons.no_photography, color: Colors.grey),
-                ),
-              )
-                  : Container(
-                height: 120,
-                color: Colors.grey.shade200,
-                child: const Center(
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Icon(Icons.person_outline, color: Colors.grey, size: 32),
-                      SizedBox(height: 4),
-                      Text(
-                        'Belum ada foto',
-                        style: TextStyle(fontSize: 9, color: Colors.grey),
+                      imageUrl,
+                      height: 120,
+                      width: double.infinity,
+                      fit: BoxFit.cover,
+                      errorBuilder: (context, error, stackTrace) => Container(
+                        height: 120,
+                        color: Colors.grey.shade200,
+                        child: const Icon(
+                          Icons.no_photography,
+                          color: Colors.grey,
+                        ),
                       ),
-                    ],
-                  ),
-                ),
-              ),
+                    )
+                  : Container(
+                      height: 120,
+                      color: Colors.grey.shade200,
+                      child: const Center(
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Icon(
+                              Icons.person_outline,
+                              color: Colors.grey,
+                              size: 32,
+                            ),
+                            SizedBox(height: 4),
+                            Text(
+                              'Belum ada foto',
+                              style: TextStyle(fontSize: 9, color: Colors.grey),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
             ),
             const SizedBox(height: 4),
             Text(
@@ -588,42 +607,6 @@ class _DetailLogScreenState extends State<DetailLogScreen> {
         widget.absensi?.catatanMasuk ?? 'Tidak ada catatan untuk hari ini.',
         style: const TextStyle(fontSize: 10, color: Colors.grey),
       ),
-    );
-  }
-
-  Widget _buildBottomNavigationBar() {
-    return BottomNavigationBar(
-      currentIndex: _selectedNavIndex,
-      onTap: (index) => setState(() => _selectedNavIndex = index),
-      type: BottomNavigationBarType.fixed,
-      selectedItemColor: const Color(0xFF009688),
-      unselectedItemColor: Colors.grey,
-      selectedFontSize: 10,
-      unselectedFontSize: 10,
-      iconSize: 20,
-      items: const [
-        BottomNavigationBarItem(
-          icon: Icon(Icons.home_outlined),
-          label: 'Beranda',
-        ),
-        BottomNavigationBarItem(
-          icon: Icon(Icons.check_circle_outline),
-          label: 'Presensi',
-        ),
-        BottomNavigationBarItem(
-          icon: Icon(Icons.assignment_outlined),
-          label: 'Pengajuan',
-        ),
-        BottomNavigationBarItem(
-          icon: Icon(Icons.format_list_bulleted),
-          activeIcon: Icon(Icons.format_list_bulleted_sharp),
-          label: 'Riwayat',
-        ),
-        BottomNavigationBarItem(
-          icon: Icon(Icons.notifications_none),
-          label: 'Notifikasi',
-        ),
-      ],
     );
   }
 }

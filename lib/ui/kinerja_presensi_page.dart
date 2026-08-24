@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:dio/dio.dart';
 import '../services/api_service.dart';
 
 class KinerjaPresensiScreen extends StatefulWidget {
@@ -12,7 +11,8 @@ class KinerjaPresensiScreen extends StatefulWidget {
 }
 
 class _KinerjaPresensiScreenState extends State<KinerjaPresensiScreen> {
-  String _selectedMonth = 'Agustus 2026';
+  final DateTime _now = DateTime.now();
+  late DateTime _selectedPeriod;
   bool _isLoading = false;
   Map<String, dynamic>? _kinerjaData;
   List<dynamic> _logKeterlambatanList = [];
@@ -20,12 +20,39 @@ class _KinerjaPresensiScreenState extends State<KinerjaPresensiScreen> {
   @override
   void initState() {
     super.initState();
+    _selectedPeriod = DateTime(_now.year, _now.month);
     if (widget.attendanceData != null) {
       _kinerjaData = widget.attendanceData;
     } else {
       _fetchKinerjaData();
     }
   }
+
+  static const _monthNames = [
+    'Januari',
+    'Februari',
+    'Maret',
+    'April',
+    'Mei',
+    'Juni',
+    'Juli',
+    'Agustus',
+    'September',
+    'Oktober',
+    'November',
+    'Desember',
+  ];
+
+  String _formatMonth(DateTime date) =>
+      '${_monthNames[date.month - 1]} ${date.year}';
+
+  List<DateTime> get _periodOptions =>
+      List.generate(12, (index) => DateTime(_now.year, _now.month - index));
+
+  Map<String, int> get _periodQuery => {
+    'month': _selectedPeriod.month,
+    'year': _selectedPeriod.year,
+  };
 
   Future<void> _fetchKinerjaData() async {
     setState(() => _isLoading = true);
@@ -35,15 +62,18 @@ class _KinerjaPresensiScreenState extends State<KinerjaPresensiScreen> {
 
       final dio = ApiService().dio;
       // Mengambil data dashboard/summary yang sama
-      final response = await dio.get('/dashboard');
+      final response = await dio.get(
+        '/dashboard',
+        queryParameters: _periodQuery,
+      );
 
       if (response.statusCode == 200) {
         final payload = response.data;
         final data = payload is Map && payload['data'] is Map
             ? Map<String, dynamic>.from(payload['data'])
             : payload is Map
-                ? Map<String, dynamic>.from(payload)
-                : null;
+            ? Map<String, dynamic>.from(payload)
+            : null;
 
         if (mounted && data != null) {
           setState(() {
@@ -84,7 +114,10 @@ class _KinerjaPresensiScreenState extends State<KinerjaPresensiScreen> {
             padding: const EdgeInsets.only(right: 14.0),
             child: Center(
               child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 2),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 10,
+                  vertical: 2,
+                ),
                 decoration: BoxDecoration(
                   color: Colors.white,
                   borderRadius: BorderRadius.circular(8),
@@ -92,19 +125,28 @@ class _KinerjaPresensiScreenState extends State<KinerjaPresensiScreen> {
                 ),
                 child: DropdownButtonHideUnderline(
                   child: DropdownButton<String>(
-                    value: _selectedMonth,
+                    value: _formatMonth(_selectedPeriod),
                     isDense: true,
-                    icon: const Icon(Icons.arrow_drop_down, color: Colors.grey, size: 18),
+                    icon: const Icon(
+                      Icons.arrow_drop_down,
+                      color: Colors.grey,
+                      size: 18,
+                    ),
                     style: const TextStyle(
                       color: Color(0xFF0F172A),
                       fontSize: 11,
                       fontWeight: FontWeight.w600,
                     ),
                     onChanged: (val) {
-                      setState(() => _selectedMonth = val!);
+                      final index = _periodOptions
+                          .map(_formatMonth)
+                          .toList()
+                          .indexOf(val!);
+                      if (index < 0) return;
+                      setState(() => _selectedPeriod = _periodOptions[index]);
                       _fetchKinerjaData();
                     },
-                    items: ['Agustus 2026', 'Juli 2026', 'Juni 2026'].map((String item) {
+                    items: _periodOptions.map(_formatMonth).map((String item) {
                       return DropdownMenuItem<String>(
                         value: item,
                         child: Text(item),
@@ -118,9 +160,14 @@ class _KinerjaPresensiScreenState extends State<KinerjaPresensiScreen> {
         ],
       ),
       body: _isLoading
-          ? const Center(child: CircularProgressIndicator(color: Color(0xFF009688)))
+          ? const Center(
+              child: CircularProgressIndicator(color: Color(0xFF009688)),
+            )
           : SingleChildScrollView(
-              padding: const EdgeInsets.symmetric(horizontal: 14.0, vertical: 12.0),
+              padding: const EdgeInsets.symmetric(
+                horizontal: 14.0,
+                vertical: 12.0,
+              ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
@@ -175,12 +222,42 @@ class _KinerjaPresensiScreenState extends State<KinerjaPresensiScreen> {
       mainAxisSpacing: 8,
       childAspectRatio: 1.4,
       children: [
-        _AttendanceCard(title: 'Hadir', count: '$hadir Hari', percentage: pct(hadir), color: Colors.teal),
-        _AttendanceCard(title: 'Terlambat', count: '$terlambat Hari', percentage: pct(terlambat), color: Colors.orange),
-        _AttendanceCard(title: 'Izin', count: '$izin Hari', percentage: pct(izin), color: Colors.blue),
-        _AttendanceCard(title: 'Cuti', count: '$cuti Hari', percentage: pct(cuti), color: Colors.purple),
-        _AttendanceCard(title: 'Sakit', count: '$sakit Hari', percentage: pct(sakit), color: Colors.amber),
-        _AttendanceCard(title: 'Alpha', count: '$alpha Hari', percentage: pct(alpha), color: Colors.red),
+        _AttendanceCard(
+          title: 'Hadir',
+          count: '$hadir Hari',
+          percentage: pct(hadir),
+          color: Colors.teal,
+        ),
+        _AttendanceCard(
+          title: 'Terlambat',
+          count: '$terlambat Hari',
+          percentage: pct(terlambat),
+          color: Colors.orange,
+        ),
+        _AttendanceCard(
+          title: 'Izin',
+          count: '$izin Hari',
+          percentage: pct(izin),
+          color: Colors.blue,
+        ),
+        _AttendanceCard(
+          title: 'Cuti',
+          count: '$cuti Hari',
+          percentage: pct(cuti),
+          color: Colors.purple,
+        ),
+        _AttendanceCard(
+          title: 'Sakit',
+          count: '$sakit Hari',
+          percentage: pct(sakit),
+          color: Colors.amber,
+        ),
+        _AttendanceCard(
+          title: 'Alpha',
+          count: '$alpha Hari',
+          percentage: pct(alpha),
+          color: Colors.red,
+        ),
       ],
     );
   }
@@ -212,8 +289,12 @@ class _KinerjaPresensiScreenState extends State<KinerjaPresensiScreen> {
           child: _buildLogCard(
             date: item['tanggal'] ?? '-',
             badgeText: isPulangAwal ? 'Pulang Awal' : 'Terlambat',
-            badgeBgColor: isPulangAwal ? const Color(0xFFFEE2E2) : const Color(0xFFFEF3C7),
-            badgeTextColor: isPulangAwal ? const Color(0xFFDC2626) : const Color(0xFFD97706),
+            badgeBgColor: isPulangAwal
+                ? const Color(0xFFFEE2E2)
+                : const Color(0xFFFEF3C7),
+            badgeTextColor: isPulangAwal
+                ? const Color(0xFFDC2626)
+                : const Color(0xFFD97706),
             timeDiff: item['durasi'] ?? '-0m',
             atasanStatus: item['status_atasan'] ?? 'Pending',
             hrdStatus: item['status_hrd'] ?? 'Waiting',
@@ -258,7 +339,10 @@ class _KinerjaPresensiScreenState extends State<KinerjaPresensiScreen> {
                 ),
                 const SizedBox(width: 6),
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 6,
+                    vertical: 2,
+                  ),
                   decoration: BoxDecoration(
                     color: badgeBgColor,
                     borderRadius: BorderRadius.circular(4),
@@ -299,7 +383,9 @@ class _KinerjaPresensiScreenState extends State<KinerjaPresensiScreen> {
                   style: TextStyle(
                     fontSize: 9,
                     fontWeight: FontWeight.bold,
-                    color: atasanStatus == 'OK' ? Colors.green.shade700 : Colors.black87,
+                    color: atasanStatus == 'OK'
+                        ? Colors.green.shade700
+                        : Colors.black87,
                   ),
                 ),
                 const SizedBox(width: 8),
@@ -316,7 +402,11 @@ class _KinerjaPresensiScreenState extends State<KinerjaPresensiScreen> {
                   ),
                 ),
                 const Spacer(),
-                const Icon(Icons.chevron_right_rounded, size: 16, color: Colors.grey),
+                const Icon(
+                  Icons.chevron_right_rounded,
+                  size: 16,
+                  color: Colors.grey,
+                ),
               ],
             ),
           ],
@@ -333,20 +423,28 @@ class _KinerjaPresensiScreenState extends State<KinerjaPresensiScreen> {
       width: double.infinity,
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: hasPayrollImpact ? const Color(0xFFFEF2F2) : const Color(0xFFF0FDF4),
+        color: hasPayrollImpact
+            ? const Color(0xFFFEF2F2)
+            : const Color(0xFFF0FDF4),
         borderRadius: BorderRadius.circular(10),
         border: Border.all(
-          color: hasPayrollImpact ? const Color(0xFFFECACA) : const Color(0xFFBBF7D0),
+          color: hasPayrollImpact
+              ? const Color(0xFFFECACA)
+              : const Color(0xFFBBF7D0),
         ),
       ),
       child: Column(
         children: [
           Text(
-            hasPayrollImpact ? 'Potensi Dampak Payroll: Ya' : 'Potensi Dampak Payroll: Tidak Ada',
+            hasPayrollImpact
+                ? 'Potensi Dampak Payroll: Ya'
+                : 'Potensi Dampak Payroll: Tidak Ada',
             style: TextStyle(
               fontWeight: FontWeight.bold,
               fontSize: 11,
-              color: hasPayrollImpact ? const Color(0xFFEF4444) : const Color(0xFF16A34A),
+              color: hasPayrollImpact
+                  ? const Color(0xFFEF4444)
+                  : const Color(0xFF16A34A),
             ),
           ),
           const SizedBox(height: 6),
@@ -357,7 +455,9 @@ class _KinerjaPresensiScreenState extends State<KinerjaPresensiScreen> {
             textAlign: TextAlign.center,
             style: TextStyle(
               fontSize: 9,
-              color: hasPayrollImpact ? const Color(0xFF7F1D1D) : const Color(0xFF14532D),
+              color: hasPayrollImpact
+                  ? const Color(0xFF7F1D1D)
+                  : const Color(0xFF14532D),
               height: 1.3,
             ),
           ),
@@ -414,7 +514,10 @@ class _AttendanceCard extends StatelessWidget {
               children: [
                 TextSpan(
                   text: '$count ',
-                  style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 11),
+                  style: const TextStyle(
+                    fontWeight: FontWeight.bold,
+                    fontSize: 11,
+                  ),
                 ),
                 TextSpan(
                   text: percentage,

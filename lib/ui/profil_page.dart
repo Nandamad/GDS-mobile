@@ -99,6 +99,104 @@ class _ProfilPageState extends State<ProfilPage> {
     }
   }
 
+  Future<void> _changePassword() async {
+    final oldPasswordController = TextEditingController();
+    final newPasswordController = TextEditingController();
+    var isSubmitting = false;
+
+    final submitted = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => StatefulBuilder(
+        builder: (context, setDialogState) => AlertDialog(
+          title: const Text('Ubah Password'),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              TextField(
+                controller: oldPasswordController,
+                obscureText: true,
+                decoration: const InputDecoration(labelText: 'Password lama'),
+              ),
+              TextField(
+                controller: newPasswordController,
+                obscureText: true,
+                decoration: const InputDecoration(
+                  labelText: 'Password baru (min. 8 karakter)',
+                ),
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: isSubmitting
+                  ? null
+                  : () => Navigator.pop(dialogContext),
+              child: const Text('Batal'),
+            ),
+            ElevatedButton(
+              onPressed: isSubmitting
+                  ? null
+                  : () async {
+                      if (oldPasswordController.text.isEmpty ||
+                          newPasswordController.text.length < 8) {
+                        ScaffoldMessenger.of(this.context).showSnackBar(
+                          const SnackBar(
+                            content: Text(
+                              'Isi password lama dan password baru minimal 8 karakter.',
+                            ),
+                          ),
+                        );
+                        return;
+                      }
+
+                      setDialogState(() => isSubmitting = true);
+                      try {
+                        await ApiService().dio.post(
+                          '/change-password',
+                          data: {
+                            'old_password': oldPasswordController.text,
+                            'new_password': newPasswordController.text,
+                          },
+                        );
+                        if (dialogContext.mounted) {
+                          Navigator.pop(dialogContext, true);
+                        }
+                      } on DioException catch (e) {
+                        if (!mounted) return;
+                        setDialogState(() => isSubmitting = false);
+                        final data = e.response?.data;
+                        final message = data is Map
+                            ? data['message']?.toString() ??
+                                  'Gagal mengubah password.'
+                            : 'Gagal mengubah password.';
+                        ScaffoldMessenger.of(
+                          this.context,
+                        ).showSnackBar(SnackBar(content: Text(message)));
+                      }
+                    },
+              child: isSubmitting
+                  ? const SizedBox(
+                      width: 16,
+                      height: 16,
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    )
+                  : const Text('Simpan'),
+            ),
+          ],
+        ),
+      ),
+    );
+
+    oldPasswordController.dispose();
+    newPasswordController.dispose();
+
+    if (submitted == true && mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Password berhasil diubah.')),
+      );
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -147,8 +245,7 @@ class _ProfilPageState extends State<ProfilPage> {
 
     final jabatan = (karyawan?['jabatan'] ?? 'Staff').toString();
     final divisi = (karyawan?['divisi'] ?? 'Umum').toString();
-    final foto = (karyawan?['foto_url'] ?? 'https://i.pravatar.cc/300?img=11')
-        .toString();
+    final foto = karyawan?['foto_url']?.toString();
 
     return Container(
       width: double.infinity,
@@ -168,7 +265,12 @@ class _ProfilPageState extends State<ProfilPage> {
             ),
             child: CircleAvatar(
               radius: 36,
-              backgroundImage: NetworkImage(foto),
+              backgroundImage: foto != null && foto.isNotEmpty
+                  ? NetworkImage(foto)
+                  : null,
+              child: foto == null || foto.isEmpty
+                  ? const Icon(Icons.person, size: 38, color: Color(0xFF009688))
+                  : null,
             ),
           ),
           const SizedBox(height: 12),
@@ -290,7 +392,7 @@ class _ProfilPageState extends State<ProfilPage> {
           _buildSettingMenu(
             icon: Icons.lock_outline_rounded,
             title: 'Ubah Password',
-            onTap: () {},
+            onTap: _changePassword,
           ),
           const Divider(height: 16),
           _buildSettingMenu(
