@@ -88,7 +88,7 @@ class _ProfilPageState extends State<ProfilPage> {
 
   // Aksi Logout
   Future<void> _logout() async {
-    await ApiService().clearToken();
+    await ApiService().deleteToken();
 
     if (mounted) {
       Navigator.pushAndRemoveUntil(

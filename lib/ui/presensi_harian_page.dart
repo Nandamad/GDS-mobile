@@ -8,6 +8,7 @@ import 'package:latlong2/latlong.dart';
 import '../services/api_service.dart';
 import 'kamera_page.dart';
 import 'konfirmasi_foto_page.dart';
+import 'koreksi_presensi_page.dart';
 
 class PresensiScreen extends StatefulWidget {
   final VoidCallback? onNotificationTap;
@@ -45,7 +46,7 @@ class _PresensiScreenState extends State<PresensiScreen> {
     _updateTime();
     _timer = Timer.periodic(
       const Duration(seconds: 1),
-          (timer) => _updateTime(),
+      (timer) => _updateTime(),
     );
 
     _determinePosition();
@@ -78,7 +79,9 @@ class _PresensiScreenState extends State<PresensiScreen> {
         if (kantor != null) {
           final lat = double.tryParse(kantor['latitude'].toString());
           final lng = double.tryParse(kantor['longitude'].toString());
-          final rad = double.tryParse(kantor['radius_toleransi_meter'].toString());
+          final rad = double.tryParse(
+            kantor['radius_toleransi_meter'].toString(),
+          );
 
           if (lat != null && lng != null) _officeLocation = LatLng(lat, lng);
           if (rad != null) _maxRadiusMeters = rad;
@@ -88,8 +91,16 @@ class _PresensiScreenState extends State<PresensiScreen> {
         }
 
         if (data != null && data is Map) {
-          _isSudahAbsenMasuk = data['jam_masuk'] != null && data['jam_masuk'].toString().isNotEmpty;
-          _isSudahAbsenKeluar = data['jam_keluar'] != null && data['jam_keluar'].toString().isNotEmpty;
+          _isSudahAbsenMasuk =
+              data['jam_masuk'] != null &&
+              data['jam_masuk'].toString().isNotEmpty;
+          _isSudahAbsenKeluar =
+              data['jam_keluar'] != null &&
+              data['jam_keluar'].toString().isNotEmpty;
+        } else {
+          // Reset jika data absensi dihapus/null oleh admin (hasil koreksi disetujui)
+          _isSudahAbsenMasuk = false;
+          _isSudahAbsenKeluar = false;
         }
       }
 
@@ -97,7 +108,9 @@ class _PresensiScreenState extends State<PresensiScreen> {
       final dashRes = await dio.get('/dashboard');
       if (dashRes.statusCode == 200) {
         final payload = dashRes.data;
-        _dashboardData = payload is Map && payload['data'] is Map ? payload['data'] : payload;
+        _dashboardData = payload is Map && payload['data'] is Map
+            ? payload['data']
+            : payload;
       }
 
       if (mounted) {
@@ -213,10 +226,7 @@ class _PresensiScreenState extends State<PresensiScreen> {
 
     if (isConfirmed != true || !mounted) return;
 
-    final berhasil = await _submitAbsensi(
-      tipe: tipe,
-      fotoBase64: resultImage,
-    );
+    final berhasil = await _submitAbsensi(tipe: tipe, fotoBase64: resultImage);
 
     if (!berhasil || !mounted) return;
 
@@ -224,9 +234,9 @@ class _PresensiScreenState extends State<PresensiScreen> {
 
     if (!mounted) return;
 
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('Absen $tipe berhasil disimpan.')),
-    );
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(SnackBar(content: Text('Absen $tipe berhasil disimpan.')));
   }
 
   @override
@@ -242,42 +252,41 @@ class _PresensiScreenState extends State<PresensiScreen> {
       body: SafeArea(
         child: _isLoading
             ? const Center(
-          child: CircularProgressIndicator(color: Color(0xFF009688)),
-        )
+                child: CircularProgressIndicator(color: Color(0xFF009688)),
+              )
             : RefreshIndicator(
-          onRefresh: _fetchPresensiData,
-          color: const Color(0xFF009688),
-          child: SingleChildScrollView(
-            physics: const AlwaysScrollableScrollPhysics(),
-            padding: const EdgeInsets.symmetric(
-              horizontal: 16.0,
-              vertical: 16.0,
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.center,
-              children: [
-                _buildSkorKehadiranCard(),
-                const SizedBox(height: 20),
-                _buildDigitalClock(),
-                const SizedBox(height: 16),
-                _buildAbsenButton(),
-                const SizedBox(height: 16),
-                _buildRadiusBadge(),
-                const SizedBox(height: 16),
-                _buildStatusHariIniCard(),
-                const SizedBox(height: 20),
-                _buildLogKeterlambatanSection(),
-              ],
-            ),
-          ),
-        ),
+                onRefresh: _fetchPresensiData,
+                color: const Color(0xFF009688),
+                child: SingleChildScrollView(
+                  physics: const AlwaysScrollableScrollPhysics(),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 16.0,
+                    vertical: 16.0,
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.center,
+                    children: [
+                      _buildSkorKehadiranCard(),
+                      const SizedBox(height: 20),
+                      _buildDigitalClock(),
+                      const SizedBox(height: 16),
+                      _buildAbsenButton(),
+                      const SizedBox(height: 16),
+                      _buildRadiusBadge(),
+                      const SizedBox(height: 16),
+                      _buildStatusHariIniCard(),
+                      const SizedBox(height: 20),
+                      _buildLogKeterlambatanSection(),
+                      const SizedBox(height: 20),
+                      _buildTombolKoreksiPresensi(),
+                    ],
+                  ),
+                ),
+              ),
       ),
     );
   }
 
-  // =========================================================
-  // WIDGET 1: SKOR KEHADIRAN CARD
-  // =========================================================
   Widget _buildSkorKehadiranCard() {
     final attn = _dashboardData?['attendance_month'] ?? {};
     final total = attn['total_hari_kerja'] ?? 25;
@@ -374,9 +383,6 @@ class _PresensiScreenState extends State<PresensiScreen> {
     );
   }
 
-  // =========================================================
-  // WIDGET 2: JAM DIGITAL REALTIME
-  // =========================================================
   Widget _buildDigitalClock() {
     return Column(
       children: [
@@ -402,9 +408,6 @@ class _PresensiScreenState extends State<PresensiScreen> {
     );
   }
 
-  // =========================================================
-  // WIDGET 3: TOMBOL LINGKARAN DINAMIS (MASUK / KELUAR)
-  // =========================================================
   Widget _buildAbsenButton() {
     Color btnColor;
     String btnText;
@@ -421,7 +424,9 @@ class _PresensiScreenState extends State<PresensiScreen> {
     }
 
     return GestureDetector(
-      onTap: (_isSudahAbsenMasuk && _isSudahAbsenKeluar) ? null : _handleAbsenProcess,
+      onTap: (_isSudahAbsenMasuk && _isSudahAbsenKeluar)
+          ? null
+          : _handleAbsenProcess,
       child: Container(
         width: 170,
         height: 170,
@@ -440,11 +445,7 @@ class _PresensiScreenState extends State<PresensiScreen> {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            const Icon(
-              Icons.login_rounded,
-              color: Colors.white,
-              size: 28,
-            ),
+            const Icon(Icons.login_rounded, color: Colors.white, size: 28),
             const SizedBox(height: 6),
             Text(
               btnText,
@@ -460,9 +461,6 @@ class _PresensiScreenState extends State<PresensiScreen> {
     );
   }
 
-  // =========================================================
-  // WIDGET 4: RADIUS KANTOR BADGE
-  // =========================================================
   Widget _buildRadiusBadge() {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
@@ -492,18 +490,17 @@ class _PresensiScreenState extends State<PresensiScreen> {
     );
   }
 
-  // =========================================================
-  // WIDGET 5: CARD STATUS HARI INI
-  // =========================================================
   Widget _buildStatusHariIniCard() {
     String statusText = 'Belum Absen Masuk';
-    String descText = 'Silakan tekan tombol Absen Masuk untuk memulai shift hari ini.';
+    String descText =
+        'Silakan tekan tombol Absen Masuk untuk memulai shift hari ini.';
     Color badgeBg = const Color(0xFFFFF3E0);
     Color badgeTxt = const Color(0xFFE65100);
 
     if (_isSudahAbsenMasuk && !_isSudahAbsenKeluar) {
       statusText = 'Sudah Absen Masuk';
-      descText = 'Jangan lupa tekan tombol Absen Keluar saat selesai jam kerja.';
+      descText =
+          'Jangan lupa tekan tombol Absen Keluar saat selesai jam kerja.';
       badgeBg = const Color(0xFFE8F5E9);
       badgeTxt = const Color(0xFF2E7D32);
     } else if (_isSudahAbsenMasuk && _isSudahAbsenKeluar) {
@@ -568,36 +565,32 @@ class _PresensiScreenState extends State<PresensiScreen> {
           const SizedBox(height: 8),
           Text(
             descText,
-            style: const TextStyle(
-              fontSize: 10,
-              color: Colors.grey,
-            ),
+            style: const TextStyle(fontSize: 10, color: Colors.grey),
           ),
         ],
       ),
     );
   }
 
-  // =========================================================
-  // WIDGET 6: LOG KETERLAMBATAN & PULANG AWAL
-  // =========================================================
   Widget _buildLogKeterlambatanSection() {
-    final List<dynamic> logs = _dashboardData?['late_logs'] ?? [
-      {
-        'date': '04 Agt',
-        'type': 'Terlambat',
-        'diff': '+15m',
-        'atasan': 'Pending',
-        'hrd': 'Waiting',
-      },
-      {
-        'date': '01 Agt',
-        'type': 'Pulang Awal',
-        'diff': '-30m',
-        'atasan': 'OK',
-        'hrd': 'Pending',
-      },
-    ];
+    final List<dynamic> logs =
+        _dashboardData?['late_logs'] ??
+        [
+          {
+            'date': '04 Agt',
+            'type': 'Terlambat',
+            'diff': '+15m',
+            'atasan': 'Pending',
+            'hrd': 'Waiting',
+          },
+          {
+            'date': '01 Agt',
+            'type': 'Pulang Awal',
+            'diff': '-30m',
+            'atasan': 'OK',
+            'hrd': 'Pending',
+          },
+        ];
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -644,7 +637,9 @@ class _PresensiScreenState extends State<PresensiScreen> {
                           const SizedBox(width: 6),
                           Container(
                             padding: const EdgeInsets.symmetric(
-                                horizontal: 6, vertical: 2),
+                              horizontal: 6,
+                              vertical: 2,
+                            ),
                             decoration: BoxDecoration(
                               color: isLate
                                   ? const Color(0xFFFFEDD5)
@@ -694,6 +689,46 @@ class _PresensiScreenState extends State<PresensiScreen> {
           }).toList(),
         ),
       ],
+    );
+  }
+
+  // WIDGET TOMBOL KOREKSI PRESENSI (SUDAH DIPERBAIKI PARAMETER CONTEXT-NYA)
+  Widget _buildTombolKoreksiPresensi() {
+    return Container(
+      width: double.infinity,
+      margin: const EdgeInsets.only(top: 8),
+      child: OutlinedButton.icon(
+        onPressed: () async {
+          await Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (context) => const KoreksiPresensiScreen(),
+            ),
+          );
+          // Refresh otomatis data presensi setelah kembali dari halaman koreksi
+          _fetchPresensiData();
+        },
+        icon: const Icon(
+          Icons.edit_calendar_rounded,
+          size: 16,
+          color: Color(0xFF009688),
+        ),
+        label: const Text(
+          'Ajukan Koreksi Presensi',
+          style: TextStyle(
+            color: Color(0xFF009688),
+            fontWeight: FontWeight.bold,
+            fontSize: 12,
+          ),
+        ),
+        style: OutlinedButton.styleFrom(
+          padding: const EdgeInsets.symmetric(vertical: 12),
+          side: const BorderSide(color: Color(0xFF009688)),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+          ),
+        ),
+      ),
     );
   }
 }

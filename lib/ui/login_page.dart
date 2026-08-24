@@ -40,9 +40,7 @@ class _LoginScreenState extends State<LoginScreen> {
       final response = await dio.post(
         '/login',
         data: {
-          'username': input,
-          'email': input,
-          'nip': input,
+          'login': input,
           'password': password,
         },
       );
@@ -77,17 +75,25 @@ class _LoginScreenState extends State<LoginScreen> {
 
         if (token != null && token.isNotEmpty) {
           await ApiService().saveToken(token);
+          
+          if (mounted) {
+            Navigator.pushReplacement(
+              context,
+              MaterialPageRoute(
+                builder: (context) => const MainNavigationScreen(),
+              ),
+            );
+          }
         } else {
           debugPrint('LOGIN TOKEN TIDAK DITEMUKAN: $payload');
-        }
-
-        if (mounted) {
-          Navigator.pushReplacement(
-            context,
-            MaterialPageRoute(
-              builder: (context) => const MainNavigationScreen(),
-            ),
-          );
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text('Token login tidak valid dari server.'),
+                backgroundColor: Colors.redAccent,
+              ),
+            );
+          }
         }
       }
     } on DioException catch (e) {
