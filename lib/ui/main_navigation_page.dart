@@ -5,6 +5,8 @@ import 'pengajuan_page.dart';
 import 'riwayat_presensi_page.dart';
 import 'profil_page.dart';
 import 'notifikasi_page.dart';
+import 'approval_page.dart';
+import '../services/api_service.dart';
 
 class MainNavigationScreen extends StatefulWidget {
   final int initialIndex;
@@ -16,11 +18,20 @@ class MainNavigationScreen extends StatefulWidget {
 
 class _MainNavigationScreenState extends State<MainNavigationScreen> {
   late int _currentIndex;
+  bool _isAtasan = false;
 
   @override
   void initState() {
     super.initState();
     _currentIndex = widget.initialIndex;
+    _loadAtasanStatus();
+  }
+
+  Future<void> _loadAtasanStatus() async {
+    final isAtasan = await ApiService().getIsAtasan();
+    if (mounted) {
+      setState(() => _isAtasan = isAtasan);
+    }
   }
 
   void _openNotifikasi() {
@@ -30,17 +41,39 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
     );
   }
 
-  @override
-  Widget build(BuildContext context) {
-    final List<Widget> pages = [
-      DashboardScreen(
-        onNotificationTap: _openNotifikasi,
-      ),
+  /// Menghitung index halaman yang sebenarnya berdasarkan posisi navigasi.
+  /// Jika atasan, ada 6 halaman (index 0-5), jika bukan ada 5 (index 0-4).
+  /// Layout posisi:
+  ///   Atasan:  Home(0) | Pengajuan(1) | [FAB=Presensi(2)] | Approval(3) | Riwayat(4) | Profil(5)
+  ///   Biasa:   Home(0) | Pengajuan(1) | [FAB=Presensi(2)] | Riwayat(3)  | Profil(4)
+
+  List<Widget> get _pages {
+    final base = <Widget>[
+      DashboardScreen(onNotificationTap: _openNotifikasi),
       const PengajuanScreen(),
       const PresensiScreen(),
+    ];
+
+    if (_isAtasan) {
+      base.add(const ApprovalScreen());
+    }
+
+    base.addAll([
       const RiwayatPresensiScreen(),
       const ProfilPage(),
-    ];
+    ]);
+
+    return base;
+  }
+
+  int get _presensiIndex => 2;
+  int get _riwayatIndex => _isAtasan ? 4 : 3;
+  int get _profilIndex => _isAtasan ? 5 : 4;
+  int get _approvalIndex => 3; // Hanya berlaku saat _isAtasan
+
+  @override
+  Widget build(BuildContext context) {
+    final pages = _pages;
 
     return Scaffold(
       body: IndexedStack(
@@ -53,7 +86,7 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
         width: 56,
         height: 56,
         child: FloatingActionButton(
-          onPressed: () => setState(() => _currentIndex = 2),
+          onPressed: () => setState(() => _currentIndex = _presensiIndex),
           backgroundColor: const Color(0xFF009688),
           elevation: 4,
           shape: const CircleBorder(),
@@ -96,21 +129,46 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
               // SPACER UNTUK FAB TENGAH
               const SizedBox(width: 48),
 
-              // 3. RIWAYAT
-              _buildNavItem(
-                index: 3,
-                icon: Icons.format_list_bulleted_rounded,
-                activeIcon: Icons.format_list_bulleted_rounded,
-                label: 'Riwayat',
-              ),
+              // 3. APPROVAL (hanya untuk atasan) atau RIWAYAT
+              if (_isAtasan)
+                _buildNavItem(
+                  index: _approvalIndex,
+                  icon: Icons.assignment_turned_in_outlined,
+                  activeIcon: Icons.assignment_turned_in_rounded,
+                  label: 'Approval',
+                ),
 
-              // 4. PROFIL
-              _buildNavItem(
-                index: 4,
-                icon: Icons.person_outline_rounded,
-                activeIcon: Icons.person_rounded,
-                label: 'Profil',
-              ),
+              if (!_isAtasan)
+                // 3. RIWAYAT (untuk karyawan biasa)
+                _buildNavItem(
+                  index: _riwayatIndex,
+                  icon: Icons.format_list_bulleted_rounded,
+                  activeIcon: Icons.format_list_bulleted_rounded,
+                  label: 'Riwayat',
+                ),
+
+              // 4. PROFIL (atau RIWAYAT + PROFIL jika atasan, tapi ruang terbatas)
+              // Jika atasan, kita ganti Profil dengan Riwayat di tab ke-4
+              // dan Profil diakses dari Riwayat atau drawer.
+              // NAMUN: Untuk menjaga UX yang konsisten, kita tetap tampilkan
+              // 4 item navigasi. Untuk atasan: Home | Pengajuan | Approval | Profil
+              // Riwayat bisa diakses dari dashboard atau menu profil.
+
+              if (_isAtasan)
+                _buildNavItem(
+                  index: _profilIndex,
+                  icon: Icons.person_outline_rounded,
+                  activeIcon: Icons.person_rounded,
+                  label: 'Profil',
+                ),
+
+              if (!_isAtasan)
+                _buildNavItem(
+                  index: _profilIndex,
+                  icon: Icons.person_outline_rounded,
+                  activeIcon: Icons.person_rounded,
+                  label: 'Profil',
+                ),
             ],
           ),
         ),

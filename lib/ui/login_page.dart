@@ -75,6 +75,16 @@ class _LoginScreenState extends State<LoginScreen> {
 
         if (token != null && token.isNotEmpty) {
           await ApiService().saveToken(token);
+
+          // Ekstrak is_atasan dari payload.user (sesuai kontrak backend)
+          bool isAtasan = false;
+          if (payload is Map) {
+            final user = payload['user'];
+            if (user is Map && user['is_atasan'] == true) {
+              isAtasan = true;
+            }
+          }
+          await ApiService().saveIsAtasan(isAtasan);
           
           if (mounted) {
             Navigator.pushReplacement(

@@ -49,9 +49,19 @@ class ApiService {
 
   Future<void> deleteToken() async {
     await storage.delete(key: 'auth_token');
+    await storage.delete(key: 'is_atasan');
   }
 
   Future<String?> getToken() async {
     return await storage.read(key: 'auth_token');
+  }
+
+  Future<void> saveIsAtasan(bool value) async {
+    await storage.write(key: 'is_atasan', value: value.toString());
+  }
+
+  Future<bool> getIsAtasan() async {
+    final val = await storage.read(key: 'is_atasan');
+    return val == 'true';
   }
 }
