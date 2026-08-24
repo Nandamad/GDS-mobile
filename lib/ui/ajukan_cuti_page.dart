@@ -36,7 +36,15 @@ class _AjukanCutiSheetState extends State<AjukanCutiSheet> {
   final TextEditingController _alasanController = TextEditingController();
 
   int get _durasiHari {
-    return _tanggalSelesai.difference(_tanggalMulai).inDays + 1;
+    int days = 0;
+    DateTime current = _tanggalMulai;
+    while (!current.isAfter(_tanggalSelesai)) {
+      if (current.weekday != DateTime.saturday && current.weekday != DateTime.sunday) {
+        days++;
+      }
+      current = current.add(const Duration(days: 1));
+    }
+    return days;
   }
 
   @override
@@ -66,6 +74,13 @@ class _AjukanCutiSheetState extends State<AjukanCutiSheet> {
     if (_alasanController.text.trim().isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Alasan wajib diisi!')),
+      );
+      return;
+    }
+
+    if (_tipePengajuan.toLowerCase() == 'cuti' && _durasiHari > _sisaCuti) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Durasi cuti melebihi sisa kuota!')),
       );
       return;
     }
@@ -192,7 +207,7 @@ class _AjukanCutiSheetState extends State<AjukanCutiSheet> {
 
   String _formatDate(DateTime date) {
     final List<String> bulan = [
-      'Agt', 'Agt', 'Agt', 'Agt', 'Agt', 'Agt', 'Agt', 'Agt', 'Sep', 'Okt', 'Nov', 'Des'
+      'Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Agt', 'Sep', 'Okt', 'Nov', 'Des'
     ];
     // Menggunakan format pad dua digit tanggal dan tahun
     return '${date.day.toString().padLeft(2, '0')} ${bulan[date.month - 1]} ${date.year}';

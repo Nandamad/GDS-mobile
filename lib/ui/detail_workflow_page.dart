@@ -642,45 +642,14 @@ class DetailWorkflowScreen extends StatelessWidget {
     dynamic nama;
     dynamic tanggal;
 
-    if (isCuti) {
+    if (isCuti || !isCuti) {
+      // Sama untuk cuti maupun lembur (berdasarkan backend BE-12 & BE-13)
       if (level1) {
-        nama =
-            data['approved_by_atasan_name'] ??
-                data['nama_atasan'] ??
-                data['atasan_nama'];
-
-        tanggal =
-            data['approved_at_atasan'] ??
-                data['tanggal_verifikasi_atasan'];
+        nama = data['approved_by_l1']?['name'] ?? data['approved_by_atasan_name'] ?? data['nama_atasan'];
+        tanggal = data['approved_at_l1'] ?? data['approved_at_atasan'] ?? data['tanggal_verifikasi_atasan'];
       } else {
-        nama =
-            data['approved_by_hrd_name'] ??
-                data['nama_hrd'] ??
-                data['hrd_nama'];
-
-        tanggal =
-            data['approved_at_hrd'] ??
-                data['tanggal_verifikasi_hrd'];
-      }
-    } else {
-      if (level1) {
-        nama =
-            data['approved_by_level1_name'] ??
-                data['nama_atasan'] ??
-                data['atasan_nama'];
-
-        tanggal =
-            data['approved_at_l1'] ??
-                data['approved_at_level1'];
-      } else {
-        nama =
-            data['approved_by_level2_name'] ??
-                data['nama_hrd'] ??
-                data['hrd_nama'];
-
-        tanggal =
-            data['approved_at_l2'] ??
-                data['approved_at_level2'];
+        nama = data['approved_by_l2']?['name'] ?? data['approved_by_hrd_name'] ?? data['nama_hrd'];
+        tanggal = data['approved_at_l2'] ?? data['approved_at_hrd'] ?? data['tanggal_verifikasi_hrd'];
       }
     }
 

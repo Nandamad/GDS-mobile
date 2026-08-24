@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:dio/dio.dart';
+import '../services/api_service.dart';
 
 class NotifikasiScreen extends StatefulWidget {
   const NotifikasiScreen({super.key});
@@ -8,49 +10,98 @@ class NotifikasiScreen extends StatefulWidget {
 }
 
 class _NotifikasiScreenState extends State<NotifikasiScreen> {
-  final List<Map<String, dynamic>> _notifications = [
-    {
-      'title': 'Pengajuan Cuti Disetujui',
-      'message': 'Pengajuan cuti Anda tanggal 06-10 Agt telah disetujui Atasan.',
-      'time': '2 jam lalu',
-      'dotColor': Colors.teal,
-      'isUnread': true,
-    },
-    {
-      'title': 'Update Lembur',
-      'message': 'Lembur tanggal 03 Agt sedang menunggu persetujuan HRD.',
-      'time': '4 jam lalu',
-      'dotColor': Colors.orange,
-      'isUnread': true,
-    },
-    {
-      'title': 'Reminder Absen Pagi',
-      'message': 'Jangan lupa absen masuk! Jam kerja mulai pukul 08:00.',
-      'time': '1 hari lalu',
-      'dotColor': Colors.blue,
-      'isUnread': false,
-    },
-    {
-      'title': 'Pengajuan Ditolak',
-      'message': 'Pengajuan izin tanggal 20 Jul ditolak oleh Atasan.',
-      'time': '2 hari lalu',
-      'dotColor': Colors.red,
-      'isUnread': false,
-    },
-  ];
+  List<Map<String, dynamic>> _notifications = [];
+  bool _isLoading = true;
 
-  void _markAllAsRead() {
-    setState(() {
-      for (var item in _notifications) {
-        item['isUnread'] = false;
+  @override
+  void initState() {
+    super.initState();
+    _fetchNotifications();
+  }
+
+  String _formatDate(dynamic value) {
+    if (value == null) return '-';
+    try {
+      final date = DateTime.parse(value.toString()).toLocal();
+      const months = ['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Agt', 'Sep', 'Okt', 'Nov', 'Des'];
+      return '${date.day.toString().padLeft(2, '0')} ${months[date.month - 1]} ${date.year} ${date.hour.toString().padLeft(2, '0')}:${date.minute.toString().padLeft(2, '0')}';
+    } catch (_) {
+      return value.toString();
+    }
+  }
+
+  Color _getDotColor(String title) {
+    title = title.toLowerCase();
+    if (title.contains('tolak')) return Colors.red;
+    if (title.contains('tuju')) return Colors.teal;
+    if (title.contains('lembur')) return Colors.orange;
+    return Colors.blue;
+  }
+
+  Future<void> _fetchNotifications() async {
+    setState(() => _isLoading = true);
+    try {
+      final dio = ApiService().dio;
+      final response = await dio.get('/notifikasi');
+      if (response.statusCode == 200) {
+        final payload = response.data;
+        final list = (payload['data'] as List?) ?? (payload as List?) ?? [];
+        
+        setState(() {
+          _notifications = list.map((e) {
+            final data = e['data'] ?? {};
+            return {
+              'id': e['id'],
+              'title': data['title'] ?? 'Notifikasi',
+              'message': data['message'] ?? '',
+              'time': _formatDate(e['created_at']),
+              'isUnread': e['read_at'] == null,
+              'dotColor': _getDotColor(data['title'] ?? ''),
+            };
+          }).toList();
+        });
       }
-    });
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('Semua notifikasi ditandai telah dibaca'),
-        duration: Duration(seconds: 1),
-      ),
-    );
+    } catch (e) {
+      debugPrint('GET /notifikasi ERROR: $e');
+    } finally {
+      if (mounted) {
+        setState(() => _isLoading = false);
+      }
+    }
+  }
+
+  Future<void> _markAllAsRead() async {
+    try {
+      final dio = ApiService().dio;
+      await dio.patch('/notifikasi/read-all');
+      setState(() {
+        for (var item in _notifications) {
+          item['isUnread'] = false;
+        }
+      });
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Semua notifikasi ditandai telah dibaca'),
+            duration: Duration(seconds: 1),
+          ),
+        );
+      }
+    } catch (e) {
+      debugPrint('PATCH /notifikasi/read-all ERROR: $e');
+    }
+  }
+  
+  Future<void> _markAsRead(String id, int index) async {
+    if (!_notifications[index]['isUnread']) return;
+    
+    setState(() => _notifications[index]['isUnread'] = false);
+    try {
+      final dio = ApiService().dio;
+      await dio.patch('/notifikasi/$id/read');
+    } catch (e) {
+      debugPrint('PATCH /notifikasi/id/read ERROR: $e');
+    }
   }
 
   @override
@@ -112,28 +163,39 @@ class _NotifikasiScreenState extends State<NotifikasiScreen> {
           ),
         ],
       ),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.symmetric(horizontal: 14.0, vertical: 12.0),
-        child: Column(
-          children: _notifications.asMap().entries.map((entry) {
-            int index = entry.key;
-            var item = entry.value;
-            return Padding(
-              padding: const EdgeInsets.only(bottom: 10.0),
-              child: _buildNotificationCard(
-                title: item['title'],
-                message: item['message'],
-                time: item['time'],
-                dotColor: item['dotColor'],
-                isUnread: item['isUnread'],
-                onTap: () {
-                  setState(() => _notifications[index]['isUnread'] = false);
-                },
-              ),
-            );
-          }).toList(),
-        ),
-      ),
+      body: _isLoading 
+          ? const Center(child: CircularProgressIndicator(color: Color(0xFF009688)))
+          : _notifications.isEmpty
+              ? const Center(
+                  child: Text(
+                    'Belum ada notifikasi.',
+                    style: TextStyle(color: Colors.grey),
+                  ),
+                )
+              : SingleChildScrollView(
+                  padding: const EdgeInsets.symmetric(horizontal: 14.0, vertical: 12.0),
+                  child: Column(
+                    children: _notifications.asMap().entries.map((entry) {
+                      int index = entry.key;
+                      var item = entry.value;
+                      return Padding(
+                        padding: const EdgeInsets.only(bottom: 10.0),
+                        child: _buildNotificationCard(
+                          title: item['title'],
+                          message: item['message'],
+                          time: item['time'],
+                          dotColor: item['dotColor'],
+                          isUnread: item['isUnread'],
+                          onTap: () {
+                            if (item['id'] != null) {
+                              _markAsRead(item['id'].toString(), index);
+                            }
+                          },
+                        ),
+                      );
+                    }).toList(),
+                  ),
+                ),
     );
   }
 

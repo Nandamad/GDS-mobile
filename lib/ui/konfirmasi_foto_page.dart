@@ -68,6 +68,15 @@ class _KonfirmasiFotoScreenState extends State<KonfirmasiFotoScreen> {
   }
 
   void _onConfirm() {
+    if (!widget.isInRadius) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Anda berada di luar radius kantor!'),
+          backgroundColor: Colors.redAccent,
+        ),
+      );
+      return;
+    }
     Navigator.pop(context, true);
   }
 
@@ -215,31 +224,6 @@ class _KonfirmasiFotoScreenState extends State<KonfirmasiFotoScreen> {
               decoration: BoxDecoration(
                 border: Border.all(color: Colors.white, width: 2),
                 borderRadius: BorderRadius.circular(10),
-              ),
-            ),
-            Positioned(
-              bottom: 12,
-              child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                decoration: BoxDecoration(
-                  color: const Color(0xFF009688).withOpacity(0.9),
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: const [
-                    Icon(Icons.qr_code_scanner, size: 12, color: Colors.white),
-                    SizedBox(width: 4),
-                    Text(
-                      'WAJAH TERDETEKSI',
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontSize: 8,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                  ],
-                ),
               ),
             ),
           ],

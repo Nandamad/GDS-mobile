@@ -107,6 +107,13 @@ class _LoginScreenState extends State<LoginScreen> {
           } else {
             errorMsg = 'NIP/Email atau Password salah atau format tidak valid.';
           }
+        } else if (e.response!.statusCode == 401) {
+          final data = e.response!.data;
+          if (data is Map && data.containsKey('message')) {
+            errorMsg = data['message'];
+          } else {
+            errorMsg = 'Kredensial tidak valid atau akun dinonaktifkan.';
+          }
         } else {
           errorMsg = 'Error server: ${e.response!.statusCode}';
         }

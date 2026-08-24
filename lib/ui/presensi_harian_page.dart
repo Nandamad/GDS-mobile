@@ -423,8 +423,13 @@ class _PresensiScreenState extends State<PresensiScreen> {
       btnText = 'Sudah Absen';
     }
 
+    if (!_isInRadius && !(_isSudahAbsenMasuk && _isSudahAbsenKeluar)) {
+      btnColor = Colors.grey;
+      btnText = 'Luar Radius';
+    }
+
     return GestureDetector(
-      onTap: (_isSudahAbsenMasuk && _isSudahAbsenKeluar)
+      onTap: ((_isSudahAbsenMasuk && _isSudahAbsenKeluar) || !_isInRadius)
           ? null
           : _handleAbsenProcess,
       child: Container(
