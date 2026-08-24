@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:dio/dio.dart';
 import 'dashboard_page.dart';
 import 'presensi_harian_page.dart';
 import 'pengajuan_page.dart';
@@ -28,7 +29,47 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
   }
 
   Future<void> _loadAtasanStatus() async {
-    final isAtasan = await ApiService().getIsAtasan();
+    var isAtasan = await ApiService().getIsAtasan();
+
+    try {
+      final response = await ApiService().dio.get('/user');
+      final payload = response.data;
+      dynamic user = payload;
+      if (payload is Map) {
+        user = payload['user'] ?? payload['data'] ?? payload;
+        if (user is Map && user['user'] is Map) user = user['user'];
+      }
+      if (user is Map && user.containsKey('is_atasan')) {
+        final value = user['is_atasan'];
+        isAtasan =
+            value == true ||
+            ['true', '1', 'yes'].contains(value.toString().toLowerCase());
+        await ApiService().saveIsAtasan(isAtasan);
+      }
+    } on DioException catch (e) {
+      debugPrint(
+        'GET /user ERROR: ${e.response?.statusCode} ${e.response?.data}',
+      );
+    }
+
+    if (!isAtasan) {
+      try {
+        final response = await ApiService().dio.get('/approval/pending');
+        final payload = response.data;
+        dynamic data = payload;
+        if (payload is Map) {
+          data = payload['data'] ?? payload['items'] ?? payload['result'] ?? [];
+        }
+        isAtasan =
+            response.statusCode == 200 && data is List && data.isNotEmpty;
+        if (isAtasan) await ApiService().saveIsAtasan(true);
+      } on DioException catch (e) {
+        debugPrint(
+          'CHECK ATASAN ERROR: ${e.response?.statusCode} ${e.response?.data}',
+        );
+      }
+    }
+
     if (mounted) {
       setState(() => _isAtasan = isAtasan);
     }
@@ -58,10 +99,7 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
       base.add(const ApprovalScreen());
     }
 
-    base.addAll([
-      const RiwayatPresensiScreen(),
-      const ProfilPage(),
-    ]);
+    base.addAll([const RiwayatPresensiScreen(), const ProfilPage()]);
 
     return base;
   }
@@ -76,10 +114,7 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
     final pages = _pages;
 
     return Scaffold(
-      body: IndexedStack(
-        index: _currentIndex,
-        children: pages,
-      ),
+      body: IndexedStack(index: _currentIndex, children: pages),
 
       // FAB TOMBOL LINGKARAN HIJAU DI TENGAH
       floatingActionButton: SizedBox(
@@ -153,7 +188,6 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
               // NAMUN: Untuk menjaga UX yang konsisten, kita tetap tampilkan
               // 4 item navigasi. Untuk atasan: Home | Pengajuan | Approval | Profil
               // Riwayat bisa diakses dari dashboard atau menu profil.
-
               if (_isAtasan)
                 _buildNavItem(
                   index: _profilIndex,
@@ -195,7 +229,9 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
             Icon(
               isSelected ? activeIcon : icon,
               size: 22,
-              color: isSelected ? const Color(0xFF009688) : const Color(0xFF94A3B8),
+              color: isSelected
+                  ? const Color(0xFF009688)
+                  : const Color(0xFF94A3B8),
             ),
             const SizedBox(height: 2),
             Text(
@@ -203,7 +239,9 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
               style: TextStyle(
                 fontSize: 10,
                 fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
-                color: isSelected ? const Color(0xFF009688) : const Color(0xFF94A3B8),
+                color: isSelected
+                    ? const Color(0xFF009688)
+                    : const Color(0xFF94A3B8),
               ),
             ),
           ],

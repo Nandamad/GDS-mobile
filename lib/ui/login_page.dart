@@ -39,10 +39,7 @@ class _LoginScreenState extends State<LoginScreen> {
 
       final response = await dio.post(
         '/login',
-        data: {
-          'login': input,
-          'password': password,
-        },
+        data: {'login': input, 'password': password},
       );
 
       if (response.statusCode == 200) {
@@ -76,16 +73,78 @@ class _LoginScreenState extends State<LoginScreen> {
         if (token != null && token.isNotEmpty) {
           await ApiService().saveToken(token);
 
-          // Ekstrak is_atasan dari payload.user (sesuai kontrak backend)
-          bool isAtasan = false;
-          if (payload is Map) {
-            final user = payload['user'];
-            if (user is Map && user['is_atasan'] == true) {
-              isAtasan = true;
+          bool asBool(dynamic value) {
+            if (value is bool) return value;
+            return [
+              'true',
+              '1',
+              'yes',
+            ].contains(value?.toString().trim().toLowerCase());
+          }
+
+          Map<String, dynamic>? findUser(dynamic data) {
+            if (data is! Map) return null;
+            final map = Map<String, dynamic>.from(data);
+            if (map.containsKey('is_atasan') ||
+                map.containsKey('isAtasan') ||
+                map.containsKey('karyawan_id')) {
+              return map;
+            }
+            final directUser = map['user'];
+            if (directUser is Map) {
+              return Map<String, dynamic>.from(directUser);
+            }
+
+            for (final key in ['data', 'auth']) {
+              final nestedUser = findUser(map[key]);
+              if (nestedUser != null) return nestedUser;
+            }
+            return null;
+          }
+
+          var isAtasan = asBool(findUser(payload)?['is_atasan']);
+
+          // Refresh the role from the authenticated user endpoint. This also
+          // handles users whose supervisor assignment changed in the portal.
+          try {
+            final userResponse = await dio.get('/user');
+            final currentUser = findUser(userResponse.data);
+            isAtasan = asBool(
+              currentUser?['is_atasan'] ?? currentUser?['isAtasan'],
+            );
+          } on DioException catch (e) {
+            debugPrint(
+              'GET /user ERROR: ${e.response?.statusCode} ${e.response?.data}',
+            );
+          }
+
+          // Keep compatibility with older backends that do not expose the
+          // role flag, but only use pending data as a last resort.
+          if (!isAtasan) {
+            try {
+              final approvalResponse = await dio.get('/approval/pending');
+              final approvalPayload = approvalResponse.data;
+              dynamic approvalData = approvalPayload;
+              if (approvalPayload is Map) {
+                approvalData =
+                    approvalPayload['data'] ??
+                    approvalPayload['items'] ??
+                    approvalPayload['result'] ??
+                    [];
+              }
+              isAtasan =
+                  approvalResponse.statusCode == 200 &&
+                  approvalData is List &&
+                  approvalData.isNotEmpty;
+            } on DioException catch (e) {
+              debugPrint(
+                'CHECK ATASAN ERROR: ${e.response?.statusCode} ${e.response?.data}',
+              );
             }
           }
+
           await ApiService().saveIsAtasan(isAtasan);
-          
+
           if (mounted) {
             Navigator.pushReplacement(
               context,

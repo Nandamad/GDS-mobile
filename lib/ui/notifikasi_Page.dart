@@ -1,4 +1,6 @@
+import 'dart:convert';
 import 'package:flutter/material.dart';
+import 'package:dio/dio.dart';
 import '../services/api_service.dart';
 
 class NotifikasiScreen extends StatefulWidget {
@@ -22,7 +24,20 @@ class _NotifikasiScreenState extends State<NotifikasiScreen> {
     if (value == null) return '-';
     try {
       final date = DateTime.parse(value.toString()).toLocal();
-      const months = ['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Agt', 'Sep', 'Okt', 'Nov', 'Des'];
+      const months = [
+        'Jan',
+        'Feb',
+        'Mar',
+        'Apr',
+        'Mei',
+        'Jun',
+        'Jul',
+        'Agt',
+        'Sep',
+        'Okt',
+        'Nov',
+        'Des',
+      ];
       return '${date.day.toString().padLeft(2, '0')} ${months[date.month - 1]} ${date.year} ${date.hour.toString().padLeft(2, '0')}:${date.minute.toString().padLeft(2, '0')}';
     } catch (_) {
       return value.toString();
@@ -37,6 +52,32 @@ class _NotifikasiScreenState extends State<NotifikasiScreen> {
     return Colors.blue;
   }
 
+  Map<String, dynamic> _readNotificationData(Map item) {
+    final rawData = item['data'];
+    if (rawData is Map) return Map<String, dynamic>.from(rawData);
+    if (rawData is String) {
+      try {
+        final decoded = jsonDecode(rawData);
+        if (decoded is Map) return Map<String, dynamic>.from(decoded);
+      } catch (_) {}
+    }
+    return {};
+  }
+
+  List<dynamic> _readList(dynamic payload) {
+    dynamic value = payload;
+    for (var index = 0; index < 3 && value is Map; index++) {
+      value = value['data'] ?? value['items'] ?? value['result'] ?? value;
+      if (value is Map &&
+          !value.containsKey('data') &&
+          !value.containsKey('items') &&
+          !value.containsKey('result')) {
+        break;
+      }
+    }
+    return value is List ? value : const [];
+  }
+
   Future<void> _fetchNotifications() async {
     setState(() => _isLoading = true);
     try {
@@ -44,21 +85,32 @@ class _NotifikasiScreenState extends State<NotifikasiScreen> {
       final response = await dio.get('/notifikasi');
       if (response.statusCode == 200) {
         final payload = response.data;
-        final list = (payload['data'] as List?) ?? (payload as List?) ?? [];
-        
+        final list = _readList(payload);
+
         setState(() {
-          _notifications = list.map((e) {
-            final data = e['data'] ?? {};
+          _notifications = list.whereType<Map>().map((e) {
+            final data = _readNotificationData(e);
+            final title =
+                (data['title'] ?? e['title'] ?? e['type'] ?? 'Notifikasi')
+                    .toString();
+            final message =
+                (data['message'] ??
+                        data['body'] ??
+                        e['message'] ??
+                        'Ada pembaruan pada pengajuan Anda.')
+                    .toString();
             return {
               'id': e['id'],
-              'title': data['title'] ?? 'Notifikasi',
-              'message': data['message'] ?? '',
+              'title': title,
+              'message': message,
               'time': _formatDate(e['created_at']),
               'isUnread': e['read_at'] == null,
-              'dotColor': _getDotColor(data['title'] ?? ''),
+              'dotColor': _getDotColor(title),
             };
           }).toList();
         });
+
+        await _appendPendingApprovals();
       }
     } catch (e) {
       debugPrint('GET /notifikasi ERROR: $e');
@@ -66,6 +118,43 @@ class _NotifikasiScreenState extends State<NotifikasiScreen> {
       if (mounted) {
         setState(() => _isLoading = false);
       }
+    }
+  }
+
+  Future<void> _appendPendingApprovals() async {
+    try {
+      final response = await ApiService().dio.get('/approval/pending');
+      final pending = _readList(response.data);
+      if (!mounted || pending.isEmpty) return;
+
+      final pendingNotifications = pending.whereType<Map>().map((item) {
+        final type = (item['type'] ?? item['jenis_pengajuan'] ?? 'Pengajuan')
+            .toString()
+            .toLowerCase();
+        final isLembur = type.contains('lembur');
+        final employee =
+            item['user']?['name'] ??
+            item['karyawan']?['nama'] ??
+            item['nama_karyawan'] ??
+            'Karyawan';
+        return <String, dynamic>{
+          'id': null,
+          'title': 'Pengajuan ${isLembur ? 'Lembur' : 'Cuti/Izin'} Baru',
+          'message':
+              '$employee mengajukan ${isLembur ? 'lembur' : 'cuti/izin'} untuk persetujuan Anda.',
+          'time': _formatDate(item['created_at']),
+          'isUnread': true,
+          'dotColor': isLembur ? Colors.orange : Colors.teal,
+        };
+      });
+
+      setState(
+        () => _notifications = [...pendingNotifications, ..._notifications],
+      );
+    } on DioException catch (e) {
+      debugPrint(
+        'GET /approval/pending NOTIFICATION ERROR: ${e.response?.data}',
+      );
     }
   }
 
@@ -90,10 +179,10 @@ class _NotifikasiScreenState extends State<NotifikasiScreen> {
       debugPrint('PATCH /notifikasi/read-all ERROR: $e');
     }
   }
-  
+
   Future<void> _markAsRead(String id, int index) async {
     if (!_notifications[index]['isUnread']) return;
-    
+
     setState(() => _notifications[index]['isUnread'] = false);
     try {
       final dio = ApiService().dio;
@@ -145,7 +234,10 @@ class _NotifikasiScreenState extends State<NotifikasiScreen> {
               onPressed: _markAllAsRead,
               style: TextButton.styleFrom(
                 backgroundColor: const Color(0xFFE0F2F1),
-                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 10,
+                  vertical: 4,
+                ),
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(8),
                 ),
@@ -162,39 +254,44 @@ class _NotifikasiScreenState extends State<NotifikasiScreen> {
           ),
         ],
       ),
-      body: _isLoading 
-          ? const Center(child: CircularProgressIndicator(color: Color(0xFF009688)))
+      body: _isLoading
+          ? const Center(
+              child: CircularProgressIndicator(color: Color(0xFF009688)),
+            )
           : _notifications.isEmpty
-              ? const Center(
-                  child: Text(
-                    'Belum ada notifikasi.',
-                    style: TextStyle(color: Colors.grey),
-                  ),
-                )
-              : SingleChildScrollView(
-                  padding: const EdgeInsets.symmetric(horizontal: 14.0, vertical: 12.0),
-                  child: Column(
-                    children: _notifications.asMap().entries.map((entry) {
-                      int index = entry.key;
-                      var item = entry.value;
-                      return Padding(
-                        padding: const EdgeInsets.only(bottom: 10.0),
-                        child: _buildNotificationCard(
-                          title: item['title'],
-                          message: item['message'],
-                          time: item['time'],
-                          dotColor: item['dotColor'],
-                          isUnread: item['isUnread'],
-                          onTap: () {
-                            if (item['id'] != null) {
-                              _markAsRead(item['id'].toString(), index);
-                            }
-                          },
-                        ),
-                      );
-                    }).toList(),
-                  ),
-                ),
+          ? const Center(
+              child: Text(
+                'Belum ada notifikasi.',
+                style: TextStyle(color: Colors.grey),
+              ),
+            )
+          : SingleChildScrollView(
+              padding: const EdgeInsets.symmetric(
+                horizontal: 14.0,
+                vertical: 12.0,
+              ),
+              child: Column(
+                children: _notifications.asMap().entries.map((entry) {
+                  int index = entry.key;
+                  var item = entry.value;
+                  return Padding(
+                    padding: const EdgeInsets.only(bottom: 10.0),
+                    child: _buildNotificationCard(
+                      title: item['title'],
+                      message: item['message'],
+                      time: item['time'],
+                      dotColor: item['dotColor'],
+                      isUnread: item['isUnread'],
+                      onTap: () {
+                        if (item['id'] != null) {
+                          _markAsRead(item['id'].toString(), index);
+                        }
+                      },
+                    ),
+                  );
+                }).toList(),
+              ),
+            ),
     );
   }
 
@@ -281,10 +378,7 @@ class _NotifikasiScreenState extends State<NotifikasiScreen> {
                   const SizedBox(height: 6),
                   Text(
                     time,
-                    style: const TextStyle(
-                      color: Colors.grey,
-                      fontSize: 9,
-                    ),
+                    style: const TextStyle(color: Colors.grey, fontSize: 9),
                   ),
                 ],
               ),

@@ -43,11 +43,21 @@ class _ApprovalScreenState extends State<ApprovalScreen>
 
       if (response.statusCode == 200) {
         final payload = response.data;
-        final data = payload is Map && payload['data'] is List
-            ? payload['data']
-            : payload is List
-                ? payload
-                : [];
+        dynamic data = payload;
+        if (payload is Map) {
+          data = payload['data'] ?? payload['items'] ?? payload['result'] ?? [];
+          if (data is Map) {
+            if (data['cuti'] is List || data['lembur'] is List) {
+              data = [
+                ...(data['cuti'] is List ? data['cuti'] as List : const []),
+                ...(data['lembur'] is List ? data['lembur'] as List : const []),
+              ];
+            } else {
+              data = data['data'] ?? data['items'] ?? data['records'] ?? [];
+            }
+          }
+        }
+        if (data is! List) data = [];
 
         final cuti = <Map<String, dynamic>>[];
         final lembur = <Map<String, dynamic>>[];
@@ -72,11 +82,17 @@ class _ApprovalScreenState extends State<ApprovalScreen>
             _isLoading = false;
           });
         }
+      } else if (mounted) {
+        setState(() {
+          _isLoading = false;
+          _errorMessage = 'Gagal mengambil data approval.';
+        });
       }
     } on DioException catch (e) {
       if (mounted) {
         setState(() {
-          _errorMessage = e.response?.data?['message']?.toString() ??
+          _errorMessage =
+              e.response?.data?['message']?.toString() ??
               'Gagal mengambil data approval.';
           _isLoading = false;
         });
@@ -100,8 +116,18 @@ class _ApprovalScreenState extends State<ApprovalScreen>
     try {
       final date = DateTime.parse(value.toString()).toLocal();
       const months = [
-        'Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun',
-        'Jul', 'Agt', 'Sep', 'Okt', 'Nov', 'Des'
+        'Jan',
+        'Feb',
+        'Mar',
+        'Apr',
+        'Mei',
+        'Jun',
+        'Jul',
+        'Agt',
+        'Sep',
+        'Okt',
+        'Nov',
+        'Des',
       ];
       return '${date.day.toString().padLeft(2, '0')} ${months[date.month - 1]} ${date.year}';
     } catch (_) {
@@ -175,43 +201,46 @@ class _ApprovalScreenState extends State<ApprovalScreen>
       ),
       body: _isLoading
           ? const Center(
-              child: CircularProgressIndicator(color: Color(0xFF009688)))
+              child: CircularProgressIndicator(color: Color(0xFF009688)),
+            )
           : _errorMessage != null
-              ? Center(
-                  child: Padding(
-                    padding: const EdgeInsets.all(24),
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        const Icon(Icons.error_outline,
-                            color: Colors.grey, size: 48),
-                        const SizedBox(height: 12),
-                        Text(
-                          _errorMessage!,
-                          textAlign: TextAlign.center,
-                          style: const TextStyle(color: Colors.grey),
-                        ),
-                        const SizedBox(height: 16),
-                        OutlinedButton(
-                          onPressed: _fetchPendingApprovals,
-                          child: const Text('Coba Lagi'),
-                        ),
-                      ],
-                    ),
-                  ),
-                )
-              : TabBarView(
-                  controller: _tabController,
+          ? Center(
+              child: Padding(
+                padding: const EdgeInsets.all(24),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
                   children: [
-                    _buildList(_cutiList, isCuti: true),
-                    _buildList(_lemburList, isCuti: false),
+                    const Icon(
+                      Icons.error_outline,
+                      color: Colors.grey,
+                      size: 48,
+                    ),
+                    const SizedBox(height: 12),
+                    Text(
+                      _errorMessage!,
+                      textAlign: TextAlign.center,
+                      style: const TextStyle(color: Colors.grey),
+                    ),
+                    const SizedBox(height: 16),
+                    OutlinedButton(
+                      onPressed: _fetchPendingApprovals,
+                      child: const Text('Coba Lagi'),
+                    ),
                   ],
                 ),
+              ),
+            )
+          : TabBarView(
+              controller: _tabController,
+              children: [
+                _buildList(_cutiList, isCuti: true),
+                _buildList(_lemburList, isCuti: false),
+              ],
+            ),
     );
   }
 
-  Widget _buildList(List<Map<String, dynamic>> items,
-      {required bool isCuti}) {
+  Widget _buildList(List<Map<String, dynamic>> items, {required bool isCuti}) {
     if (items.isEmpty) {
       return Center(
         child: Column(
@@ -249,21 +278,21 @@ class _ApprovalScreenState extends State<ApprovalScreen>
     );
   }
 
-  Widget _buildApprovalCard(Map<String, dynamic> item,
-      {required bool isCuti}) {
+  Widget _buildApprovalCard(Map<String, dynamic> item, {required bool isCuti}) {
     final nama = _getKaryawanName(item);
     final jenis = isCuti
         ? _capitalize(item['jenis']?.toString() ?? 'Cuti')
         : 'Lembur';
-    final dateRange =
-        isCuti ? _getCutiDateRange(item) : _getLemburDateRange(item);
+    final dateRange = isCuti
+        ? _getCutiDateRange(item)
+        : _getLemburDateRange(item);
     final alasan = item['alasan']?.toString() ?? '-';
     final diajukan = _formatDate(item['created_at']);
 
-    final badgeBg =
-        isCuti ? const Color(0xFFE0F2F1) : const Color(0xFFFEF3C7);
-    final badgeText =
-        isCuti ? const Color(0xFF009688) : const Color(0xFFD97706);
+    final badgeBg = isCuti ? const Color(0xFFE0F2F1) : const Color(0xFFFEF3C7);
+    final badgeText = isCuti
+        ? const Color(0xFF009688)
+        : const Color(0xFFD97706);
 
     return GestureDetector(
       onTap: () async {
@@ -307,8 +336,10 @@ class _ApprovalScreenState extends State<ApprovalScreen>
                   ),
                 ),
                 Container(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 8,
+                    vertical: 3,
+                  ),
                   decoration: BoxDecoration(
                     color: badgeBg,
                     borderRadius: BorderRadius.circular(6),
@@ -329,12 +360,18 @@ class _ApprovalScreenState extends State<ApprovalScreen>
             // Tanggal range
             Row(
               children: [
-                const Icon(Icons.calendar_today_outlined,
-                    size: 13, color: Colors.grey),
+                const Icon(
+                  Icons.calendar_today_outlined,
+                  size: 13,
+                  color: Colors.grey,
+                ),
                 const SizedBox(width: 6),
                 Text(
                   dateRange,
-                  style: const TextStyle(fontSize: 11, color: Color(0xFF64748B)),
+                  style: const TextStyle(
+                    fontSize: 11,
+                    color: Color(0xFF64748B),
+                  ),
                 ),
               ],
             ),
@@ -343,14 +380,15 @@ class _ApprovalScreenState extends State<ApprovalScreen>
             // Alasan (ringkas)
             Row(
               children: [
-                const Icon(Icons.notes_outlined,
-                    size: 13, color: Colors.grey),
+                const Icon(Icons.notes_outlined, size: 13, color: Colors.grey),
                 const SizedBox(width: 6),
                 Expanded(
                   child: Text(
                     alasan,
                     style: const TextStyle(
-                        fontSize: 11, color: Color(0xFF64748B)),
+                      fontSize: 11,
+                      color: Color(0xFF64748B),
+                    ),
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                   ),

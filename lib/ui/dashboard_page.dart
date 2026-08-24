@@ -16,11 +16,48 @@ class _DashboardScreenState extends State<DashboardScreen> {
   bool _isLoading = true;
   Map<String, dynamic>? _dashboardData;
   String _errorMessage = '';
+  int _unreadNotificationCount = 0;
 
   @override
   void initState() {
     super.initState();
     _fetchDashboardData();
+    _fetchUnreadNotificationCount();
+  }
+
+  Future<void> _fetchUnreadNotificationCount() async {
+    var unreadCount = 0;
+    try {
+      final response = await ApiService().dio.get('/notifikasi');
+      final payload = response.data;
+      dynamic list = payload;
+      if (payload is Map) {
+        list = payload['data'] ?? payload['items'] ?? payload['result'] ?? [];
+      }
+      if (list is! List) return;
+
+      unreadCount = list.where((item) {
+        return item is Map && item['read_at'] == null;
+      }).length;
+    } catch (e) {
+      debugPrint('GET /notifikasi COUNT ERROR: $e');
+    }
+
+    try {
+      final response = await ApiService().dio.get('/approval/pending');
+      final payload = response.data;
+      dynamic list = payload;
+      if (payload is Map) {
+        list = payload['data'] ?? payload['items'] ?? payload['result'] ?? [];
+      }
+      if (list is List) unreadCount += list.length;
+    } catch (e) {
+      debugPrint('GET /approval/pending COUNT ERROR: $e');
+    }
+
+    if (mounted) {
+      setState(() => _unreadNotificationCount = unreadCount);
+    }
   }
 
   Future<void> _fetchDashboardData() async {
@@ -256,25 +293,28 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   color: Colors.grey,
                 ),
               ),
-              Positioned(
-                right: 2,
-                top: 2,
-                child: Container(
-                  padding: const EdgeInsets.all(3),
-                  decoration: const BoxDecoration(
-                    color: Colors.red,
-                    shape: BoxShape.circle,
-                  ),
-                  child: const Text(
-                    '3',
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontSize: 7,
-                      fontWeight: FontWeight.bold,
+              if (_unreadNotificationCount > 0)
+                Positioned(
+                  right: 2,
+                  top: 2,
+                  child: Container(
+                    padding: const EdgeInsets.all(3),
+                    decoration: const BoxDecoration(
+                      color: Colors.red,
+                      shape: BoxShape.circle,
+                    ),
+                    child: Text(
+                      _unreadNotificationCount > 9
+                          ? '9+'
+                          : '$_unreadNotificationCount',
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 7,
+                        fontWeight: FontWeight.bold,
+                      ),
                     ),
                   ),
                 ),
-              ),
             ],
           ),
         ),
