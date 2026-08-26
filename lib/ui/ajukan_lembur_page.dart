@@ -22,19 +22,17 @@ class _AjukanLemburSheetState extends State<AjukanLemburSheet> {
   DateTime _tanggalLembur = DateTime.now();
 
   TimeOfDay _jamMulai = const TimeOfDay(hour: 17, minute: 0);
-  TimeOfDay _jamSelesai = const TimeOfDay(hour: 19, minute: 0);
+  int _durasiJam = 2;
+
+  TimeOfDay get _jamSelesai {
+    int totalMinutes = _jamMulai.hour * 60 + _jamMulai.minute + (_durasiJam * 60);
+    return TimeOfDay(hour: (totalMinutes ~/ 60) % 24, minute: totalMinutes % 60);
+  }
 
   bool _isSubmitting = false;
   final TextEditingController _alasanController = TextEditingController();
 
-  int get _totalDurasiJam {
-    final startMinutes = _jamMulai.hour * 60 + _jamMulai.minute;
-    final endMinutes = _jamSelesai.hour * 60 + _jamSelesai.minute;
-
-    int diff = endMinutes - startMinutes;
-    if (diff <= 0) {
-      diff += 24 * 60;
-    }
+  int get _totalDurasiJam => _durasiJam;
 
     return (diff / 60).round();
   }
@@ -154,16 +152,12 @@ class _AjukanLemburSheetState extends State<AjukanLemburSheet> {
   Future<void> _selectTime(bool isMulai) async {
     final picked = await showTimePicker(
       context: context,
-      initialTime: isMulai ? _jamMulai : _jamSelesai,
+      initialTime: _jamMulai,
     );
 
     if (picked != null) {
       setState(() {
-        if (isMulai) {
-          _jamMulai = picked;
-        } else {
-          _jamSelesai = picked;
-        }
+        if (isMulai) { _jamMulai = picked; }
       });
     }
   }
@@ -359,9 +353,9 @@ class _AjukanLemburSheetState extends State<AjukanLemburSheet> {
             ),
             const SizedBox(height: 14),
 
-            // FIELD JAM SELESAI LEMBUR
+            // FIELD DURASI LEMBUR
             const Text(
-              'Jam Selesai Lembur',
+              'Durasi Lembur',
               style: TextStyle(
                 fontSize: 11,
                 color: Color(0xFF64748B),
@@ -369,15 +363,45 @@ class _AjukanLemburSheetState extends State<AjukanLemburSheet> {
               ),
             ),
             const SizedBox(height: 6),
-            _buildTimeField(
-              time: _jamSelesai,
-              onTap: () => _selectTime(false),
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.symmetric(horizontal: 12),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: Colors.grey.shade200),
+              ),
+              child: DropdownButtonHideUnderline(
+                child: DropdownButton<int>(
+                  value: _durasiJam,
+                  icon: const Icon(Icons.keyboard_arrow_down, size: 18, color: Colors.grey),
+                  isExpanded: true,
+                  style: const TextStyle(
+                    fontSize: 11,
+                    fontWeight: FontWeight.bold,
+                    color: Color(0xFF0F172A),
+                  ),
+                  onChanged: (int? newValue) {
+                    if (newValue != null) {
+                      setState(() {
+                        _durasiJam = newValue;
+                      });
+                    }
+                  },
+                  items: List.generate(8, (index) => index + 1).map<DropdownMenuItem<int>>((int value) {
+                    return DropdownMenuItem<int>(
+                      value: value,
+                      child: Text(' Jam'),
+                    );
+                  }).toList(),
+                ),
+              ),
             ),
             const SizedBox(height: 14),
 
-            // BANNER DURASI LEMBUR
+            // BANNER JAM SELESAI
             const Text(
-              'Durasi',
+              'Jam Selesai Lembur (Otomatis)',
               style: TextStyle(
                 fontSize: 11,
                 color: Color(0xFF64748B),
@@ -404,7 +428,7 @@ class _AjukanLemburSheetState extends State<AjukanLemburSheet> {
                   ),
                   const SizedBox(width: 8),
                   Text(
-                    '$_totalDurasiJam Jam',
+                    _formatTime(_jamSelesai),
                     style: const TextStyle(
                       color: Color(0xFF0F766E),
                       fontWeight: FontWeight.bold,
@@ -540,3 +564,4 @@ class _AjukanLemburSheetState extends State<AjukanLemburSheet> {
     );
   }
 }
+

@@ -29,6 +29,11 @@ class _PresensiScreenState extends State<PresensiScreen> {
   bool _isSudahAbsenMasuk = false;
   bool _isSudahAbsenKeluar = false;
 
+  Map<String, dynamic>? _lemburData;
+  DateTime? _serverTime;
+  String _lemburStatus = '';
+  String _lemburCountdown = '';
+
   LatLng? _officeLocation;
   double _radiusMeters = 0.0;
   double _maxRadiusMeters = 0.0;
@@ -61,6 +66,30 @@ class _PresensiScreenState extends State<PresensiScreen> {
     if (mounted) {
       setState(() {
         _currentTime = '$hour:$minute';
+
+        if (_serverTime != null) {
+          _serverTime = _serverTime!.add(const Duration(seconds: 1));
+          
+          if (_lemburData != null) {
+            final mulai = DateTime.parse(_lemburData!['jam_mulai']);
+            final selesai = DateTime.parse(_lemburData!['jam_selesai']);
+            
+            if (_serverTime!.isAfter(mulai) && _serverTime!.isBefore(selesai)) {
+              _lemburStatus = 'Sedang Lembur';
+              final diff = selesai.difference(_serverTime!);
+              final h = diff.inHours.toString().padLeft(2, '0');
+              final m = (diff.inMinutes % 60).toString().padLeft(2, '0');
+              final s = (diff.inSeconds % 60).toString().padLeft(2, '0');
+              _lemburCountdown = '$h:$m:$s';
+            } else if (_serverTime!.isAfter(selesai)) {
+              _lemburStatus = 'Selesai';
+              _lemburCountdown = 'Lembur Selesai';
+            } else {
+              _lemburStatus = 'Menunggu';
+              _lemburCountdown = '';
+            }
+          }
+        }
       });
     }
   }
@@ -89,6 +118,11 @@ class _PresensiScreenState extends State<PresensiScreen> {
           _namaKantor = kantor['nama_kantor']?.toString() ?? 'Kantor';
           _alamatKantor = kantor['alamat']?.toString() ?? '';
         }
+
+        if (resData['server_time'] != null) {
+          _serverTime = DateTime.parse(resData['server_time']);
+        }
+        _lemburData = resData['lembur'];
 
         if (data != null && data is Map) {
           _isSudahAbsenMasuk =
@@ -410,6 +444,55 @@ class _PresensiScreenState extends State<PresensiScreen> {
   }
 
   Widget _buildAbsenButton() {
+    if (_lemburStatus == 'Sedang Lembur') {
+      return Container(
+        width: 170,
+        height: 170,
+        decoration: BoxDecoration(
+          color: const Color(0xFFF59E0B),
+          shape: BoxShape.circle,
+          boxShadow: [
+            BoxShadow(
+              color: const Color(0xFFF59E0B).withOpacity(0.3),
+              blurRadius: 20,
+              spreadRadius: 4,
+              offset: const Offset(0, 8),
+            ),
+          ],
+        ),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            const Text(
+              'SISA WAKTU LEMBUR',
+              style: TextStyle(
+                color: Colors.white70,
+                fontSize: 10,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              _lemburCountdown,
+              style: const TextStyle(
+                color: Colors.white,
+                fontWeight: FontWeight.bold,
+                fontSize: 26,
+              ),
+            ),
+            const SizedBox(height: 4),
+            const Text(
+              'Sedang Lembur',
+              style: TextStyle(
+                color: Colors.white,
+                fontSize: 12,
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
     Color btnColor;
     String btnText;
 
