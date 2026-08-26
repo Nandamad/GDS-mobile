@@ -180,6 +180,7 @@ class _PresensiScreenState extends State<PresensiScreen> {
       if (base64String.contains(',')) {
         base64String = base64String.split(',').last;
       }
+      base64String = base64String.replaceAll(RegExp(r'\s+'), '');
 
       Uint8List imageBytes = base64Decode(base64String);
 

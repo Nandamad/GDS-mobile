@@ -191,7 +191,17 @@ class _KonfirmasiFotoScreenState extends State<KonfirmasiFotoScreen> {
   }
 
   Widget _buildCameraPreviewCard() {
-    final hasBase64 = widget.imageBase64 != null && widget.imageBase64!.startsWith('data:image');
+    String cleanBase64 = '';
+    if (widget.imageBase64 != null) {
+      if (widget.imageBase64!.contains(',')) {
+        cleanBase64 = widget.imageBase64!.split(',').last;
+      } else {
+        cleanBase64 = widget.imageBase64!;
+      }
+      cleanBase64 = cleanBase64.replaceAll(RegExp(r'\s+'), '');
+    }
+    
+    final hasBase64 = cleanBase64.isNotEmpty;
 
     return Container(
       width: 220,
@@ -207,7 +217,7 @@ class _KonfirmasiFotoScreenState extends State<KonfirmasiFotoScreen> {
           children: [
             hasBase64
                 ? Image.memory(
-              base64Decode(widget.imageBase64!.split(',').last),
+              base64Decode(cleanBase64),
               width: double.infinity,
               height: double.infinity,
               fit: BoxFit.cover,

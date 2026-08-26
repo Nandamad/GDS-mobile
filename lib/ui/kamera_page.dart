@@ -88,8 +88,7 @@ class _KameraScreenState extends State<KameraScreen> {
 
       final controller = CameraController(
         selectedCamera,
-        // Web lebih stabil pakai low/medium agar browser tidak memblokir stream
-        kIsWeb ? ResolutionPreset.medium : ResolutionPreset.high,
+        ResolutionPreset.medium,
         enableAudio: false,
       );
 
