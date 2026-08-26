@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import '../api_config.dart';
+import '../services/image_url_service.dart';
 
 class DetailWorkflowScreen extends StatelessWidget {
   final Map<String, dynamic> data;
@@ -33,9 +33,7 @@ class DetailWorkflowScreen extends StatelessWidget {
     if (value == null) return '-';
 
     try {
-      final date = DateTime.parse(
-        value.toString(),
-      ).toLocal();
+      final date = DateTime.parse(value.toString()).toLocal();
 
       const bulan = [
         'Jan',
@@ -85,25 +83,19 @@ class DetailWorkflowScreen extends StatelessWidget {
   }
 
   String _normalize(dynamic value) {
-    return _value(value)
-        .toLowerCase()
-        .replaceAll(' ', '_');
+    return _value(value).toLowerCase().replaceAll(' ', '_');
   }
 
   bool _approved(dynamic value) {
     final status = _normalize(value);
 
-    return status == 'disetujui' ||
-        status == 'approved' ||
-        status == 'approve';
+    return status == 'disetujui' || status == 'approved' || status == 'approve';
   }
 
   bool _rejected(dynamic value) {
     final status = _normalize(value);
 
-    return status == 'ditolak' ||
-        status == 'rejected' ||
-        status == 'reject';
+    return status == 'ditolak' || status == 'rejected' || status == 'reject';
   }
 
   // ============================================================
@@ -116,15 +108,11 @@ class DetailWorkflowScreen extends StatelessWidget {
       final l1 = data['status_verifikasi_atasan'];
       final l2 = data['status_verifikasi_hrd'];
 
-      if (_rejected(status) ||
-          _rejected(l1) ||
-          _rejected(l2)) {
+      if (_rejected(status) || _rejected(l1) || _rejected(l2)) {
         return 'Ditolak';
       }
 
-      if (_approved(status) &&
-          _approved(l1) &&
-          _approved(l2)) {
+      if (_approved(status) && _approved(l1) && _approved(l2)) {
         return 'Disetujui';
       }
 
@@ -139,15 +127,11 @@ class DetailWorkflowScreen extends StatelessWidget {
     final l1 = data['status_approval_level1'];
     final l2 = data['status_approval_level2'];
 
-    if (_rejected(finalStatus) ||
-        _rejected(l1) ||
-        _rejected(l2)) {
+    if (_rejected(finalStatus) || _rejected(l1) || _rejected(l2)) {
       return 'Ditolak';
     }
 
-    if (_approved(finalStatus) &&
-        _approved(l1) &&
-        _approved(l2)) {
+    if (_approved(finalStatus) && _approved(l1) && _approved(l2)) {
       return 'Disetujui';
     }
 
@@ -162,23 +146,6 @@ class DetailWorkflowScreen extends StatelessWidget {
   // BUILD
   // ============================================================
 
-String _getPhotoUrl(String? path) {
-    if (path == null || path.trim().isEmpty) return '';
-    final trimmed = path.trim();
-    if (trimmed.startsWith('http://') || trimmed.startsWith('https://')) {
-      if (trimmed.contains('127.0.0.1') || trimmed.contains('localhost')) {
-          Uri uri = Uri.parse(trimmed);
-          final base = ApiConfig.baseUrl.replaceAll(RegExp(r'/api/?$'), '');
-          return '$base${uri.path}';
-      }
-      return trimmed;
-    }
-    final base = ApiConfig.baseUrl.replaceAll(RegExp(r'/api/?$'), '');
-    String normalPath = trimmed.startsWith('/') ? trimmed : '/$trimmed';
-    if (!normalPath.startsWith('/storage')) normalPath = '/storage$normalPath';
-    return '$base$normalPath';
-  }
-
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -188,10 +155,7 @@ String _getPhotoUrl(String? path) {
         backgroundColor: Colors.white,
         elevation: 0,
         leading: IconButton(
-          icon: const Icon(
-            Icons.arrow_back,
-            color: Color(0xFF0F172A),
-          ),
+          icon: const Icon(Icons.arrow_back, color: Color(0xFF0F172A)),
           onPressed: () {
             Navigator.pop(context);
           },
@@ -240,36 +204,26 @@ String _getPhotoUrl(String? path) {
   Widget _buildSummaryCard() {
     final status = _overallStatus();
 
-    final jenis = isCuti
-        ? _value(data['jenis'])
-        : 'Lembur';
+    final jenis = isCuti ? _value(data['jenis']) : 'Lembur';
 
     final alasan = _value(data['alasan']);
 
     String periode;
 
     if (isCuti) {
-      final mulai =
-      _formatDate(data['tanggal_mulai']);
+      final mulai = _formatDate(data['tanggal_mulai']);
 
-      final selesai =
-      _formatDate(data['tanggal_selesai']);
+      final selesai = _formatDate(data['tanggal_selesai']);
 
-      periode = mulai == selesai
-          ? mulai
-          : '$mulai - $selesai';
+      periode = mulai == selesai ? mulai : '$mulai - $selesai';
     } else {
-      final tanggal =
-      _formatDate(data['tanggal']);
+      final tanggal = _formatDate(data['tanggal']);
 
-      final mulai =
-      _formatTime(data['jam_mulai_lembur']);
+      final mulai = _formatTime(data['jam_mulai_lembur']);
 
-      final selesai =
-      _formatTime(data['jam_selesai_lembur']);
+      final selesai = _formatTime(data['jam_selesai_lembur']);
 
-      periode =
-      '$tanggal, $mulai - $selesai';
+      periode = '$tanggal, $mulai - $selesai';
     }
 
     return Container(
@@ -278,9 +232,7 @@ String _getPhotoUrl(String? path) {
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(
-          color: Colors.grey.shade200,
-        ),
+        border: Border.all(color: Colors.grey.shade200),
       ),
       child: Column(
         children: [
@@ -306,31 +258,19 @@ String _getPhotoUrl(String? path) {
 
           const SizedBox(height: 5),
 
-          _summaryRow(
-            isCuti ? 'Periode' : 'Tanggal',
-            periode,
-          ),
+          _summaryRow(isCuti ? 'Periode' : 'Tanggal', periode),
 
           const SizedBox(height: 5),
 
-          _summaryRow(
-            'Diajukan',
-            _formatDate(data['created_at']),
-          ),
+          _summaryRow('Diajukan', _formatDate(data['created_at'])),
 
           const SizedBox(height: 5),
 
-          _summaryRow(
-            'Alasan',
-            alasan,
-          ),
+          _summaryRow('Alasan', alasan),
 
           if (!isCuti) ...[
             const SizedBox(height: 5),
-            _summaryRow(
-              'Durasi',
-              _durasiLembur(),
-            ),
+            _summaryRow('Durasi', _durasiLembur()),
           ],
 
           if (data['dokumen_pendukung'] != null) ...[
@@ -347,7 +287,10 @@ String _getPhotoUrl(String? path) {
             ClipRRect(
               borderRadius: BorderRadius.circular(8),
               child: Image.network(
-                _getPhotoUrl(data['dokumen_pendukung']?.toString()),
+                ImageUrlService.resolve(
+                      data['dokumen_pendukung']?.toString(),
+                    ) ??
+                    '',
                 height: 150,
                 width: double.infinity,
                 fit: BoxFit.cover,
@@ -369,32 +312,19 @@ String _getPhotoUrl(String? path) {
     );
   }
 
-  Widget _summaryRow(
-      String label,
-      String value,
-      ) {
+  Widget _summaryRow(String label, String value) {
     return Row(
-      crossAxisAlignment:
-      CrossAxisAlignment.start,
+      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         SizedBox(
           width: 70,
           child: Text(
             label,
-            style: const TextStyle(
-              fontSize: 10,
-              color: Colors.grey,
-            ),
+            style: const TextStyle(fontSize: 10, color: Colors.grey),
           ),
         ),
 
-        const Text(
-          ': ',
-          style: TextStyle(
-            fontSize: 10,
-            color: Colors.grey,
-          ),
-        ),
+        const Text(': ', style: TextStyle(fontSize: 10, color: Colors.grey)),
 
         Expanded(
           child: Text(
@@ -427,32 +357,21 @@ String _getPhotoUrl(String? path) {
     }
 
     return Container(
-      padding: const EdgeInsets.symmetric(
-        horizontal: 7,
-        vertical: 3,
-      ),
+      padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
       decoration: BoxDecoration(
         color: bg,
         borderRadius: BorderRadius.circular(5),
       ),
       child: Text(
         status,
-        style: TextStyle(
-          color: text,
-          fontWeight: FontWeight.bold,
-          fontSize: 8,
-        ),
+        style: TextStyle(color: text, fontWeight: FontWeight.bold, fontSize: 8),
       ),
     );
   }
 
   String _durasiLembur() {
-    final menit = int.tryParse(
-      data['durasi_lembur_menit']
-          ?.toString() ??
-          '0',
-    ) ??
-        0;
+    final menit =
+        int.tryParse(data['durasi_lembur_menit']?.toString() ?? '0') ?? 0;
 
     final jam = menit ~/ 60;
     final sisa = menit % 60;
@@ -481,34 +400,24 @@ String _getPhotoUrl(String? path) {
   // ============================================================
 
   Widget _buildCutiWorkflow() {
-    final l1 =
-    data['status_verifikasi_atasan'];
+    final l1 = data['status_verifikasi_atasan'];
 
-    final l2 =
-    data['status_verifikasi_hrd'];
+    final l2 = data['status_verifikasi_hrd'];
 
-    final finalStatus =
-    data['status'];
+    final finalStatus = data['status'];
 
     final l1Approved = _approved(l1);
     final l2Approved = _approved(l2);
 
-    final rejected =
-        _rejected(l1) ||
-            _rejected(l2) ||
-            _rejected(finalStatus);
+    final rejected = _rejected(l1) || _rejected(l2) || _rejected(finalStatus);
 
-    final selesai =
-        l1Approved &&
-            l2Approved &&
-            _approved(finalStatus);
+    final selesai = l1Approved && l2Approved && _approved(finalStatus);
 
     return Column(
       children: [
         _step(
           title: 'Pengajuan Dikirim',
-          subtitle:
-          _formatDate(data['created_at']),
+          subtitle: _formatDate(data['created_at']),
           badge: 'Selesai',
           done: true,
           current: false,
@@ -517,43 +426,23 @@ String _getPhotoUrl(String? path) {
         ),
 
         _step(
-          title:
-          'Persetujuan Atasan (Level 1)',
-          subtitle: _approvalInfo(
-            level1: true,
-          ),
-          note: _approvalNote(
-            level1: true,
-          ),
-          badge: _stepStatus(
-            l1,
-            rejected: rejected,
-          ),
+          title: 'Persetujuan Atasan (Level 1)',
+          subtitle: _approvalInfo(level1: true),
+          note: _approvalNote(level1: true),
+          badge: _stepStatus(l1, rejected: rejected),
           done: l1Approved,
-          current:
-          !l1Approved && !rejected,
+          current: !l1Approved && !rejected,
           first: false,
           last: false,
         ),
 
         _step(
-          title:
-          'Persetujuan HRD (Level 2)',
-          subtitle: _approvalInfo(
-            level1: false,
-          ),
-          note: _approvalNote(
-            level1: false,
-          ),
-          badge: _stepStatus(
-            l2,
-            rejected: rejected,
-          ),
+          title: 'Persetujuan HRD (Level 2)',
+          subtitle: _approvalInfo(level1: false),
+          note: _approvalNote(level1: false),
+          badge: _stepStatus(l2, rejected: rejected),
           done: l2Approved,
-          current:
-          l1Approved &&
-              !l2Approved &&
-              !rejected,
+          current: l1Approved && !l2Approved && !rejected,
           first: false,
           last: false,
         ),
@@ -561,9 +450,7 @@ String _getPhotoUrl(String? path) {
         _step(
           title: 'Selesai',
           subtitle: selesai
-              ? _formatDate(
-            data['updated_at'],
-          )
+              ? _formatDate(data['updated_at'])
               : 'Proses akhir workflow',
           badge: selesai
               ? 'Selesai'
@@ -584,34 +471,24 @@ String _getPhotoUrl(String? path) {
   // ============================================================
 
   Widget _buildLemburWorkflow() {
-    final l1 =
-    data['status_approval_level1'];
+    final l1 = data['status_approval_level1'];
 
-    final l2 =
-    data['status_approval_level2'];
+    final l2 = data['status_approval_level2'];
 
-    final finalStatus =
-    data['status_final'];
+    final finalStatus = data['status_final'];
 
     final l1Approved = _approved(l1);
     final l2Approved = _approved(l2);
 
-    final rejected =
-        _rejected(l1) ||
-            _rejected(l2) ||
-            _rejected(finalStatus);
+    final rejected = _rejected(l1) || _rejected(l2) || _rejected(finalStatus);
 
-    final selesai =
-        l1Approved &&
-            l2Approved &&
-            _approved(finalStatus);
+    final selesai = l1Approved && l2Approved && _approved(finalStatus);
 
     return Column(
       children: [
         _step(
           title: 'Pengajuan Dikirim',
-          subtitle:
-          _formatDate(data['created_at']),
+          subtitle: _formatDate(data['created_at']),
           badge: 'Selesai',
           done: true,
           current: false,
@@ -620,43 +497,23 @@ String _getPhotoUrl(String? path) {
         ),
 
         _step(
-          title:
-          'Persetujuan Atasan (Level 1)',
-          subtitle: _approvalInfo(
-            level1: true,
-          ),
-          note: _approvalNote(
-            level1: true,
-          ),
-          badge: _stepStatus(
-            l1,
-            rejected: rejected,
-          ),
+          title: 'Persetujuan Atasan (Level 1)',
+          subtitle: _approvalInfo(level1: true),
+          note: _approvalNote(level1: true),
+          badge: _stepStatus(l1, rejected: rejected),
           done: l1Approved,
-          current:
-          !l1Approved && !rejected,
+          current: !l1Approved && !rejected,
           first: false,
           last: false,
         ),
 
         _step(
-          title:
-          'Persetujuan HRD (Level 2)',
-          subtitle: _approvalInfo(
-            level1: false,
-          ),
-          note: _approvalNote(
-            level1: false,
-          ),
-          badge: _stepStatus(
-            l2,
-            rejected: rejected,
-          ),
+          title: 'Persetujuan HRD (Level 2)',
+          subtitle: _approvalInfo(level1: false),
+          note: _approvalNote(level1: false),
+          badge: _stepStatus(l2, rejected: rejected),
           done: l2Approved,
-          current:
-          l1Approved &&
-              !l2Approved &&
-              !rejected,
+          current: l1Approved && !l2Approved && !rejected,
           first: false,
           last: false,
         ),
@@ -664,9 +521,7 @@ String _getPhotoUrl(String? path) {
         _step(
           title: 'Selesai',
           subtitle: selesai
-              ? _formatDate(
-            data['updated_at'],
-          )
+              ? _formatDate(data['updated_at'])
               : 'Proses akhir workflow',
           badge: selesai
               ? 'Selesai'
@@ -686,20 +541,30 @@ String _getPhotoUrl(String? path) {
   // DATA APPROVAL
   // ============================================================
 
-  String _approvalInfo({
-    required bool level1,
-  }) {
+  String _approvalInfo({required bool level1}) {
     dynamic nama;
     dynamic tanggal;
 
     if (isCuti || !isCuti) {
       // Sama untuk cuti maupun lembur (berdasarkan backend BE-12 & BE-13)
       if (level1) {
-        nama = data['approved_by_l1']?['name'] ?? data['approved_by_atasan_name'] ?? data['nama_atasan'];
-        tanggal = data['approved_at_l1'] ?? data['approved_at_atasan'] ?? data['tanggal_verifikasi_atasan'];
+        nama =
+            data['approved_by_l1']?['name'] ??
+            data['approved_by_atasan_name'] ??
+            data['nama_atasan'];
+        tanggal =
+            data['approved_at_l1'] ??
+            data['approved_at_atasan'] ??
+            data['tanggal_verifikasi_atasan'];
       } else {
-        nama = data['approved_by_l2']?['name'] ?? data['approved_by_hrd_name'] ?? data['nama_hrd'];
-        tanggal = data['approved_at_l2'] ?? data['approved_at_hrd'] ?? data['tanggal_verifikasi_hrd'];
+        nama =
+            data['approved_by_l2']?['name'] ??
+            data['approved_by_hrd_name'] ??
+            data['nama_hrd'];
+        tanggal =
+            data['approved_at_l2'] ??
+            data['approved_at_hrd'] ??
+            data['tanggal_verifikasi_hrd'];
       }
     }
 
@@ -712,48 +577,40 @@ String _getPhotoUrl(String? path) {
     return '${_value(nama)}\n${_formatDate(tanggal)}';
   }
 
-  String? _approvalNote({
-    required bool level1,
-  }) {
+  String? _approvalNote({required bool level1}) {
     dynamic note;
 
     if (isCuti) {
       if (level1) {
         note =
             data['catatan_verifikasi_atasan'] ??
-                data['catatan_atasan'] ??
-                data['catatan_persetujuan'];
+            data['catatan_atasan'] ??
+            data['catatan_persetujuan'];
       } else {
-        note =
-            data['catatan_verifikasi_hrd'] ??
-                data['catatan_hrd'];
+        note = data['catatan_verifikasi_hrd'] ?? data['catatan_hrd'];
       }
     } else {
       if (level1) {
         note =
             data['catatan_approval_level1'] ??
-                data['catatan_level1'] ??
-                data['catatan_atasan'];
+            data['catatan_level1'] ??
+            data['catatan_atasan'];
       } else {
         note =
             data['catatan_approval_level2'] ??
-                data['catatan_level2'] ??
-                data['catatan_hrd'];
+            data['catatan_level2'] ??
+            data['catatan_hrd'];
       }
     }
 
-    if (note == null ||
-        note.toString().trim().isEmpty) {
+    if (note == null || note.toString().trim().isEmpty) {
       return null;
     }
 
     return 'Catatan: ${note.toString()}';
   }
 
-  String _stepStatus(
-      dynamic value, {
-        required bool rejected,
-      }) {
+  String _stepStatus(dynamic value, {required bool rejected}) {
     if (_rejected(value)) {
       return 'Ditolak';
     }
@@ -781,8 +638,7 @@ String _getPhotoUrl(String? path) {
   }) {
     final isRejected = badge == 'Ditolak';
 
-    final Color badgeBg =
-    done
+    final Color badgeBg = done
         ? const Color(0xFFDCFCE7)
         : isRejected
         ? const Color(0xFFFEE2E2)
@@ -790,8 +646,7 @@ String _getPhotoUrl(String? path) {
         ? const Color(0xFFFFEDD5)
         : const Color(0xFFF1F5F9);
 
-    final Color badgeColor =
-    done
+    final Color badgeColor = done
         ? const Color(0xFF15803D)
         : isRejected
         ? const Color(0xFFDC2626)
@@ -799,25 +654,18 @@ String _getPhotoUrl(String? path) {
         ? const Color(0xFFC2410C)
         : const Color(0xFF94A3B8);
 
-    final Color lineColor =
-    done || current
+    final Color lineColor = done || current
         ? const Color(0xFF009688)
         : Colors.grey.shade300;
 
     return Row(
-      crossAxisAlignment:
-      CrossAxisAlignment.start,
+      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         SizedBox(
           width: 22,
           child: Column(
             children: [
-              if (!first)
-                Container(
-                  width: 2,
-                  height: 8,
-                  color: lineColor,
-                ),
+              if (!first) Container(width: 2, height: 8, color: lineColor),
 
               Container(
                 width: 20,
@@ -839,30 +687,20 @@ String _getPhotoUrl(String? path) {
                   ),
                 ),
                 child: done
-                    ? const Icon(
-                  Icons.check,
-                  size: 12,
-                  color: Colors.white,
-                )
+                    ? const Icon(Icons.check, size: 12, color: Colors.white)
                     : current
                     ? Container(
-                  width: 6,
-                  height: 6,
-                  decoration:
-                  const BoxDecoration(
-                    shape: BoxShape.circle,
-                    color: Colors.white,
-                  ),
-                )
+                        width: 6,
+                        height: 6,
+                        decoration: const BoxDecoration(
+                          shape: BoxShape.circle,
+                          color: Colors.white,
+                        ),
+                      )
                     : null,
               ),
 
-              if (!last)
-                Container(
-                  width: 2,
-                  height: 70,
-                  color: lineColor,
-                ),
+              if (!last) Container(width: 2, height: 70, color: lineColor),
             ],
           ),
         ),
@@ -871,30 +709,21 @@ String _getPhotoUrl(String? path) {
 
         Expanded(
           child: Padding(
-            padding:
-            const EdgeInsets.only(
-              bottom: 18,
-            ),
+            padding: const EdgeInsets.only(bottom: 18),
             child: Column(
-              crossAxisAlignment:
-              CrossAxisAlignment.start,
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Row(
-                  crossAxisAlignment:
-                  CrossAxisAlignment.start,
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Expanded(
                       child: Text(
                         title,
                         style: TextStyle(
-                          fontWeight:
-                          FontWeight.bold,
+                          fontWeight: FontWeight.bold,
                           fontSize: 11,
-                          color:
-                          done || current
-                              ? const Color(
-                            0xFF0F172A,
-                          )
+                          color: done || current
+                              ? const Color(0xFF0F172A)
                               : Colors.grey,
                         ),
                       ),
@@ -903,23 +732,19 @@ String _getPhotoUrl(String? path) {
                     const SizedBox(width: 5),
 
                     Container(
-                      padding:
-                      const EdgeInsets.symmetric(
+                      padding: const EdgeInsets.symmetric(
                         horizontal: 6,
                         vertical: 2,
                       ),
-                      decoration:
-                      BoxDecoration(
+                      decoration: BoxDecoration(
                         color: badgeBg,
-                        borderRadius:
-                        BorderRadius.circular(4),
+                        borderRadius: BorderRadius.circular(4),
                       ),
                       child: Text(
                         badge,
                         style: TextStyle(
                           color: badgeColor,
-                          fontWeight:
-                          FontWeight.bold,
+                          fontWeight: FontWeight.bold,
                           fontSize: 8,
                         ),
                       ),
@@ -944,8 +769,7 @@ String _getPhotoUrl(String? path) {
                     note,
                     style: const TextStyle(
                       fontSize: 9,
-                      fontStyle:
-                      FontStyle.italic,
+                      fontStyle: FontStyle.italic,
                       color: Color(0xFF334155),
                     ),
                   ),

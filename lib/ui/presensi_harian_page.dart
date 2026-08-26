@@ -70,11 +70,11 @@ class _PresensiScreenState extends State<PresensiScreen> {
 
         if (_serverTime != null) {
           _serverTime = _serverTime!.add(const Duration(seconds: 1));
-          
+
           if (_lemburData != null) {
             final mulai = DateTime.parse(_lemburData!['jam_mulai']);
             final selesai = DateTime.parse(_lemburData!['jam_selesai']);
-            
+
             if (_serverTime!.isAfter(mulai) && _serverTime!.isBefore(selesai)) {
               _lemburStatus = 'Sedang Lembur';
               final diff = selesai.difference(_serverTime!);
@@ -204,7 +204,7 @@ class _PresensiScreenState extends State<PresensiScreen> {
     });
   }
 
-  Future<bool> _submitAbsensi({
+  Future<String?> _submitAbsensi({
     required String tipe,
     required String fotoBase64,
   }) async {
@@ -222,7 +222,7 @@ class _PresensiScreenState extends State<PresensiScreen> {
       final formData = FormData.fromMap({
         'foto': MultipartFile.fromBytes(
           imageBytes,
-          filename: 'selfie_\.jpg',
+          filename: 'selfie.jpg',
           contentType: MediaType('image', 'jpeg'),
         ),
         'latitude': _currentLocation.latitude.toString(),
@@ -231,9 +231,18 @@ class _PresensiScreenState extends State<PresensiScreen> {
       });
 
       final response = await dio.post('/absensi', data: formData);
-      return response.statusCode == 200 || response.statusCode == 201;
+      if (response.statusCode == 200 || response.statusCode == 201) return null;
+      return 'Server menolak penyimpanan presensi.';
+    } on DioException catch (e) {
+      final data = e.response?.data;
+      if (data is Map && data['message'] != null) {
+        return data['message'].toString();
+      }
+      debugPrint('POST /absensi ERROR: ${e.response?.statusCode} $data');
+      return 'Presensi gagal dikirim. Periksa koneksi dan lokasi Anda.';
     } catch (e) {
-      return false;
+      debugPrint('POST /absensi ERROR: $e');
+      return 'Presensi gagal diproses.';
     }
   }
 
@@ -242,7 +251,9 @@ class _PresensiScreenState extends State<PresensiScreen> {
 
     final resultImage = await Navigator.push<String>(
       context,
-      MaterialPageRoute(builder: (context) => KameraScreen(namaKantor: _namaKantor)),
+      MaterialPageRoute(
+        builder: (context) => KameraScreen(namaKantor: _namaKantor),
+      ),
     );
 
     if (resultImage == null || !mounted) return;
@@ -263,9 +274,18 @@ class _PresensiScreenState extends State<PresensiScreen> {
 
     if (isConfirmed != true || !mounted) return;
 
-    final berhasil = await _submitAbsensi(tipe: tipe, fotoBase64: resultImage);
+    final errorMessage = await _submitAbsensi(
+      tipe: tipe,
+      fotoBase64: resultImage,
+    );
 
-    if (!berhasil || !mounted) return;
+    if (!mounted) return;
+    if (errorMessage != null) {
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(errorMessage)));
+      return;
+    }
 
     await _fetchPresensiData();
 
@@ -485,10 +505,7 @@ class _PresensiScreenState extends State<PresensiScreen> {
             const SizedBox(height: 4),
             const Text(
               'Sedang Lembur',
-              style: TextStyle(
-                color: Colors.white,
-                fontSize: 12,
-              ),
+              style: TextStyle(color: Colors.white, fontSize: 12),
             ),
           ],
         ),
@@ -823,4 +840,3 @@ class _PresensiScreenState extends State<PresensiScreen> {
     );
   }
 }
-

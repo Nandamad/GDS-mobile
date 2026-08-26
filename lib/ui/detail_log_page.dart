@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import '../model/absensi.dart';
-import '../api_config.dart';
+import '../services/image_url_service.dart';
 
 class DetailLogScreen extends StatefulWidget {
   final Absensi? absensi;
@@ -12,29 +12,6 @@ class DetailLogScreen extends StatefulWidget {
 }
 
 class _DetailLogScreenState extends State<DetailLogScreen> {
-  String? _getPhotoUrl(String? path) {
-    if (path == null || path.trim().isEmpty) return null;
-    final trimmed = path.trim();
-    // Sudah berupa URL lengkap
-    if (trimmed.startsWith('http://') || trimmed.startsWith('https://')) {
-      if (trimmed.contains('127.0.0.1') || trimmed.contains('localhost')) {
-          Uri uri = Uri.parse(trimmed);
-          final base = ApiConfig.baseUrl.replaceAll(RegExp(r'/api/?$'), '');
-          return '$base${uri.path}';
-      }
-      return trimmed;
-    }
-    // Bersihkan /api di akhir base URL
-    final base = ApiConfig.baseUrl.replaceAll(RegExp(r'/api/?$'), '');
-    // Normalisasi path: pastikan diawali slash
-    String normalPath = trimmed.startsWith('/') ? trimmed : '/$trimmed';
-    // Pastikan diawali /storage/ (hindari double /storage)
-    if (!normalPath.startsWith('/storage')) {
-      normalPath = '/storage$normalPath';
-    }
-    return '$base$normalPath';
-  }
-
   String _formatTime(DateTime? date) {
     if (date == null) return '--:-- WIB';
     final hour = date.hour.toString().padLeft(2, '0');
@@ -240,7 +217,11 @@ class _DetailLogScreenState extends State<DetailLogScreen> {
           const SizedBox(height: 10),
           Row(
             children: [
-              const Icon(Icons.access_time_outlined, size: 14, color: Colors.grey),
+              const Icon(
+                Icons.access_time_outlined,
+                size: 14,
+                color: Colors.grey,
+              ),
               const SizedBox(width: 6),
               const Text(
                 'Shift: ',
@@ -526,8 +507,8 @@ class _DetailLogScreenState extends State<DetailLogScreen> {
   }
 
   Widget _buildFotoVerifikasiRow() {
-    final fotoMasukUrl = _getPhotoUrl(widget.absensi?.fotoMasuk);
-    final fotoPulangUrl = _getPhotoUrl(widget.absensi?.fotoPulang);
+    final fotoMasukUrl = ImageUrlService.resolve(widget.absensi?.fotoMasuk);
+    final fotoPulangUrl = ImageUrlService.resolve(widget.absensi?.fotoPulang);
 
     return Row(
       children: [

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:dio/dio.dart';
 import '../services/api_service.dart';
+import '../services/image_url_service.dart';
 import 'login_page.dart';
 
 class ProfilPage extends StatefulWidget {
@@ -17,6 +18,7 @@ class _ProfilPageState extends State<ProfilPage> {
   bool _isLoading = true;
   Map<String, dynamic>? _userProfile;
   String _errorMessage = '';
+  bool _profileImageFailed = false;
 
   @override
   void initState() {
@@ -245,7 +247,7 @@ class _ProfilPageState extends State<ProfilPage> {
 
     final jabatan = (karyawan?['jabatan'] ?? 'Staff').toString();
     final divisi = (karyawan?['divisi'] ?? 'Umum').toString();
-    final foto = karyawan?['foto_url']?.toString();
+    final foto = ImageUrlService.resolve(karyawan?['foto_url']?.toString());
 
     return Container(
       width: double.infinity,
@@ -265,10 +267,15 @@ class _ProfilPageState extends State<ProfilPage> {
             ),
             child: CircleAvatar(
               radius: 36,
-              backgroundImage: foto != null && foto.isNotEmpty
+              backgroundImage: foto != null && !_profileImageFailed
                   ? NetworkImage(foto)
                   : null,
-              child: foto == null || foto.isEmpty
+              onBackgroundImageError: foto == null
+                  ? null
+                  : (error, stackTrace) {
+                      if (mounted) setState(() => _profileImageFailed = true);
+                    },
+              child: foto == null || _profileImageFailed
                   ? const Icon(Icons.person, size: 38, color: Color(0xFF009688))
                   : null,
             ),
