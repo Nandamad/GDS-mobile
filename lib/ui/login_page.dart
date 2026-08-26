@@ -233,7 +233,7 @@ class _LoginScreenState extends State<LoginScreen> {
                             ),
                             const SizedBox(height: 12),
                             const Text(
-                              'PresensiKu',
+                              'PresensiPlus+',
                               style: TextStyle(
                                 fontSize: 20,
                                 fontWeight: FontWeight.bold,
