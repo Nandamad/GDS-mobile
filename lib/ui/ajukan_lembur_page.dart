@@ -25,17 +25,16 @@ class _AjukanLemburSheetState extends State<AjukanLemburSheet> {
   int _durasiJam = 2;
 
   TimeOfDay get _jamSelesai {
-    int totalMinutes = _jamMulai.hour * 60 + _jamMulai.minute + (_durasiJam * 60);
-    return TimeOfDay(hour: (totalMinutes ~/ 60) % 24, minute: totalMinutes % 60);
+    int totalMinutes =
+        _jamMulai.hour * 60 + _jamMulai.minute + (_durasiJam * 60);
+    return TimeOfDay(
+      hour: (totalMinutes ~/ 60) % 24,
+      minute: totalMinutes % 60,
+    );
   }
 
   bool _isSubmitting = false;
   final TextEditingController _alasanController = TextEditingController();
-
-  int get _totalDurasiJam => _durasiJam;
-
-    return (diff / 60).round();
-  }
 
   @override
   void dispose() {
@@ -95,7 +94,8 @@ class _AjukanLemburSheetState extends State<AjukanLemburSheet> {
       final data = e.response?.data;
 
       if (data is Map) {
-        message = data['message']?.toString() ?? data['error']?.toString() ?? message;
+        message =
+            data['message']?.toString() ?? data['error']?.toString() ?? message;
       } else if (e.message != null) {
         message = e.message!;
       }
@@ -103,10 +103,7 @@ class _AjukanLemburSheetState extends State<AjukanLemburSheet> {
       if (!mounted) return;
 
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Gagal: $message'),
-          backgroundColor: Colors.red,
-        ),
+        SnackBar(content: Text('Gagal: $message'), backgroundColor: Colors.red),
       );
     } catch (e) {
       if (!mounted) return;
@@ -157,7 +154,9 @@ class _AjukanLemburSheetState extends State<AjukanLemburSheet> {
 
     if (picked != null) {
       setState(() {
-        if (isMulai) { _jamMulai = picked; }
+        if (isMulai) {
+          _jamMulai = picked;
+        }
       });
     }
   }
@@ -168,8 +167,18 @@ class _AjukanLemburSheetState extends State<AjukanLemburSheet> {
 
   String _formatDate(DateTime date) {
     const bulan = [
-      'Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun',
-      'Jul', 'Agt', 'Sep', 'Okt', 'Nov', 'Des',
+      'Jan',
+      'Feb',
+      'Mar',
+      'Apr',
+      'Mei',
+      'Jun',
+      'Jul',
+      'Agt',
+      'Sep',
+      'Okt',
+      'Nov',
+      'Des',
     ];
 
     return '${date.day.toString().padLeft(2, '0')} ${bulan[date.month - 1]} ${date.year}';
@@ -240,12 +249,15 @@ class _AjukanLemburSheetState extends State<AjukanLemburSheet> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 10,
+                      vertical: 4,
+                    ),
                     decoration: BoxDecoration(
                       color: Colors.white,
                       borderRadius: BorderRadius.circular(20),
                       border: Border.all(
-                        color: const Color(0xFF0F766E).withOpacity(0.3),
+                        color: const Color(0xFF0F766E).withValues(alpha: 0.3),
                       ),
                     ),
                     child: Row(
@@ -299,7 +311,10 @@ class _AjukanLemburSheetState extends State<AjukanLemburSheet> {
               onTap: _selectDate,
               borderRadius: BorderRadius.circular(12),
               child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: 12,
+                ),
                 decoration: BoxDecoration(
                   color: Colors.white,
                   borderRadius: BorderRadius.circular(12),
@@ -347,10 +362,7 @@ class _AjukanLemburSheetState extends State<AjukanLemburSheet> {
               ),
             ),
             const SizedBox(height: 6),
-            _buildTimeField(
-              time: _jamMulai,
-              onTap: () => _selectTime(true),
-            ),
+            _buildTimeField(time: _jamMulai, onTap: () => _selectTime(true)),
             const SizedBox(height: 14),
 
             // FIELD DURASI LEMBUR
@@ -374,7 +386,11 @@ class _AjukanLemburSheetState extends State<AjukanLemburSheet> {
               child: DropdownButtonHideUnderline(
                 child: DropdownButton<int>(
                   value: _durasiJam,
-                  icon: const Icon(Icons.keyboard_arrow_down, size: 18, color: Colors.grey),
+                  icon: const Icon(
+                    Icons.keyboard_arrow_down,
+                    size: 18,
+                    color: Colors.grey,
+                  ),
                   isExpanded: true,
                   style: const TextStyle(
                     fontSize: 11,
@@ -388,12 +404,14 @@ class _AjukanLemburSheetState extends State<AjukanLemburSheet> {
                       });
                     }
                   },
-                  items: List.generate(8, (index) => index + 1).map<DropdownMenuItem<int>>((int value) {
-                    return DropdownMenuItem<int>(
-                      value: value,
-                      child: Text(' Jam'),
-                    );
-                  }).toList(),
+                  items: List.generate(8, (index) => index + 1)
+                      .map<DropdownMenuItem<int>>((int value) {
+                        return DropdownMenuItem<int>(
+                          value: value,
+                          child: Text(' Jam'),
+                        );
+                      })
+                      .toList(),
                 ),
               ),
             ),
@@ -453,16 +471,10 @@ class _AjukanLemburSheetState extends State<AjukanLemburSheet> {
             TextField(
               controller: _alasanController,
               maxLines: 4,
-              style: const TextStyle(
-                fontSize: 11,
-                color: Color(0xFF0F172A),
-              ),
+              style: const TextStyle(fontSize: 11, color: Color(0xFF0F172A)),
               decoration: InputDecoration(
                 hintText: 'Tuliskan alasan lembur Anda...',
-                hintStyle: const TextStyle(
-                  fontSize: 11,
-                  color: Colors.grey,
-                ),
+                hintStyle: const TextStyle(fontSize: 11, color: Colors.grey),
                 fillColor: Colors.white,
                 filled: true,
                 contentPadding: const EdgeInsets.all(12),
@@ -494,21 +506,21 @@ class _AjukanLemburSheetState extends State<AjukanLemburSheet> {
                 ),
                 child: _isSubmitting
                     ? const SizedBox(
-                  width: 20,
-                  height: 20,
-                  child: CircularProgressIndicator(
-                    color: Colors.white,
-                    strokeWidth: 2,
-                  ),
-                )
+                        width: 20,
+                        height: 20,
+                        child: CircularProgressIndicator(
+                          color: Colors.white,
+                          strokeWidth: 2,
+                        ),
+                      )
                     : const Text(
-                  'Kirim Pengajuan',
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontSize: 13,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
+                        'Kirim Pengajuan',
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 13,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
               ),
             ),
           ],
@@ -553,15 +565,10 @@ class _AjukanLemburSheetState extends State<AjukanLemburSheet> {
                 ),
               ],
             ),
-            const Icon(
-              Icons.keyboard_arrow_down,
-              size: 18,
-              color: Colors.grey,
-            ),
+            const Icon(Icons.keyboard_arrow_down, size: 18, color: Colors.grey),
           ],
         ),
       ),
     );
   }
 }
-
