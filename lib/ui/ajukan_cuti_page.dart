@@ -3,6 +3,7 @@ import 'dart:ui'; // <--- Tambahkan baris ini
 import 'package:flutter/material.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:dio/dio.dart';
+import 'package:http_parser/http_parser.dart';
 import '../services/api_service.dart';
 
 class AjukanCutiSheet extends StatefulWidget {
@@ -117,6 +118,7 @@ class _AjukanCutiSheetState extends State<AjukanCutiSheet> {
             await MultipartFile.fromFile(
               _selectedFile!.path,
               filename: _fileName,
+                contentType: MediaType('image', 'jpeg'),
             ),
           ),
         );

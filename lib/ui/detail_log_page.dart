@@ -15,8 +15,13 @@ class _DetailLogScreenState extends State<DetailLogScreen> {
   String? _getPhotoUrl(String? path) {
     if (path == null || path.trim().isEmpty) return null;
     final trimmed = path.trim();
-    // Sudah berupa URL lengkap — langsung kembalikan
+    // Sudah berupa URL lengkap
     if (trimmed.startsWith('http://') || trimmed.startsWith('https://')) {
+      if (trimmed.contains('127.0.0.1') || trimmed.contains('localhost')) {
+          Uri uri = Uri.parse(trimmed);
+          final base = ApiConfig.baseUrl.replaceAll(RegExp(r'/api/?$'), '');
+          return '$base${uri.path}';
+      }
       return trimmed;
     }
     // Bersihkan /api di akhir base URL

@@ -162,6 +162,23 @@ class DetailWorkflowScreen extends StatelessWidget {
   // BUILD
   // ============================================================
 
+String _getPhotoUrl(String? path) {
+    if (path == null || path.trim().isEmpty) return '';
+    final trimmed = path.trim();
+    if (trimmed.startsWith('http://') || trimmed.startsWith('https://')) {
+      if (trimmed.contains('127.0.0.1') || trimmed.contains('localhost')) {
+          Uri uri = Uri.parse(trimmed);
+          final base = ApiConfig.baseUrl.replaceAll(RegExp(r'/api/?$'), '');
+          return '$base${uri.path}';
+      }
+      return trimmed;
+    }
+    final base = ApiConfig.baseUrl.replaceAll(RegExp(r'/api/?$'), '');
+    String normalPath = trimmed.startsWith('/') ? trimmed : '/$trimmed';
+    if (!normalPath.startsWith('/storage')) normalPath = '/storage$normalPath';
+    return '$base$normalPath';
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -330,9 +347,7 @@ class DetailWorkflowScreen extends StatelessWidget {
             ClipRRect(
               borderRadius: BorderRadius.circular(8),
               child: Image.network(
-                data['dokumen_pendukung'].toString().startsWith('http') 
-                    ? data['dokumen_pendukung'] 
-                    : '${ApiConfig.baseUrl.replaceAll('/api', '')}${data['dokumen_pendukung']}',
+                _getPhotoUrl(data['dokumen_pendukung']?.toString()),
                 height: 150,
                 width: double.infinity,
                 fit: BoxFit.cover,

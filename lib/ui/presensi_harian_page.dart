@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:dio/dio.dart';
+import 'package:http_parser/http_parser.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:latlong2/latlong.dart';
 import '../services/api_service.dart';
@@ -221,7 +222,8 @@ class _PresensiScreenState extends State<PresensiScreen> {
       final formData = FormData.fromMap({
         'foto': MultipartFile.fromBytes(
           imageBytes,
-          filename: 'selfie_${DateTime.now().millisecondsSinceEpoch}.jpg',
+          filename: 'selfie_\.jpg',
+          contentType: MediaType('image', 'jpeg'),
         ),
         'latitude': _currentLocation.latitude.toString(),
         'longitude': _currentLocation.longitude.toString(),
@@ -821,3 +823,4 @@ class _PresensiScreenState extends State<PresensiScreen> {
     );
   }
 }
+
