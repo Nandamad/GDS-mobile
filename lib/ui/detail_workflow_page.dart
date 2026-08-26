@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../api_config.dart';
 
 class DetailWorkflowScreen extends StatelessWidget {
   final Map<String, dynamic> data;
@@ -312,6 +313,40 @@ class DetailWorkflowScreen extends StatelessWidget {
             _summaryRow(
               'Durasi',
               _durasiLembur(),
+            ),
+          ],
+
+          if (data['dokumen_pendukung'] != null) ...[
+            const SizedBox(height: 12),
+            const Text(
+              'Lampiran:',
+              style: TextStyle(
+                fontSize: 11,
+                color: Color(0xFF64748B),
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+            const SizedBox(height: 6),
+            ClipRRect(
+              borderRadius: BorderRadius.circular(8),
+              child: Image.network(
+                data['dokumen_pendukung'].toString().startsWith('http') 
+                    ? data['dokumen_pendukung'] 
+                    : '${ApiConfig.baseUrl.replaceAll('/api', '')}${data['dokumen_pendukung']}',
+                height: 150,
+                width: double.infinity,
+                fit: BoxFit.cover,
+                errorBuilder: (context, error, stackTrace) {
+                  return Container(
+                    height: 150,
+                    width: double.infinity,
+                    color: Colors.grey.shade200,
+                    child: const Center(
+                      child: Text('Gambar tidak dapat dimuat'),
+                    ),
+                  );
+                },
+              ),
             ),
           ],
         ],

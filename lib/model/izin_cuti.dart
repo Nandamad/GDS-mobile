@@ -59,7 +59,7 @@ class IzinCuti {
           ? DateTime.tryParse(json['approved_at'])
           : null,
       catatanPersetujuan: json['catatan_persetujuan'] as String?,
-      fileLampiran: json['file_lampiran'] as String?,
+      fileLampiran: json['dokumen_pendukung'] as String?,
       createdAt: json['created_at'] != null
           ? DateTime.tryParse(json['created_at'])
           : null,
@@ -90,7 +90,7 @@ class IzinCuti {
       'approved_by': approvedBy,
       'approved_at': approvedAt?.toIso8601String(),
       'catatan_persetujuan': catatanPersetujuan,
-      'file_lampiran': fileLampiran,
+      'dokumen_pendukung': fileLampiran,
       'created_at': createdAt?.toIso8601String(),
       'updated_at': updatedAt?.toIso8601String(),
       'karyawan': karyawan?.toJson(),
