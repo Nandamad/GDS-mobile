@@ -13,16 +13,21 @@ class DetailLogScreen extends StatefulWidget {
 
 class _DetailLogScreenState extends State<DetailLogScreen> {
   String? _getPhotoUrl(String? path) {
-    if (path == null || path.isEmpty) return null;
-    if (path.startsWith('http://') || path.startsWith('https://')) {
-      return path;
+    if (path == null || path.trim().isEmpty) return null;
+    final trimmed = path.trim();
+    // Sudah berupa URL lengkap — langsung kembalikan
+    if (trimmed.startsWith('http://') || trimmed.startsWith('https://')) {
+      return trimmed;
     }
-    final base = ApiConfig.baseUrl.replaceAll('/api', '');
-    String cleanPath = path.startsWith('/') ? path : '/$path';
-    if (!cleanPath.startsWith('/storage') && !cleanPath.startsWith('storage')) {
-      cleanPath = '/storage$cleanPath';
+    // Bersihkan /api di akhir base URL
+    final base = ApiConfig.baseUrl.replaceAll(RegExp(r'/api/?$'), '');
+    // Normalisasi path: pastikan diawali slash
+    String normalPath = trimmed.startsWith('/') ? trimmed : '/$trimmed';
+    // Pastikan diawali /storage/ (hindari double /storage)
+    if (!normalPath.startsWith('/storage')) {
+      normalPath = '/storage$normalPath';
     }
-    return '$base$cleanPath';
+    return '$base$normalPath';
   }
 
   String _formatTime(DateTime? date) {
@@ -229,16 +234,16 @@ class _DetailLogScreenState extends State<DetailLogScreen> {
           ),
           const SizedBox(height: 10),
           Row(
-            children: const [
-              Icon(Icons.access_time_outlined, size: 14, color: Colors.grey),
-              SizedBox(width: 6),
-              Text(
+            children: [
+              const Icon(Icons.access_time_outlined, size: 14, color: Colors.grey),
+              const SizedBox(width: 6),
+              const Text(
                 'Shift: ',
                 style: TextStyle(fontSize: 10, color: Colors.grey),
               ),
               Text(
-                'Shift Pagi / Reguler',
-                style: TextStyle(
+                widget.absensi?.shift ?? 'Shift tidak tersedia',
+                style: const TextStyle(
                   fontSize: 10,
                   fontWeight: FontWeight.w600,
                   color: Color(0xFF0F172A),
@@ -449,13 +454,17 @@ class _DetailLogScreenState extends State<DetailLogScreen> {
           _buildGpsItem(
             title: 'Lokasi Masuk',
             address: widget.absensi?.lokasiMasuk ?? 'Lokasi GPS Tidak Ada',
-            distance: 'Jarak: Dalam Radius Safe-Zone',
+            distance: widget.absensi?.lokasiMasuk != null
+                ? 'Koordinat: ${widget.absensi!.lokasiMasuk}'
+                : 'GPS tidak terekam',
           ),
           const Divider(height: 20),
           _buildGpsItem(
             title: 'Lokasi Pulang',
             address: widget.absensi?.lokasiPulang ?? 'Lokasi GPS Tidak Ada',
-            distance: 'Jarak: Dalam Radius Safe-Zone',
+            distance: widget.absensi?.lokasiPulang != null
+                ? 'Koordinat: ${widget.absensi!.lokasiPulang}'
+                : 'GPS tidak terekam',
           ),
         ],
       ),

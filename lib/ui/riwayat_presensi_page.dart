@@ -102,6 +102,19 @@ class _RiwayatPresensiScreenState extends State<RiwayatPresensiScreen> {
             statusTxt = 'TERLAMBAT';
             bgColor = const Color(0xFFFFF3E0);
             txtColor = const Color(0xFFE65100);
+          } else if (rawStatus.contains('pulang_awal') ||
+              rawStatus.contains('pulang awal')) {
+            statusCat = 'Terlambat';
+            statusTxt = 'PULANG AWAL';
+            bgColor = const Color(0xFFFEE2E2);
+            txtColor = const Color(0xFFDC2626);
+          } else if (rawStatus.contains('tidak_absen') ||
+              rawStatus.contains('alpha') ||
+              rawStatus.contains('tidak hadir')) {
+            statusCat = 'Terlambat';
+            statusTxt = 'TIDAK HADIR';
+            bgColor = const Color(0xFFF1F5F9);
+            txtColor = const Color(0xFF64748B);
           } else if (rawStatus.contains('pending')) {
             statusCat = 'Pending';
             statusTxt = 'PENDING';

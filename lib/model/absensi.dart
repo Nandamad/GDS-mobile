@@ -14,6 +14,7 @@ class Absensi {
   final String? fotoMasuk;
   final String? fotoPulang;
   final String? catatanMasuk;
+  final String? shift;           // Nama shift kerja karyawan
   final Karyawan? karyawan;
   final List<LogKeterlambatan>? logKeterlambatans;
 
@@ -30,6 +31,7 @@ class Absensi {
     this.fotoMasuk,
     this.fotoPulang,
     this.catatanMasuk,
+    this.shift,
     this.karyawan,
     this.logKeterlambatans,
   });
@@ -54,7 +56,8 @@ class Absensi {
       jamMasuk: _parseDateTime(json['jam_masuk']),
       // Cek jam_pulang atau jam_keluar
       jamPulang: _parseDateTime(json['jam_pulang'] ?? json['jam_keluar']),
-      status: json['status'] as String?,
+      // Baca status dari key 'status' atau fallback ke 'status_kehadiran'
+      status: (json['status'] ?? json['status_kehadiran']) as String?,
       // Cek gps_masuk / lokasi_masuk
       lokasiMasuk: (json['gps_masuk'] ?? json['lokasi_masuk']) as String?,
       lokasiPulang: (json['gps_pulang'] ?? json['lokasi_pulang']) as String?,
@@ -63,6 +66,8 @@ class Absensi {
       fotoPulang: (json['foto_selfie_pulang'] ?? json['foto_pulang']) as String?,
       // Cek catatan / catatan_masuk
       catatanMasuk: (json['catatan'] ?? json['catatan_masuk']) as String?,
+      // Nama shift dari API (nama_shift / shift)
+      shift: (json['nama_shift'] ?? json['shift']) as String?,
       karyawan: json['karyawan'] != null
           ? Karyawan.fromJson(json['karyawan'])
           : null,
@@ -89,6 +94,7 @@ class Absensi {
       'foto_selfie_masuk': fotoMasuk,
       'foto_selfie_pulang': fotoPulang,
       'catatan': catatanMasuk,
+      'nama_shift': shift,
       'log_keterlambatans': logKeterlambatans?.map((e) => e.toJson()).toList(),
     };
   }

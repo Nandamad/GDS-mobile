@@ -6,7 +6,14 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
 class KameraScreen extends StatefulWidget {
-  const KameraScreen({super.key});
+  /// Nama kantor yang ditampilkan di overlay kamera.
+  /// Diisi dari PresensiScreen agar tidak hardcode.
+  final String namaKantor;
+
+  const KameraScreen({
+    super.key,
+    this.namaKantor = 'Kantor',
+  });
 
   @override
   State<KameraScreen> createState() => _KameraScreenState();
@@ -310,9 +317,9 @@ class _KameraScreenState extends State<KameraScreen> {
                               fontSize: 14,
                             ),
                           ),
-                          const Text(
-                            'Kantor Pusat (Jl. Sudirman)',
-                            style: TextStyle(
+                          Text(
+                            widget.namaKantor,
+                            style: const TextStyle(
                               color: Colors.white70,
                               fontSize: 10,
                             ),

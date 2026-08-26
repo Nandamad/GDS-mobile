@@ -205,7 +205,7 @@ class _PresensiScreenState extends State<PresensiScreen> {
 
     final resultImage = await Navigator.push<String>(
       context,
-      MaterialPageRoute(builder: (context) => const KameraScreen()),
+      MaterialPageRoute(builder: (context) => KameraScreen(namaKantor: _namaKantor)),
     );
 
     if (resultImage == null || !mounted) return;
