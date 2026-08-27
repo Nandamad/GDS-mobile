@@ -156,7 +156,8 @@ class _RiwayatPresensiScreenState extends State<RiwayatPresensiScreen> {
         setState(() {
           _isLoading = false;
           if (_allHistoryData.isEmpty) {
-            _errorMessage = 'Gagal memperbarui log.\nPeriksa koneksi internet Anda.';
+            _errorMessage =
+                'Gagal memperbarui log.\nPeriksa koneksi internet Anda.';
           }
         });
         ScaffoldMessenger.of(context).showSnackBar(
@@ -210,12 +211,10 @@ class _RiwayatPresensiScreenState extends State<RiwayatPresensiScreen> {
                                   .toList()
                                   .indexOf(val!);
                               if (index < 0) return;
-                              setState(
-                                () {
-                                  _selectedPeriod = _periodOptions[index];
-                                  _isLoading = true;
-                                },
-                              );
+                              setState(() {
+                                _selectedPeriod = _periodOptions[index];
+                                _isLoading = true;
+                              });
                               await _fetchHistoryData();
                             },
                           ),
@@ -237,35 +236,49 @@ class _RiwayatPresensiScreenState extends State<RiwayatPresensiScreen> {
                       ],
                     ),
                     const SizedBox(height: 14),
-                  if (_errorMessage != null)
-                    Padding(
-                      padding: const EdgeInsets.only(top: 40.0),
-                      child: Column(
-                        children: [
-                          const Icon(Icons.wifi_off_rounded, size: 40, color: Colors.grey),
-                          const SizedBox(height: 8),
-                          Text(
-                            _errorMessage!,
-                            textAlign: TextAlign.center,
-                            style: const TextStyle(fontSize: 12, color: Colors.grey),
-                          ),
-                          const SizedBox(height: 16),
-                          ElevatedButton(
-                            onPressed: () {
-                              setState(() => _isLoading = true);
-                              _fetchHistoryData();
-                            },
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: const Color(0xFF009688),
+                    if (_errorMessage != null)
+                      Padding(
+                        padding: const EdgeInsets.only(top: 40.0),
+                        child: Column(
+                          children: [
+                            const Icon(
+                              Icons.wifi_off_rounded,
+                              size: 40,
+                              color: Colors.grey,
                             ),
-                            child: const Text('Coba Lagi', style: TextStyle(color: Colors.white, fontSize: 12)),
-                          ),
-                        ],
-                      ),
-                    )
-                  else
-                    _buildHistoryList(),
-                ],
+                            const SizedBox(height: 8),
+                            Text(
+                              _errorMessage!,
+                              textAlign: TextAlign.center,
+                              style: const TextStyle(
+                                fontSize: 12,
+                                color: Colors.grey,
+                              ),
+                            ),
+                            const SizedBox(height: 16),
+                            ElevatedButton(
+                              onPressed: () {
+                                setState(() => _isLoading = true);
+                                _fetchHistoryData();
+                              },
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: const Color(0xFF009688),
+                              ),
+                              child: const Text(
+                                'Coba Lagi',
+                                style: TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 12,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      )
+                    else
+                      _buildHistoryList(),
+                  ],
+                ),
               ),
             ),
     );
