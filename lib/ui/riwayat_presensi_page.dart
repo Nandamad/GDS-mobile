@@ -16,6 +16,7 @@ class _RiwayatPresensiScreenState extends State<RiwayatPresensiScreen> {
   String _selectedStatus = 'Semua Status';
 
   bool _isLoading = true;
+  String? _errorMessage;
   List<Map<String, dynamic>> _allHistoryData = [];
 
   @override
@@ -140,18 +141,24 @@ class _RiwayatPresensiScreenState extends State<RiwayatPresensiScreen> {
               absensiObj.jamMasuk,
               absensiObj.jamPulang,
             ),
-            'hasDetailButton': true,
+            'hasDetailButton': item['tipe'] == 'Kehadiran',
           };
         }).toList();
 
         setState(() {
           _allHistoryData = parsedData;
           _isLoading = false;
+          _errorMessage = null;
         });
       }
     } catch (e) {
-      setState(() => _isLoading = false);
       if (mounted) {
+        setState(() {
+          _isLoading = false;
+          if (_allHistoryData.isEmpty) {
+            _errorMessage = 'Gagal memperbarui log.\nPeriksa koneksi internet Anda.';
+          }
+        });
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('Gagal memuat riwayat presensi')),
         );
@@ -180,50 +187,84 @@ class _RiwayatPresensiScreenState extends State<RiwayatPresensiScreen> {
           ? const Center(
               child: CircularProgressIndicator(color: Color(0xFF009688)),
             )
-          : SingleChildScrollView(
-              padding: const EdgeInsets.symmetric(
-                horizontal: 14.0,
-                vertical: 12.0,
-              ),
-              child: Column(
-                children: [
-                  Row(
-                    children: [
-                      Expanded(
-                        child: _buildDropdown(
-                          value: _formatMonth(_selectedPeriod),
-                          items: _periodOptions.map(_formatMonth).toList(),
-                          onChanged: (val) async {
-                            final index = _periodOptions
-                                .map(_formatMonth)
-                                .toList()
-                                .indexOf(val!);
-                            if (index < 0) return;
-                            setState(
-                              () => _selectedPeriod = _periodOptions[index],
-                            );
-                            await _fetchHistoryData();
-                          },
+          : RefreshIndicator(
+              onRefresh: _fetchHistoryData,
+              color: const Color(0xFF009688),
+              child: SingleChildScrollView(
+                physics: const AlwaysScrollableScrollPhysics(),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 14.0,
+                  vertical: 12.0,
+                ),
+                child: Column(
+                  children: [
+                    Row(
+                      children: [
+                        Expanded(
+                          child: _buildDropdown(
+                            value: _formatMonth(_selectedPeriod),
+                            items: _periodOptions.map(_formatMonth).toList(),
+                            onChanged: (val) async {
+                              final index = _periodOptions
+                                  .map(_formatMonth)
+                                  .toList()
+                                  .indexOf(val!);
+                              if (index < 0) return;
+                              setState(
+                                () {
+                                  _selectedPeriod = _periodOptions[index];
+                                  _isLoading = true;
+                                },
+                              );
+                              await _fetchHistoryData();
+                            },
+                          ),
                         ),
-                      ),
-                      const SizedBox(width: 8),
-                      Expanded(
-                        child: _buildDropdown(
-                          value: _selectedStatus,
-                          items: [
-                            'Semua Status',
-                            'On Time',
-                            'Terlambat',
-                            'Izin',
-                          ],
-                          onChanged: (val) =>
-                              setState(() => _selectedStatus = val!),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: _buildDropdown(
+                            value: _selectedStatus,
+                            items: [
+                              'Semua Status',
+                              'On Time',
+                              'Terlambat',
+                              'Izin',
+                            ],
+                            onChanged: (val) =>
+                                setState(() => _selectedStatus = val!),
+                          ),
                         ),
+                      ],
+                    ),
+                    const SizedBox(height: 14),
+                  if (_errorMessage != null)
+                    Padding(
+                      padding: const EdgeInsets.only(top: 40.0),
+                      child: Column(
+                        children: [
+                          const Icon(Icons.wifi_off_rounded, size: 40, color: Colors.grey),
+                          const SizedBox(height: 8),
+                          Text(
+                            _errorMessage!,
+                            textAlign: TextAlign.center,
+                            style: const TextStyle(fontSize: 12, color: Colors.grey),
+                          ),
+                          const SizedBox(height: 16),
+                          ElevatedButton(
+                            onPressed: () {
+                              setState(() => _isLoading = true);
+                              _fetchHistoryData();
+                            },
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: const Color(0xFF009688),
+                            ),
+                            child: const Text('Coba Lagi', style: TextStyle(color: Colors.white, fontSize: 12)),
+                          ),
+                        ],
                       ),
-                    ],
-                  ),
-                  const SizedBox(height: 14),
-                  _buildHistoryList(),
+                    )
+                  else
+                    _buildHistoryList(),
                 ],
               ),
             ),
@@ -378,13 +419,14 @@ class _RiwayatPresensiScreenState extends State<RiwayatPresensiScreen> {
               width: double.infinity,
               height: 32,
               child: ElevatedButton.icon(
-                onPressed: () {
-                  Navigator.push(
+                onPressed: () async {
+                  await Navigator.push(
                     context,
                     MaterialPageRoute(
                       builder: (context) => DetailLogScreen(absensi: absensi),
                     ),
                   );
+                  _fetchHistoryData();
                 },
                 icon: const Icon(Icons.remove_red_eye_outlined, size: 14),
                 label: const Text(
