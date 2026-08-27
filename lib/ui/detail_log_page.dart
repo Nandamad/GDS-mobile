@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../model/absensi.dart';
 import '../services/image_url_service.dart';
+import '../services/api_service.dart';
 
 class DetailLogScreen extends StatefulWidget {
   final Absensi? absensi;
@@ -12,6 +13,19 @@ class DetailLogScreen extends StatefulWidget {
 }
 
 class _DetailLogScreenState extends State<DetailLogScreen> {
+  String? _token;
+
+  @override
+  void initState() {
+    super.initState();
+    ApiService().getToken().then((value) {
+      if (mounted) {
+        setState(() {
+          _token = value;
+        });
+      }
+    });
+  }
   String _formatTime(DateTime? date) {
     if (date == null) return '--:-- WIB';
     final hour = date.hour.toString().padLeft(2, '0');
@@ -83,6 +97,7 @@ class _DetailLogScreenState extends State<DetailLogScreen> {
               ),
               child: Image.network(
                 imageUrl,
+                headers: _token != null ? {'Authorization': 'Bearer $_token'} : null,
                 fit: BoxFit.contain,
                 errorBuilder: (context, error, stackTrace) => Container(
                   height: 200,
@@ -539,6 +554,7 @@ class _DetailLogScreenState extends State<DetailLogScreen> {
               child: imageUrl != null
                   ? Image.network(
                       imageUrl,
+                      headers: _token != null ? {'Authorization': 'Bearer $_token'} : null,
                       height: 120,
                       width: double.infinity,
                       fit: BoxFit.cover,

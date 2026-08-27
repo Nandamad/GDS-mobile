@@ -44,10 +44,11 @@ class _PresensiScreenState extends State<PresensiScreen> {
   String _alamatKantor = '';
 
   LatLng _currentLocation = const LatLng(-7.7279, 109.0089);
-  
   StreamSubscription<Position>? _positionStream;
   double _gpsAccuracy = 0.0;
   bool _isMocked = false;
+  String? _errorMessage;
+  bool _isSubmitting = false;
 
   @override
   void initState() {
@@ -155,13 +156,19 @@ class _PresensiScreenState extends State<PresensiScreen> {
       if (mounted) {
         setState(() {
           _isLoading = false;
+          _errorMessage = null;
         });
       }
 
       _calculateOfficeDistance();
     } catch (e) {
       debugPrint('ERROR FETCHING PRESENSI: $e');
-      if (mounted) setState(() => _isLoading = false);
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+          _errorMessage = 'Gagal memuat data. Periksa koneksi internet Anda.';
+        });
+      }
     }
   }
 
@@ -277,6 +284,8 @@ class _PresensiScreenState extends State<PresensiScreen> {
   }
 
   Future<void> _handleAbsenProcess() async {
+    if (_isSubmitting) return;
+
     final String tipe = !_isSudahAbsenMasuk ? 'masuk' : 'pulang';
 
     final resultImage = await Navigator.push<String>(
@@ -305,12 +314,21 @@ class _PresensiScreenState extends State<PresensiScreen> {
 
     if (isConfirmed != true || !mounted) return;
 
+    setState(() {
+      _isSubmitting = true;
+    });
+
     final errorMessage = await _submitAbsensi(
       tipe: tipe,
       fotoBase64: resultImage,
     );
 
     if (!mounted) return;
+
+    setState(() {
+      _isSubmitting = false;
+    });
+
     if (errorMessage != null) {
       ScaffoldMessenger.of(
         context,
@@ -343,8 +361,34 @@ class _PresensiScreenState extends State<PresensiScreen> {
             ? const Center(
                 child: CircularProgressIndicator(color: Color(0xFF009688)),
               )
-            : RefreshIndicator(
-                onRefresh: _fetchPresensiData,
+            : _errorMessage != null
+                ? Center(
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        const Icon(Icons.wifi_off, size: 64, color: Colors.grey),
+                        const SizedBox(height: 16),
+                        Text(
+                          _errorMessage!,
+                          textAlign: TextAlign.center,
+                          style: const TextStyle(color: Colors.grey),
+                        ),
+                        const SizedBox(height: 16),
+                        ElevatedButton(
+                          onPressed: () {
+                            setState(() => _isLoading = true);
+                            _fetchPresensiData();
+                          },
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: const Color(0xFF009688),
+                          ),
+                          child: const Text('Coba Lagi', style: TextStyle(color: Colors.white)),
+                        ),
+                      ],
+                    ),
+                  )
+                : RefreshIndicator(
+                    onRefresh: _fetchPresensiData,
                 color: const Color(0xFF009688),
                 child: SingleChildScrollView(
                   physics: const AlwaysScrollableScrollPhysics(),
@@ -582,21 +626,25 @@ class _PresensiScreenState extends State<PresensiScreen> {
             ),
           ],
         ),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            const Icon(Icons.login_rounded, color: Colors.white, size: 28),
-            const SizedBox(height: 6),
-            Text(
-              btnText,
-              style: const TextStyle(
-                color: Colors.white,
-                fontWeight: FontWeight.bold,
-                fontSize: 15,
+        child: _isSubmitting
+            ? const Center(
+                child: CircularProgressIndicator(color: Colors.white),
+              )
+            : Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  const Icon(Icons.login_rounded, color: Colors.white, size: 28),
+                  const SizedBox(height: 6),
+                  Text(
+                    btnText,
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontWeight: FontWeight.bold,
+                      fontSize: 15,
+                    ),
+                  ),
+                ],
               ),
-            ),
-          ],
-        ),
       ),
     );
   }
