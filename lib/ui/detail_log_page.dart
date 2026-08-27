@@ -69,7 +69,7 @@ class _DetailLogScreenState extends State<DetailLogScreen> {
   }
 
   String _formatDate(DateTime? date) {
-    if (date == null) return 'Rabu, 19 Agustus 2026';
+    if (date == null) return 'Tanggal tidak tersedia';
     final List<String> hari = [
       'Senin',
       'Selasa',

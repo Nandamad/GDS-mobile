@@ -20,7 +20,7 @@ class PresensiScreen extends StatefulWidget {
   State<PresensiScreen> createState() => _PresensiScreenState();
 }
 
-class _PresensiScreenState extends State<PresensiScreen> {
+class _PresensiScreenState extends State<PresensiScreen> with WidgetsBindingObserver {
   bool _isLoading = true;
   Map<String, dynamic>? _dashboardData;
 
@@ -53,6 +53,7 @@ class _PresensiScreenState extends State<PresensiScreen> {
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
 
     _updateTime();
     _timer = Timer.periodic(
@@ -64,17 +65,23 @@ class _PresensiScreenState extends State<PresensiScreen> {
     _fetchPresensiData();
   }
 
-  void _updateTime() {
-    final now = DateTime.now();
-    final hour = now.hour.toString().padLeft(2, '0');
-    final minute = now.minute.toString().padLeft(2, '0');
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) {
+      _fetchPresensiData();
+    }
+  }
 
+  void _updateTime() {
     if (mounted) {
       setState(() {
-        _currentTime = '$hour:$minute';
-
         if (_serverTime != null) {
           _serverTime = _serverTime!.add(const Duration(seconds: 1));
+          
+          final hour = _serverTime!.hour.toString().padLeft(2, '0');
+          final minute = _serverTime!.minute.toString().padLeft(2, '0');
+          final second = _serverTime!.second.toString().padLeft(2, '0');
+          _currentTime = '$hour:$minute:$second';
 
           if (_lemburData != null) {
             final mulai = DateTime.parse(_lemburData!['jam_mulai']);
@@ -95,6 +102,13 @@ class _PresensiScreenState extends State<PresensiScreen> {
               _lemburCountdown = '';
             }
           }
+        } else {
+          // Fallback to device time before server time is loaded
+          final now = DateTime.now();
+          final hour = now.hour.toString().padLeft(2, '0');
+          final minute = now.minute.toString().padLeft(2, '0');
+          final second = now.second.toString().padLeft(2, '0');
+          _currentTime = '$hour:$minute:$second';
         }
       });
     }
@@ -394,6 +408,7 @@ class _PresensiScreenState extends State<PresensiScreen> {
 
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
     _timer.cancel();
     _positionStream?.cancel();
     super.dispose();
