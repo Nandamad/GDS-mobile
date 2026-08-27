@@ -102,6 +102,16 @@ class _PresensiScreenState extends State<PresensiScreen> {
 
   Future<void> _fetchPresensiData() async {
     try {
+      final token = await ApiService().getToken();
+      if (token == null || token.isEmpty) {
+        if (!mounted) return;
+        setState(() {
+          _isLoading = false;
+          _errorMessage = 'Sesi login tidak ditemukan. Silakan login kembali.';
+        });
+        return;
+      }
+
       final dio = ApiService().dio;
 
       // 1. Fetch Today Status
@@ -161,12 +171,31 @@ class _PresensiScreenState extends State<PresensiScreen> {
       }
 
       _calculateOfficeDistance();
+    } on DioException catch (e) {
+      debugPrint(
+        'ERROR FETCHING PRESENSI: ${e.response?.statusCode} ${e.response?.data}',
+      );
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+          _errorMessage = switch (e.response?.statusCode) {
+            401 => 'Sesi login sudah tidak berlaku. Silakan login kembali.',
+            403 => 'Anda tidak memiliki akses ke data presensi.',
+            _
+                when e.type == DioExceptionType.connectionTimeout ||
+                    e.type == DioExceptionType.receiveTimeout ||
+                    e.type == DioExceptionType.connectionError =>
+              'Server tidak dapat dihubungi. Periksa koneksi dan alamat server.',
+            _ => 'Gagal memuat data dari server.',
+          };
+        });
+      }
     } catch (e) {
       debugPrint('ERROR FETCHING PRESENSI: $e');
       if (mounted) {
         setState(() {
           _isLoading = false;
-          _errorMessage = 'Gagal memuat data. Periksa koneksi internet Anda.';
+          _errorMessage = 'Format data dari server tidak valid.';
         });
       }
     }
@@ -176,7 +205,13 @@ class _PresensiScreenState extends State<PresensiScreen> {
     bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
     if (!serviceEnabled) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Layanan lokasi dinonaktifkan. Silakan aktifkan GPS.')));
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text(
+              'Layanan lokasi dinonaktifkan. Silakan aktifkan GPS.',
+            ),
+          ),
+        );
       }
       return;
     }
@@ -186,7 +221,9 @@ class _PresensiScreenState extends State<PresensiScreen> {
       permission = await Geolocator.requestPermission();
       if (permission == LocationPermission.denied) {
         if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Izin lokasi ditolak.')));
+          ScaffoldMessenger.of(
+            context,
+          ).showSnackBar(const SnackBar(content: Text('Izin lokasi ditolak.')));
         }
         return;
       }
@@ -194,7 +231,13 @@ class _PresensiScreenState extends State<PresensiScreen> {
 
     if (permission == LocationPermission.deniedForever) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Izin lokasi ditolak permanen. Buka pengaturan aplikasi untuk mengizinkan.')));
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text(
+              'Izin lokasi ditolak permanen. Buka pengaturan aplikasi untuk mengizinkan.',
+            ),
+          ),
+        );
       }
       return;
     }
@@ -203,22 +246,26 @@ class _PresensiScreenState extends State<PresensiScreen> {
   }
 
   void _startLocationStream() {
-    _positionStream = Geolocator.getPositionStream(
-      locationSettings: const LocationSettings(
-        accuracy: LocationAccuracy.high,
-        distanceFilter: 5,
-      ),
-    ).listen((position) {
-      if (!mounted) return;
-      setState(() {
-        _currentLocation = LatLng(position.latitude, position.longitude);
-        _gpsAccuracy = position.accuracy;
-        _isMocked = position.isMocked;
-      });
-      _calculateOfficeDistance();
-    }, onError: (e) {
-      debugPrint("Location Stream Error: $e");
-    });
+    _positionStream =
+        Geolocator.getPositionStream(
+          locationSettings: const LocationSettings(
+            accuracy: LocationAccuracy.high,
+            distanceFilter: 5,
+          ),
+        ).listen(
+          (position) {
+            if (!mounted) return;
+            setState(() {
+              _currentLocation = LatLng(position.latitude, position.longitude);
+              _gpsAccuracy = position.accuracy;
+              _isMocked = position.isMocked;
+            });
+            _calculateOfficeDistance();
+          },
+          onError: (e) {
+            debugPrint("Location Stream Error: $e");
+          },
+        );
   }
 
   void _calculateOfficeDistance() {
@@ -362,33 +409,36 @@ class _PresensiScreenState extends State<PresensiScreen> {
                 child: CircularProgressIndicator(color: Color(0xFF009688)),
               )
             : _errorMessage != null
-                ? Center(
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        const Icon(Icons.wifi_off, size: 64, color: Colors.grey),
-                        const SizedBox(height: 16),
-                        Text(
-                          _errorMessage!,
-                          textAlign: TextAlign.center,
-                          style: const TextStyle(color: Colors.grey),
-                        ),
-                        const SizedBox(height: 16),
-                        ElevatedButton(
-                          onPressed: () {
-                            setState(() => _isLoading = true);
-                            _fetchPresensiData();
-                          },
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: const Color(0xFF009688),
-                          ),
-                          child: const Text('Coba Lagi', style: TextStyle(color: Colors.white)),
-                        ),
-                      ],
+            ? Center(
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    const Icon(Icons.wifi_off, size: 64, color: Colors.grey),
+                    const SizedBox(height: 16),
+                    Text(
+                      _errorMessage!,
+                      textAlign: TextAlign.center,
+                      style: const TextStyle(color: Colors.grey),
                     ),
-                  )
-                : RefreshIndicator(
-                    onRefresh: _fetchPresensiData,
+                    const SizedBox(height: 16),
+                    ElevatedButton(
+                      onPressed: () {
+                        setState(() => _isLoading = true);
+                        _fetchPresensiData();
+                      },
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: const Color(0xFF009688),
+                      ),
+                      child: const Text(
+                        'Coba Lagi',
+                        style: TextStyle(color: Colors.white),
+                      ),
+                    ),
+                  ],
+                ),
+              )
+            : RefreshIndicator(
+                onRefresh: _fetchPresensiData,
                 color: const Color(0xFF009688),
                 child: SingleChildScrollView(
                   physics: const AlwaysScrollableScrollPhysics(),
@@ -633,7 +683,11 @@ class _PresensiScreenState extends State<PresensiScreen> {
             : Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  const Icon(Icons.login_rounded, color: Colors.white, size: 28),
+                  const Icon(
+                    Icons.login_rounded,
+                    color: Colors.white,
+                    size: 28,
+                  ),
                   const SizedBox(height: 6),
                   Text(
                     btnText,
@@ -666,8 +720,8 @@ class _PresensiScreenState extends State<PresensiScreen> {
           ),
           const SizedBox(width: 4),
           Text(
-            _isInRadius 
-                ? 'Dalam radius (${_radiusMeters.toStringAsFixed(0)}m)' 
+            _isInRadius
+                ? 'Dalam radius (${_radiusMeters.toStringAsFixed(0)}m)'
                 : 'Di luar radius (${_radiusMeters.toStringAsFixed(0)}m)',
             style: TextStyle(
               color: _isInRadius ? const Color(0xFF009688) : Colors.red,
@@ -677,18 +731,26 @@ class _PresensiScreenState extends State<PresensiScreen> {
           ),
           if (_gpsAccuracy > 0) ...[
             const SizedBox(width: 8),
-            Container(width: 1, height: 10, color: Colors.grey.withOpacity(0.4)),
+            Container(
+              width: 1,
+              height: 10,
+              color: Colors.grey.withOpacity(0.4),
+            ),
             const SizedBox(width: 8),
             Icon(
               Icons.gps_fixed,
               size: 12,
-              color: _gpsAccuracy <= 20 ? const Color(0xFF009688) : Colors.orange,
+              color: _gpsAccuracy <= 20
+                  ? const Color(0xFF009688)
+                  : Colors.orange,
             ),
             const SizedBox(width: 3),
             Text(
               '±${_gpsAccuracy.toStringAsFixed(0)}m',
               style: TextStyle(
-                color: _gpsAccuracy <= 20 ? const Color(0xFF009688) : Colors.orange,
+                color: _gpsAccuracy <= 20
+                    ? const Color(0xFF009688)
+                    : Colors.orange,
                 fontSize: 9,
                 fontWeight: FontWeight.bold,
               ),
