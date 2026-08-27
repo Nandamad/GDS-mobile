@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:dio/dio.dart';
 import '../services/api_service.dart';
+import '../services/image_url_service.dart';
 import 'kinerja_presensi_page.dart';
 
 class DashboardScreen extends StatefulWidget {
@@ -15,6 +16,7 @@ class DashboardScreen extends StatefulWidget {
 class _DashboardScreenState extends State<DashboardScreen> {
   bool _isLoading = true;
   Map<String, dynamic>? _dashboardData;
+  String? _userFotoUrl;
   String _errorMessage = '';
   int _unreadNotificationCount = 0;
 
@@ -22,9 +24,50 @@ class _DashboardScreenState extends State<DashboardScreen> {
   void initState() {
     super.initState();
     _fetchDashboardData();
+    _fetchUserProfileFoto();
     _fetchUnreadNotificationCount();
   }
 
+  // 1. Ambil foto profil khusus dari endpoint /profile agar pasti dapat fotonya
+  Future<void> _fetchUserProfileFoto() async {
+    try {
+      final response = await ApiService().dio.get('/profile');
+      if (response.statusCode == 200) {
+        final payload = response.data;
+        Map<String, dynamic>? profile;
+
+        if (payload is Map) {
+          profile = payload['data'] is Map
+              ? Map<String, dynamic>.from(payload['data'])
+              : Map<String, dynamic>.from(payload);
+        }
+
+        if (profile != null) {
+          final karyawan = profile['karyawan'] is Map
+              ? profile['karyawan']
+              : profile;
+
+          final rawFoto =
+              karyawan['foto_url'] ??
+              karyawan['foto'] ??
+              karyawan['foto_karyawan'] ??
+              profile['foto'] ??
+              profile['avatar'];
+
+          final resolved = ImageUrlService.resolve(rawFoto?.toString());
+          if (mounted && resolved != null) {
+            setState(() {
+              _userFotoUrl = resolved;
+            });
+          }
+        }
+      }
+    } catch (e) {
+      debugPrint('FETCH PROFILE FOTO IN DASHBOARD ERROR: $e');
+    }
+  }
+
+  // 2. Ambil Jumlah Notifikasi
   Future<void> _fetchUnreadNotificationCount() async {
     var unreadCount = 0;
     try {
@@ -34,11 +77,11 @@ class _DashboardScreenState extends State<DashboardScreen> {
       if (payload is Map) {
         list = payload['data'] ?? payload['items'] ?? payload['result'] ?? [];
       }
-      if (list is! List) return;
-
-      unreadCount = list.where((item) {
-        return item is Map && item['read_at'] == null;
-      }).length;
+      if (list is List) {
+        unreadCount += list
+            .where((item) => item is Map && item['read_at'] == null)
+            .length;
+      }
     } catch (e) {
       debugPrint('GET /notifikasi COUNT ERROR: $e');
     }
@@ -60,6 +103,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
     }
   }
 
+  // 3. Ambil Data Dashboard
   Future<void> _fetchDashboardData() async {
     try {
       final token = await ApiService().getToken();
@@ -77,11 +121,15 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
       if (response.statusCode == 200) {
         final payload = response.data;
-        final data = payload is Map && payload['data'] is Map
-            ? Map<String, dynamic>.from(payload['data'])
-            : payload is Map
-            ? Map<String, dynamic>.from(payload)
-            : null;
+        Map<String, dynamic>? data;
+
+        if (payload is Map) {
+          if (payload['data'] is Map) {
+            data = Map<String, dynamic>.from(payload['data']);
+          } else {
+            data = Map<String, dynamic>.from(payload);
+          }
+        }
 
         if (data == null) {
           throw Exception('Format data dashboard tidak valid');
@@ -96,19 +144,11 @@ class _DashboardScreenState extends State<DashboardScreen> {
         });
         return;
       }
-
-      throw DioException(
-        requestOptions: RequestOptions(path: '/dashboard'),
-        response: response,
-        error: 'Dashboard request failed',
-      );
     } on DioException catch (e) {
       debugPrint(
         'DASHBOARD ERROR: ${e.response?.statusCode} ${e.response?.data}',
       );
-
       if (!mounted) return;
-
       setState(() {
         _errorMessage = e.response?.data is Map
             ? e.response?.data['message']?.toString() ??
@@ -117,10 +157,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
         _isLoading = false;
       });
     } catch (e) {
-      debugPrint('DASHBOARD ERROR: $e');
-
+      debugPrint('DASHBOARD PARSE ERROR: $e');
       if (!mounted) return;
-
       setState(() {
         _errorMessage = 'Format data dashboard tidak valid.';
         _isLoading = false;
@@ -157,6 +195,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                         onPressed: () {
                           setState(() => _isLoading = true);
                           _fetchDashboardData();
+                          _fetchUserProfileFoto();
                         },
                         style: ElevatedButton.styleFrom(
                           backgroundColor: const Color(0xFF009688),
@@ -171,7 +210,11 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 ),
               )
             : RefreshIndicator(
-                onRefresh: _fetchDashboardData,
+                onRefresh: () async {
+                  await _fetchDashboardData();
+                  await _fetchUserProfileFoto();
+                  await _fetchUnreadNotificationCount();
+                },
                 color: const Color(0xFF009688),
                 child: SingleChildScrollView(
                   physics: const AlwaysScrollableScrollPhysics(),
@@ -186,8 +229,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
                       const SizedBox(height: 12),
                       _buildStatusBanners(),
                       const SizedBox(height: 14),
-
-                      // Header Ringkasan Kehadiran yang bisa diklik
                       InkWell(
                         onTap: () {
                           Navigator.push(
@@ -201,11 +242,11 @@ class _DashboardScreenState extends State<DashboardScreen> {
                           );
                         },
                         borderRadius: BorderRadius.circular(6),
-                        child: Padding(
-                          padding: const EdgeInsets.symmetric(vertical: 4.0),
+                        child: const Padding(
+                          padding: EdgeInsets.symmetric(vertical: 4.0),
                           child: Row(
                             mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                            children: const [
+                            children: [
                               Text(
                                 'Ringkasan Kehadiran Bulan Ini',
                                 style: TextStyle(
@@ -235,21 +276,54 @@ class _DashboardScreenState extends State<DashboardScreen> {
     );
   }
 
+  // Header Dashboard
   Widget _buildHeader() {
-    final user = _dashboardData?['user'] ?? {};
-    final nama = (user['nama'] ?? user['name'] ?? 'Pengguna').toString();
-    final jabatan = (user['jabatan'] ?? user['role'] ?? 'Karyawan').toString();
+    final rawUser =
+        _dashboardData?['user'] ??
+        _dashboardData?['data']?['user'] ??
+        _dashboardData;
+    final Map<String, dynamic> user = rawUser is Map
+        ? Map<String, dynamic>.from(rawUser)
+        : {};
+
+    final rawKaryawan = user['karyawan'] ?? _dashboardData?['karyawan'];
+    final Map<String, dynamic> karyawan = rawKaryawan is Map
+        ? Map<String, dynamic>.from(rawKaryawan)
+        : user;
+
+    final nama =
+        (karyawan['nama_lengkap'] ?? user['nama'] ?? user['name'] ?? 'Pengguna')
+            .toString();
+
+    final rawJabatan = karyawan['jabatan'] ?? user['jabatan'] ?? user['role'];
+    final jabatan =
+        (rawJabatan is Map
+                ? rawJabatan['nama_jabatan']
+                : rawJabatan ?? 'Karyawan')
+            .toString();
+
+    // Utamakan foto dari endpoint /profile yang sudah pasti berhasil di-fetch
+    final rawFotoDashboard =
+        karyawan['foto_url'] ?? karyawan['foto'] ?? user['foto'];
+    final fotoUrl =
+        _userFotoUrl ?? ImageUrlService.resolve(rawFotoDashboard?.toString());
 
     return Row(
       children: [
-        // BAGIAN PROFIL (CUMA PAJANGAN - TIDAK BISA DIKLIK)
         Expanded(
           child: Row(
             children: [
-              const CircleAvatar(
-                radius: 18,
-                backgroundColor: Color(0xFFCCFBF1),
-                child: Icon(Icons.person, size: 20, color: Color(0xFF009688)),
+              CircleAvatar(
+                radius: 20,
+                backgroundColor: const Color(0xFFCCFBF1),
+                backgroundImage: fotoUrl != null ? NetworkImage(fotoUrl) : null,
+                child: fotoUrl == null
+                    ? const Icon(
+                        Icons.person,
+                        size: 22,
+                        color: Color(0xFF009688),
+                      )
+                    : null,
               ),
               const SizedBox(width: 10),
               Expanded(
@@ -323,7 +397,10 @@ class _DashboardScreenState extends State<DashboardScreen> {
   }
 
   Widget _buildStatusBanners() {
-    final summary = _dashboardData?['summary'] ?? {};
+    final rawSummary = _dashboardData?['summary'];
+    final Map<String, dynamic> summary = rawSummary is Map
+        ? Map<String, dynamic>.from(rawSummary)
+        : {};
     final sisaCuti = summary['sisa_cuti'] ?? 0;
     final statusKes = summary['status_kesehatan'] ?? 'Baik';
 
@@ -385,14 +462,19 @@ class _DashboardScreenState extends State<DashboardScreen> {
   }
 
   Widget _buildAttendanceGrid() {
-    final attn = _dashboardData?['attendance_month'] ?? {};
-    final hadir = attn['hadir'] ?? 0;
-    final terlambat = attn['terlambat'] ?? 0;
-    final izin = attn['izin'] ?? 0;
-    final cuti = attn['cuti'] ?? 0;
-    final sakit = attn['sakit'] ?? 0;
-    final alpha = attn['alpha'] ?? 0;
-    final total = attn['total_hari_kerja'] ?? 13;
+    final rawAttn = _dashboardData?['attendance_month'];
+    final Map<String, dynamic> attn = rawAttn is Map
+        ? Map<String, dynamic>.from(rawAttn)
+        : {};
+
+    final hadir = int.tryParse(attn['hadir']?.toString() ?? '0') ?? 0;
+    final terlambat = int.tryParse(attn['terlambat']?.toString() ?? '0') ?? 0;
+    final izin = int.tryParse(attn['izin']?.toString() ?? '0') ?? 0;
+    final cuti = int.tryParse(attn['cuti']?.toString() ?? '0') ?? 0;
+    final sakit = int.tryParse(attn['sakit']?.toString() ?? '0') ?? 0;
+    final alpha = int.tryParse(attn['alpha']?.toString() ?? '0') ?? 0;
+    final total =
+        int.tryParse(attn['total_hari_kerja']?.toString() ?? '13') ?? 13;
 
     String pct(int val) =>
         total > 0 ? '(${(val / total * 100).toStringAsFixed(0)}%)' : '(0%)';
@@ -447,19 +529,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
   Widget _buildAttendanceChart() {
     final days = ['Sen', 'Sel', 'Rab', 'Kam', 'Jum', 'Sab', 'Min'];
-    final chartData = _dashboardData?['chart_trend'];
-    final fallbackData = <String, double>{
-      'Sen': 0.8,
-      'Sel': 0.9,
-      'Rab': 0.82,
-      'Kam': 0.88,
-      'Jum': 0.85,
-      'Sab': 0.08,
-      'Min': 0.08,
-    };
-    final trend = chartData is Map
-        ? Map<String, dynamic>.from(chartData)
-        : fallbackData;
+    final rawTrend = _dashboardData?['chart_trend'];
 
     return Container(
       padding: const EdgeInsets.all(12),
@@ -492,9 +562,19 @@ class _DashboardScreenState extends State<DashboardScreen> {
               crossAxisAlignment: CrossAxisAlignment.end,
               children: List.generate(7, (index) {
                 final isWeekend = index >= 5;
-                final double heightVal =
-                    double.tryParse(trend[days[index]]?.toString() ?? '0') ??
-                    0.1;
+                double heightVal = 0.1;
+
+                if (rawTrend is List && index < rawTrend.length) {
+                  heightVal =
+                      double.tryParse(rawTrend[index]?.toString() ?? '0.1') ??
+                      0.1;
+                } else if (rawTrend is Map) {
+                  heightVal =
+                      double.tryParse(
+                        rawTrend[days[index]]?.toString() ?? '0.1',
+                      ) ??
+                      0.1;
+                }
 
                 return Column(
                   mainAxisAlignment: MainAxisAlignment.end,

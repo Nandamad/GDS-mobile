@@ -283,7 +283,7 @@ class _PresensiScreenState extends State<PresensiScreen> with WidgetsBindingObse
   }
 
   void _calculateOfficeDistance() {
-    if (_officeLocation == null || _maxRadiusMeters <= 0) return;
+    if (_officeLocation == null) return;
 
     final distance = Geolocator.distanceBetween(
       _currentLocation.latitude,
@@ -296,7 +296,8 @@ class _PresensiScreenState extends State<PresensiScreen> with WidgetsBindingObse
 
     setState(() {
       _radiusMeters = distance;
-      _isInRadius = distance <= _maxRadiusMeters;
+      // Memberikan toleransi radius tambahan (misal 20 meter) untuk mengatasi ketidakakuratan GPS di beberapa perangkat
+      _isInRadius = distance <= (_maxRadiusMeters + 20);
     });
   }
 
@@ -667,13 +668,16 @@ class _PresensiScreenState extends State<PresensiScreen> with WidgetsBindingObse
       btnText = 'Sudah Absen';
     }
 
-    if (!_isInRadius && !(_isSudahAbsenMasuk && _isSudahAbsenKeluar)) {
+    if (_officeLocation == null) {
+      btnColor = Colors.grey.shade400;
+      btnText = 'Memuat Lokasi...';
+    } else if (!_isInRadius && !(_isSudahAbsenMasuk && _isSudahAbsenKeluar)) {
       btnColor = Colors.grey;
       btnText = 'Luar Radius';
     }
 
     return GestureDetector(
-      onTap: ((_isSudahAbsenMasuk && _isSudahAbsenKeluar) || !_isInRadius)
+      onTap: ((_isSudahAbsenMasuk && _isSudahAbsenKeluar) || !_isInRadius || _officeLocation == null)
           ? null
           : _handleAbsenProcess,
       child: Container(
