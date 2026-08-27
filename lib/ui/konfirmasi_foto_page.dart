@@ -9,6 +9,7 @@ class KonfirmasiFotoScreen extends StatefulWidget {
   final String alamatKantor;
   final double jarakMeter;
   final bool isInRadius;
+  final double? gpsAccuracy;
 
   const KonfirmasiFotoScreen({
     super.key,
@@ -18,6 +19,7 @@ class KonfirmasiFotoScreen extends StatefulWidget {
     required this.alamatKantor,
     required this.jarakMeter,
     required this.isInRadius,
+    this.gpsAccuracy,
   });
 
   @override
@@ -285,6 +287,15 @@ class _KonfirmasiFotoScreenState extends State<KonfirmasiFotoScreen> {
             value: '${widget.jarakMeter.toStringAsFixed(0)} meter',
             isVerified: widget.isInRadius,
           ),
+          if (widget.gpsAccuracy != null && widget.gpsAccuracy! > 0) ...[
+            const Divider(height: 14),
+            _buildVerifikasiRow(
+              label: 'Akurasi GPS',
+              value: '±${widget.gpsAccuracy!.toStringAsFixed(0)} meter',
+              isVerified: widget.gpsAccuracy! <= 20,
+              valueColor: widget.gpsAccuracy! <= 20 ? const Color(0xFF0F172A) : Colors.orange,
+            ),
+          ],
           const Divider(height: 14),
           _buildVerifikasiRow(
             label: 'Deteksi Wajah',
