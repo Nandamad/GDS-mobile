@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:dio/dio.dart';
 import '../services/api_service.dart';
 import 'main_navigation_page.dart';
+import 'lupa_password_page.dart'; // <-- Pastikan file ini sudah di-import
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -104,8 +105,6 @@ class _LoginScreenState extends State<LoginScreen> {
 
           var isAtasan = asBool(findUser(payload)?['is_atasan']);
 
-          // Refresh the role from the authenticated user endpoint. This also
-          // handles users whose supervisor assignment changed in the portal.
           try {
             final userResponse = await dio.get('/user');
             final currentUser = findUser(userResponse.data);
@@ -118,8 +117,6 @@ class _LoginScreenState extends State<LoginScreen> {
             );
           }
 
-          // Keep compatibility with older backends that do not expose the
-          // role flag, but only use pending data as a last resort.
           if (!isAtasan) {
             try {
               final approvalResponse = await dio.get('/approval/pending');
@@ -169,7 +166,6 @@ class _LoginScreenState extends State<LoginScreen> {
       String errorMsg = 'Gagal terhubung ke server.';
       if (e.response != null) {
         if (e.response!.statusCode == 422) {
-          // Menampilkan detail pesan error dari validator Laravel
           final data = e.response!.data;
           if (data is Map && data.containsKey('message')) {
             errorMsg = data['message'];
@@ -387,11 +383,11 @@ class _LoginScreenState extends State<LoginScreen> {
                         alignment: Alignment.centerRight,
                         child: TextButton(
                           onPressed: () {
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(
-                                content: Text(
-                                  'Silakan hubungi admin HRD untuk reset password.',
-                                ),
+                            // DIRECT KE HALAMAN LUPA PASSWORD
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (context) => const LupaPasswordScreen(),
                               ),
                             );
                           },
