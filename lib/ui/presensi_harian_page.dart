@@ -20,7 +20,7 @@ class PresensiScreen extends StatefulWidget {
   State<PresensiScreen> createState() => _PresensiScreenState();
 }
 
-class _PresensiScreenState extends State<PresensiScreen> with WidgetsBindingObserver {
+class _PresensiScreenState extends State<PresensiScreen> {
   bool _isLoading = true;
   Map<String, dynamic>? _dashboardData;
 
@@ -44,16 +44,14 @@ class _PresensiScreenState extends State<PresensiScreen> with WidgetsBindingObse
   String _alamatKantor = '';
 
   LatLng _currentLocation = const LatLng(-7.7279, 109.0089);
+
   StreamSubscription<Position>? _positionStream;
   double _gpsAccuracy = 0.0;
   bool _isMocked = false;
-  String? _errorMessage;
-  bool _isSubmitting = false;
 
   @override
   void initState() {
     super.initState();
-    WidgetsBinding.instance.addObserver(this);
 
     _updateTime();
     _timer = Timer.periodic(
@@ -65,23 +63,17 @@ class _PresensiScreenState extends State<PresensiScreen> with WidgetsBindingObse
     _fetchPresensiData();
   }
 
-  @override
-  void didChangeAppLifecycleState(AppLifecycleState state) {
-    if (state == AppLifecycleState.resumed) {
-      _fetchPresensiData();
-    }
-  }
-
   void _updateTime() {
+    final now = DateTime.now();
+    final hour = now.hour.toString().padLeft(2, '0');
+    final minute = now.minute.toString().padLeft(2, '0');
+
     if (mounted) {
       setState(() {
+        _currentTime = '$hour:$minute';
+
         if (_serverTime != null) {
           _serverTime = _serverTime!.add(const Duration(seconds: 1));
-          
-          final hour = _serverTime!.hour.toString().padLeft(2, '0');
-          final minute = _serverTime!.minute.toString().padLeft(2, '0');
-          final second = _serverTime!.second.toString().padLeft(2, '0');
-          _currentTime = '$hour:$minute:$second';
 
           if (_lemburData != null) {
             final mulai = DateTime.parse(_lemburData!['jam_mulai']);
@@ -102,13 +94,6 @@ class _PresensiScreenState extends State<PresensiScreen> with WidgetsBindingObse
               _lemburCountdown = '';
             }
           }
-        } else {
-          // Fallback to device time before server time is loaded
-          final now = DateTime.now();
-          final hour = now.hour.toString().padLeft(2, '0');
-          final minute = now.minute.toString().padLeft(2, '0');
-          final second = now.second.toString().padLeft(2, '0');
-          _currentTime = '$hour:$minute:$second';
         }
       });
     }
@@ -116,16 +101,6 @@ class _PresensiScreenState extends State<PresensiScreen> with WidgetsBindingObse
 
   Future<void> _fetchPresensiData() async {
     try {
-      final token = await ApiService().getToken();
-      if (token == null || token.isEmpty) {
-        if (!mounted) return;
-        setState(() {
-          _isLoading = false;
-          _errorMessage = 'Sesi login tidak ditemukan. Silakan login kembali.';
-        });
-        return;
-      }
-
       final dio = ApiService().dio;
 
       // 1. Fetch Today Status
@@ -180,37 +155,22 @@ class _PresensiScreenState extends State<PresensiScreen> with WidgetsBindingObse
       if (mounted) {
         setState(() {
           _isLoading = false;
-          _errorMessage = null;
         });
       }
 
       _calculateOfficeDistance();
-    } on DioException catch (e) {
-      debugPrint(
-        'ERROR FETCHING PRESENSI: ${e.response?.statusCode} ${e.response?.data}',
-      );
-      if (mounted) {
-        setState(() {
-          _isLoading = false;
-          _errorMessage = switch (e.response?.statusCode) {
-            401 => 'Sesi login sudah tidak berlaku. Silakan login kembali.',
-            403 => 'Anda tidak memiliki akses ke data presensi.',
-            _
-                when e.type == DioExceptionType.connectionTimeout ||
-                    e.type == DioExceptionType.receiveTimeout ||
-                    e.type == DioExceptionType.connectionError =>
-              'Server tidak dapat dihubungi. Periksa koneksi dan alamat server.',
-            _ => 'Gagal memuat data dari server.',
-          };
-        });
-      }
     } catch (e) {
       debugPrint('ERROR FETCHING PRESENSI: $e');
       if (mounted) {
-        setState(() {
-          _isLoading = false;
-          _errorMessage = 'Format data dari server tidak valid.';
-        });
+        setState(() => _isLoading = false);
+        // INI TAMBAHANNYA BIAR ERROR MUNCUL DI LAYAR HP
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('ERROR API: ${e.toString()}'),
+            duration: const Duration(seconds: 5),
+            backgroundColor: Colors.red,
+          ),
+        );
       }
     }
   }
@@ -283,7 +243,7 @@ class _PresensiScreenState extends State<PresensiScreen> with WidgetsBindingObse
   }
 
   void _calculateOfficeDistance() {
-    if (_officeLocation == null) return;
+    if (_officeLocation == null || _maxRadiusMeters <= 0) return;
 
     final distance = Geolocator.distanceBetween(
       _currentLocation.latitude,
@@ -296,8 +256,7 @@ class _PresensiScreenState extends State<PresensiScreen> with WidgetsBindingObse
 
     setState(() {
       _radiusMeters = distance;
-      // Memberikan toleransi radius tambahan (misal 20 meter) untuk mengatasi ketidakakuratan GPS di beberapa perangkat
-      _isInRadius = distance <= (_maxRadiusMeters + 20);
+      _isInRadius = distance <= _maxRadiusMeters;
     });
   }
 
@@ -346,8 +305,6 @@ class _PresensiScreenState extends State<PresensiScreen> with WidgetsBindingObse
   }
 
   Future<void> _handleAbsenProcess() async {
-    if (_isSubmitting) return;
-
     final String tipe = !_isSudahAbsenMasuk ? 'masuk' : 'pulang';
 
     final resultImage = await Navigator.push<String>(
@@ -376,21 +333,12 @@ class _PresensiScreenState extends State<PresensiScreen> with WidgetsBindingObse
 
     if (isConfirmed != true || !mounted) return;
 
-    setState(() {
-      _isSubmitting = true;
-    });
-
     final errorMessage = await _submitAbsensi(
       tipe: tipe,
       fotoBase64: resultImage,
     );
 
     if (!mounted) return;
-
-    setState(() {
-      _isSubmitting = false;
-    });
-
     if (errorMessage != null) {
       ScaffoldMessenger.of(
         context,
@@ -409,7 +357,6 @@ class _PresensiScreenState extends State<PresensiScreen> with WidgetsBindingObse
 
   @override
   void dispose() {
-    WidgetsBinding.instance.removeObserver(this);
     _timer.cancel();
     _positionStream?.cancel();
     super.dispose();
@@ -423,35 +370,6 @@ class _PresensiScreenState extends State<PresensiScreen> with WidgetsBindingObse
         child: _isLoading
             ? const Center(
                 child: CircularProgressIndicator(color: Color(0xFF009688)),
-              )
-            : _errorMessage != null
-            ? Center(
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    const Icon(Icons.wifi_off, size: 64, color: Colors.grey),
-                    const SizedBox(height: 16),
-                    Text(
-                      _errorMessage!,
-                      textAlign: TextAlign.center,
-                      style: const TextStyle(color: Colors.grey),
-                    ),
-                    const SizedBox(height: 16),
-                    ElevatedButton(
-                      onPressed: () {
-                        setState(() => _isLoading = true);
-                        _fetchPresensiData();
-                      },
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: const Color(0xFF009688),
-                      ),
-                      child: const Text(
-                        'Coba Lagi',
-                        style: TextStyle(color: Colors.white),
-                      ),
-                    ),
-                  ],
-                ),
               )
             : RefreshIndicator(
                 onRefresh: _fetchPresensiData,
@@ -668,16 +586,13 @@ class _PresensiScreenState extends State<PresensiScreen> with WidgetsBindingObse
       btnText = 'Sudah Absen';
     }
 
-    if (_officeLocation == null) {
-      btnColor = Colors.grey.shade400;
-      btnText = 'Memuat Lokasi...';
-    } else if (!_isInRadius && !(_isSudahAbsenMasuk && _isSudahAbsenKeluar)) {
+    if (!_isInRadius && !(_isSudahAbsenMasuk && _isSudahAbsenKeluar)) {
       btnColor = Colors.grey;
       btnText = 'Luar Radius';
     }
 
     return GestureDetector(
-      onTap: ((_isSudahAbsenMasuk && _isSudahAbsenKeluar) || !_isInRadius || _officeLocation == null)
+      onTap: ((_isSudahAbsenMasuk && _isSudahAbsenKeluar) || !_isInRadius)
           ? null
           : _handleAbsenProcess,
       child: Container(
@@ -695,29 +610,21 @@ class _PresensiScreenState extends State<PresensiScreen> with WidgetsBindingObse
             ),
           ],
         ),
-        child: _isSubmitting
-            ? const Center(
-                child: CircularProgressIndicator(color: Colors.white),
-              )
-            : Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  const Icon(
-                    Icons.login_rounded,
-                    color: Colors.white,
-                    size: 28,
-                  ),
-                  const SizedBox(height: 6),
-                  Text(
-                    btnText,
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontWeight: FontWeight.bold,
-                      fontSize: 15,
-                    ),
-                  ),
-                ],
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            const Icon(Icons.login_rounded, color: Colors.white, size: 28),
+            const SizedBox(height: 6),
+            Text(
+              btnText,
+              style: const TextStyle(
+                color: Colors.white,
+                fontWeight: FontWeight.bold,
+                fontSize: 15,
               ),
+            ),
+          ],
+        ),
       ),
     );
   }

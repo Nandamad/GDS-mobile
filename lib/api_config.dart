@@ -2,11 +2,7 @@ import 'package:flutter_dotenv/flutter_dotenv.dart';
 
 class ApiConfig {
   static String get baseUrl {
-  final url = dotenv.env['API_BASE_URL'] ??
-      'http://192.168.18.79:8000/api';
-
-  print('API BASE URL = $url');
-
-  return url;
-}
+    // Abaikan dotenv dulu, langsung tembak IP laptopmu secara hardcode
+    return 'http://192.168.18.79:8000/api'; 
+  }
 }

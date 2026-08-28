@@ -14,86 +14,40 @@ class DetailLogScreen extends StatefulWidget {
 
 class _DetailLogScreenState extends State<DetailLogScreen> {
   String? _token;
-  bool _isLoading = false;
-  Absensi? _currentAbsensi;
 
   @override
   void initState() {
     super.initState();
-    _currentAbsensi = widget.absensi;
     ApiService().getToken().then((value) {
       if (mounted) {
         setState(() {
           _token = value;
         });
-        if (_currentAbsensi?.id != null) {
-          _fetchAbsensiDetail();
-        }
       }
     });
   }
 
-  Future<void> _fetchAbsensiDetail() async {
-    if (_currentAbsensi?.id == null) return;
-    
-    setState(() => _isLoading = true);
-    try {
-      final dio = ApiService().dio;
-      final response = await dio.get('/absensi/${_currentAbsensi!.id}');
-      
-      if (response.statusCode == 200 && response.data['data'] != null) {
-        if (mounted) {
-          setState(() {
-            _currentAbsensi = Absensi.fromJson(response.data['data']);
-          });
-        }
-      }
-    } catch (e) {
-      debugPrint('Error fetching detail log: $e');
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Gagal memperbarui data log')),
-        );
-      }
-    } finally {
-      if (mounted) {
-        setState(() => _isLoading = false);
-      }
-    }
-  }
   String _formatTime(DateTime? date) {
     if (date == null) return '--:-- WIB';
-    final hour = date.hour.toString().padLeft(2, '0');
-    final minute = date.minute.toString().padLeft(2, '0');
+    // Mengonversi waktu UTC dari server ke waktu lokal HP (WIB / GMT+7)
+    final localDate = date.toLocal(); 
+    final hour = localDate.hour.toString().padLeft(2, '0');
+    final minute = localDate.minute.toString().padLeft(2, '0');
     return '$hour:$minute WIB';
   }
 
   String _formatDate(DateTime? date) {
-    if (date == null) return 'Tanggal tidak tersedia';
+    if (date == null) return 'Rabu, 19 Agustus 2026';
+    // Mengonversi tanggal ke lokal perangkat
+    final localDate = date.toLocal(); 
     final List<String> hari = [
-      'Senin',
-      'Selasa',
-      'Rabu',
-      'Kamis',
-      'Jumat',
-      'Sabtu',
-      'Minggu',
+      'Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu', 'Minggu',
     ];
     final List<String> bulan = [
-      'Januari',
-      'Februari',
-      'Maret',
-      'April',
-      'Mei',
-      'Juni',
-      'Juli',
-      'Agustus',
-      'September',
-      'Oktober',
-      'November',
-      'Desember',
+      'Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni',
+      'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember',
     ];
-    return '${hari[date.weekday - 1]}, ${date.day.toString().padLeft(2, '0')} ${bulan[date.month - 1]} ${date.year}';
+    return '${hari[localDate.weekday - 1]}, ${localDate.day.toString().padLeft(2, '0')} ${bulan[localDate.month - 1]} ${localDate.year}';
   }
 
   String _calculateDuration(DateTime? inTime, DateTime? outTime) {
@@ -173,42 +127,36 @@ class _DetailLogScreenState extends State<DetailLogScreen> {
           ),
         ),
       ),
-      body: _isLoading
-          ? const Center(child: CircularProgressIndicator())
-          : RefreshIndicator(
-              onRefresh: _fetchAbsensiDetail,
-              child: SingleChildScrollView(
-                physics: const AlwaysScrollableScrollPhysics(),
-                padding: const EdgeInsets.symmetric(horizontal: 14.0, vertical: 12.0),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    _buildHeaderCard(),
-                    const SizedBox(height: 14),
-                    _buildSectionTitle('REKAP WAKTU'),
-                    const SizedBox(height: 6),
-                    _buildRekapWaktuRow(),
-                    const SizedBox(height: 14),
-                    _buildSectionTitle('TOTAL DURASI KERJA'),
-                    const SizedBox(height: 6),
-                    _buildDurasiBanner(),
-                    const SizedBox(height: 14),
-                    _buildSectionTitle('DETAIL LOKASI GPS'),
-                    const SizedBox(height: 6),
-                    _buildGpsCard(),
-                    const SizedBox(height: 14),
-                    _buildSectionTitle('FOTO VERIFIKASI'),
-                    const SizedBox(height: 6),
-                    _buildFotoVerifikasiRow(),
-                    const SizedBox(height: 14),
-                    _buildSectionTitle('CATATAN'),
-                    const SizedBox(height: 6),
-                    _buildCatatanCard(),
-                    const SizedBox(height: 16),
-                  ],
-                ),
-              ),
-            ),
+      body: SingleChildScrollView(
+        padding: const EdgeInsets.symmetric(horizontal: 14.0, vertical: 12.0),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            _buildHeaderCard(),
+            const SizedBox(height: 14),
+            _buildSectionTitle('REKAP WAKTU'),
+            const SizedBox(height: 6),
+            _buildRekapWaktuRow(),
+            const SizedBox(height: 14),
+            _buildSectionTitle('TOTAL DURASI KERJA'),
+            const SizedBox(height: 6),
+            _buildDurasiBanner(),
+            const SizedBox(height: 14),
+            _buildSectionTitle('DETAIL LOKASI GPS'),
+            const SizedBox(height: 6),
+            _buildGpsCard(),
+            const SizedBox(height: 14),
+            _buildSectionTitle('FOTO VERIFIKASI'),
+            const SizedBox(height: 6),
+            _buildFotoVerifikasiRow(),
+            const SizedBox(height: 14),
+            _buildSectionTitle('CATATAN'),
+            const SizedBox(height: 6),
+            _buildCatatanCard(),
+            const SizedBox(height: 16),
+          ],
+        ),
+      ),
     );
   }
 
@@ -225,7 +173,7 @@ class _DetailLogScreenState extends State<DetailLogScreen> {
   }
 
   Widget _buildHeaderCard() {
-    final status = _currentAbsensi?.status ?? 'hadir';
+    final status = widget.absensi?.status ?? 'hadir';
     final isLate = status.toLowerCase().contains('terlambat');
 
     return Container(
@@ -242,7 +190,7 @@ class _DetailLogScreenState extends State<DetailLogScreen> {
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Text(
-                _formatDate(_currentAbsensi?.tanggal),
+                _formatDate(widget.absensi?.tanggal),
                 style: const TextStyle(
                   fontWeight: FontWeight.bold,
                   fontSize: 13,
@@ -284,7 +232,7 @@ class _DetailLogScreenState extends State<DetailLogScreen> {
                 style: TextStyle(fontSize: 10, color: Colors.grey),
               ),
               Text(
-                _currentAbsensi?.shift ?? 'Shift tidak tersedia',
+                widget.absensi?.shift ?? 'Shift tidak tersedia',
                 style: const TextStyle(
                   fontSize: 10,
                   fontWeight: FontWeight.w600,
@@ -308,7 +256,7 @@ class _DetailLogScreenState extends State<DetailLogScreen> {
               ),
               Expanded(
                 child: Text(
-                  _currentAbsensi?.lokasiMasuk ?? 'Lokasi tidak terekam',
+                  widget.absensi?.lokasiMasuk ?? 'Lokasi tidak terekam',
                   style: const TextStyle(
                     fontSize: 10,
                     fontWeight: FontWeight.w600,
@@ -325,7 +273,7 @@ class _DetailLogScreenState extends State<DetailLogScreen> {
   }
 
   Widget _buildRekapWaktuRow() {
-    final isLate = (_currentAbsensi?.status ?? '').toLowerCase().contains(
+    final isLate = (widget.absensi?.status ?? '').toLowerCase().contains(
       'terlambat',
     );
 
@@ -352,7 +300,7 @@ class _DetailLogScreenState extends State<DetailLogScreen> {
                 ),
                 const SizedBox(height: 4),
                 Text(
-                  _formatTime(_currentAbsensi?.jamMasuk),
+                  _formatTime(widget.absensi?.jamMasuk),
                   style: const TextStyle(
                     fontSize: 14,
                     fontWeight: FontWeight.bold,
@@ -408,7 +356,7 @@ class _DetailLogScreenState extends State<DetailLogScreen> {
                 ),
                 const SizedBox(height: 4),
                 Text(
-                  _formatTime(_currentAbsensi?.jamPulang),
+                  _formatTime(widget.absensi?.jamPulang),
                   style: const TextStyle(
                     fontSize: 14,
                     fontWeight: FontWeight.bold,
@@ -469,8 +417,8 @@ class _DetailLogScreenState extends State<DetailLogScreen> {
           ),
           Text(
             _calculateDuration(
-              _currentAbsensi?.jamMasuk,
-              _currentAbsensi?.jamPulang,
+              widget.absensi?.jamMasuk,
+              widget.absensi?.jamPulang,
             ),
             style: const TextStyle(
               fontSize: 12,
@@ -495,17 +443,17 @@ class _DetailLogScreenState extends State<DetailLogScreen> {
         children: [
           _buildGpsItem(
             title: 'Lokasi Masuk',
-            address: _currentAbsensi?.lokasiMasuk ?? 'Lokasi GPS Tidak Ada',
-            distance: _currentAbsensi?.lokasiMasuk != null
-                ? 'Koordinat: ${_currentAbsensi!.lokasiMasuk}'
+            address: widget.absensi?.lokasiMasuk ?? 'Lokasi GPS Tidak Ada',
+            distance: widget.absensi?.lokasiMasuk != null
+                ? 'Koordinat: ${widget.absensi!.lokasiMasuk}'
                 : 'GPS tidak terekam',
           ),
           const Divider(height: 20),
           _buildGpsItem(
             title: 'Lokasi Pulang',
-            address: _currentAbsensi?.lokasiPulang ?? 'Lokasi GPS Tidak Ada',
-            distance: _currentAbsensi?.lokasiPulang != null
-                ? 'Koordinat: ${_currentAbsensi!.lokasiPulang}'
+            address: widget.absensi?.lokasiPulang ?? 'Lokasi GPS Tidak Ada',
+            distance: widget.absensi?.lokasiPulang != null
+                ? 'Koordinat: ${widget.absensi!.lokasiPulang}'
                 : 'GPS tidak terekam',
           ),
         ],
@@ -563,20 +511,20 @@ class _DetailLogScreenState extends State<DetailLogScreen> {
   }
 
   Widget _buildFotoVerifikasiRow() {
-    final fotoMasukUrl = ImageUrlService.resolve(_currentAbsensi?.fotoMasuk);
-    final fotoPulangUrl = ImageUrlService.resolve(_currentAbsensi?.fotoPulang);
+    final fotoMasukUrl = ImageUrlService.resolve(widget.absensi?.fotoMasuk);
+    final fotoPulangUrl = ImageUrlService.resolve(widget.absensi?.fotoPulang);
 
     return Row(
       children: [
         _buildFotoCard(
           'Foto Masuk',
-          _formatTime(_currentAbsensi?.jamMasuk),
+          _formatTime(widget.absensi?.jamMasuk),
           fotoMasukUrl,
         ),
         const SizedBox(width: 8),
         _buildFotoCard(
           'Foto Pulang',
-          _formatTime(_currentAbsensi?.jamPulang),
+          _formatTime(widget.absensi?.jamPulang),
           fotoPulangUrl,
         ),
       ],
@@ -656,7 +604,7 @@ class _DetailLogScreenState extends State<DetailLogScreen> {
         border: Border.all(color: Colors.grey.shade200),
       ),
       child: Text(
-        _currentAbsensi?.catatanMasuk ?? 'Tidak ada catatan untuk hari ini.',
+        widget.absensi?.catatanMasuk ?? 'Tidak ada catatan untuk hari ini.',
         style: const TextStyle(fontSize: 10, color: Colors.grey),
       ),
     );

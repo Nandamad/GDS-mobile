@@ -49,8 +49,10 @@ class _RiwayatPresensiScreenState extends State<RiwayatPresensiScreen> {
 
   String _formatTime(DateTime? date) {
     if (date == null) return '-';
-    final hour = date.hour.toString().padLeft(2, '0');
-    final minute = date.minute.toString().padLeft(2, '0');
+    // Mengonversi waktu dari server ke waktu lokal HP (WIB / GMT+7)
+    final localDate = date.toLocal(); 
+    final hour = localDate.hour.toString().padLeft(2, '0');
+    final minute = localDate.minute.toString().padLeft(2, '0');
     return '$hour:$minute';
   }
 
