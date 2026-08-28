@@ -12,7 +12,7 @@ class KoreksiPresensiScreen extends StatefulWidget {
 class _KoreksiPresensiScreenState extends State<KoreksiPresensiScreen> {
   final Color primaryTeal = const Color(0xFF009688);
 
-  DateTime _focusedMonth = DateTime(2026, 8, 1);
+  DateTime _focusedMonth = DateTime.now();
   DateTime? _selectedDate;
 
   TimeOfDay? _jamMasukBaru;

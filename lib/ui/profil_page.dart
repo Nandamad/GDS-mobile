@@ -26,7 +26,7 @@ class _ProfilPageState extends State<ProfilPage> {
     _fetchUserProfile();
   }
 
-  // Ambil data profil karyawan yang login dari API
+  // Ambil data profil karyawan yang login dari API (Penanganan Tipe Data Sangat Aman)
   Future<void> _fetchUserProfile() async {
     try {
       final token = await ApiService().getToken();
@@ -37,7 +37,6 @@ class _ProfilPageState extends State<ProfilPage> {
       }
 
       final dio = ApiService().dio;
-
       final response = await dio.get('/profile');
 
       if (response.statusCode == 200) {
@@ -45,7 +44,6 @@ class _ProfilPageState extends State<ProfilPage> {
 
         Map<String, dynamic>? extractProfile(dynamic data) {
           if (data is! Map) return null;
-
           final map = Map<String, dynamic>.from(data);
 
           for (final key in ['data', 'user', 'profile']) {
@@ -54,13 +52,13 @@ class _ProfilPageState extends State<ProfilPage> {
               return Map<String, dynamic>.from(value);
             }
           }
-
           return map;
         }
 
         final profile = extractProfile(payload);
 
         if (profile != null) {
+          if (!mounted) return;
           setState(() {
             _userProfile = profile;
             _isLoading = false;
@@ -68,6 +66,7 @@ class _ProfilPageState extends State<ProfilPage> {
           return;
         }
 
+        if (!mounted) return;
         setState(() {
           _errorMessage = 'Format data profil tidak valid.';
           _isLoading = false;
@@ -78,11 +77,19 @@ class _ProfilPageState extends State<ProfilPage> {
         'PROFILE ERROR: ${e.response?.statusCode} ${e.response?.data}',
       );
 
+      if (!mounted) return;
       setState(() {
         _errorMessage = e.response?.data is Map
             ? e.response?.data['message']?.toString() ??
                   'Gagal memuat data profil.'
             : e.response?.data?.toString() ?? 'Gagal memuat data profil.';
+        _isLoading = false;
+      });
+    } catch (e) {
+      debugPrint('PROFILE PARSE ERROR: $e');
+      if (!mounted) return;
+      setState(() {
+        _errorMessage = 'Terjadi kesalahan sistem saat memuat profil.';
         _isLoading = false;
       });
     }
@@ -101,6 +108,7 @@ class _ProfilPageState extends State<ProfilPage> {
     }
   }
 
+  // Dialog Ubah Password
   Future<void> _changePassword() async {
     final oldPasswordController = TextEditingController();
     final newPasswordController = TextEditingController();
@@ -218,7 +226,35 @@ class _ProfilPageState extends State<ProfilPage> {
       body: _isLoading
           ? Center(child: CircularProgressIndicator(color: primaryTeal))
           : _errorMessage.isNotEmpty
-          ? Center(child: Text(_errorMessage))
+          ? Center(
+              child: Padding(
+                padding: const EdgeInsets.all(20.0),
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Text(
+                      _errorMessage,
+                      textAlign: TextAlign.center,
+                      style: const TextStyle(color: Color(0xFF64748B)),
+                    ),
+                    const SizedBox(height: 12),
+                    ElevatedButton(
+                      onPressed: () {
+                        setState(() => _isLoading = true);
+                        _fetchUserProfile();
+                      },
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: primaryTeal,
+                      ),
+                      child: const Text(
+                        'Coba Lagi',
+                        style: TextStyle(color: Colors.white),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            )
           : SingleChildScrollView(
               padding: const EdgeInsets.all(16.0),
               child: Column(
@@ -237,17 +273,39 @@ class _ProfilPageState extends State<ProfilPage> {
     );
   }
 
-  // Card Header Profil (Dinamis)
+  // Header Profil (Pemeriksaan Tipe Data Aman untuk Mencegah Crash)
   Widget _buildProfileHeaderCard() {
-    final karyawan = _userProfile?['karyawan'] ?? _userProfile;
+    final rawKaryawan = _userProfile?['karyawan'];
+    final Map<String, dynamic> karyawan = rawKaryawan is Map
+        ? Map<String, dynamic>.from(rawKaryawan)
+        : (_userProfile ?? {});
 
     final nama =
-        (karyawan?['nama_lengkap'] ?? _userProfile?['name'] ?? 'Karyawan')
+        (karyawan['nama_lengkap'] ??
+                _userProfile?['name'] ??
+                _userProfile?['nama'] ??
+                'Karyawan')
             .toString();
 
-    final jabatan = (karyawan?['jabatan'] ?? 'Staff').toString();
-    final divisi = (karyawan?['divisi'] ?? 'Umum').toString();
-    final foto = ImageUrlService.resolve(karyawan?['foto_url']?.toString());
+    final rawJabatan = karyawan['jabatan'];
+    final jabatan =
+        (rawJabatan is Map ? rawJabatan['nama_jabatan'] : rawJabatan ?? 'Staff')
+            .toString();
+
+    final rawDivisi = karyawan['divisi'];
+    final divisi =
+        (rawDivisi is Map ? rawDivisi['nama_divisi'] : rawDivisi ?? 'Umum')
+            .toString();
+
+    // Cek semua kemungkinan key nama foto dari API Laravel
+    final rawFoto =
+        karyawan['foto_url'] ??
+        karyawan['foto'] ??
+        karyawan['foto_karyawan'] ??
+        _userProfile?['foto'] ??
+        _userProfile?['avatar'];
+
+    final fotoUrl = ImageUrlService.resolve(rawFoto?.toString());
 
     return Container(
       width: double.infinity,
@@ -267,16 +325,20 @@ class _ProfilPageState extends State<ProfilPage> {
             ),
             child: CircleAvatar(
               radius: 36,
-              backgroundImage: foto != null && !_profileImageFailed
-                  ? NetworkImage(foto)
+              backgroundColor: lightTealBadge,
+              backgroundImage: fotoUrl != null && !_profileImageFailed
+                  ? NetworkImage(fotoUrl)
                   : null,
-              onBackgroundImageError: foto == null
+              onBackgroundImageError: fotoUrl == null
                   ? null
                   : (error, stackTrace) {
-                      if (mounted) setState(() => _profileImageFailed = true);
+                      debugPrint('ERROR LOAD PROFILE IMAGE ($fotoUrl): $error');
+                      if (mounted && !_profileImageFailed) {
+                        setState(() => _profileImageFailed = true);
+                      }
                     },
-              child: foto == null || _profileImageFailed
-                  ? const Icon(Icons.person, size: 38, color: Color(0xFF009688))
+              child: fotoUrl == null || _profileImageFailed
+                  ? Icon(Icons.person, size: 38, color: primaryTeal)
                   : null,
             ),
           ),
@@ -315,15 +377,18 @@ class _ProfilPageState extends State<ProfilPage> {
     );
   }
 
-  // Card Informasi Pekerjaan (Dinamis)
+  // Informasi Pekerjaan Karyawan
   Widget _buildInformasiPekerjaanCard() {
-    final karyawan = _userProfile?['karyawan'] ?? _userProfile;
+    final rawKaryawan = _userProfile?['karyawan'];
+    final Map<String, dynamic> karyawan = rawKaryawan is Map
+        ? Map<String, dynamic>.from(rawKaryawan)
+        : (_userProfile ?? {});
 
-    final email = (_userProfile?['email'] ?? karyawan?['email'] ?? '-')
+    final email = (_userProfile?['email'] ?? karyawan['email'] ?? '-')
         .toString();
-    final noHp = (karyawan?['no_hp'] ?? '-').toString();
-    final tanggalMulai = (karyawan?['tanggal_mulai_kerja'] ?? '-').toString();
-    final nip = (karyawan?['nip'] ?? '-').toString();
+    final noHp = (karyawan['no_hp'] ?? '-').toString();
+    final tanggalMulai = (karyawan['tanggal_mulai_kerja'] ?? '-').toString();
+    final nip = (karyawan['nip'] ?? '-').toString();
 
     return Container(
       padding: const EdgeInsets.all(16),
