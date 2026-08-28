@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../model/absensi.dart';
 import '../services/image_url_service.dart';
+import '../services/api_service.dart';
 
 class DetailLogScreen extends StatefulWidget {
   final Absensi? absensi;
@@ -12,39 +13,41 @@ class DetailLogScreen extends StatefulWidget {
 }
 
 class _DetailLogScreenState extends State<DetailLogScreen> {
+  String? _token;
+
+  @override
+  void initState() {
+    super.initState();
+    ApiService().getToken().then((value) {
+      if (mounted) {
+        setState(() {
+          _token = value;
+        });
+      }
+    });
+  }
+
   String _formatTime(DateTime? date) {
     if (date == null) return '--:-- WIB';
-    final hour = date.hour.toString().padLeft(2, '0');
-    final minute = date.minute.toString().padLeft(2, '0');
+    // Mengonversi waktu UTC dari server ke waktu lokal HP (WIB / GMT+7)
+    final localDate = date.toLocal(); 
+    final hour = localDate.hour.toString().padLeft(2, '0');
+    final minute = localDate.minute.toString().padLeft(2, '0');
     return '$hour:$minute WIB';
   }
 
   String _formatDate(DateTime? date) {
     if (date == null) return 'Rabu, 19 Agustus 2026';
+    // Mengonversi tanggal ke lokal perangkat
+    final localDate = date.toLocal(); 
     final List<String> hari = [
-      'Senin',
-      'Selasa',
-      'Rabu',
-      'Kamis',
-      'Jumat',
-      'Sabtu',
-      'Minggu',
+      'Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu', 'Minggu',
     ];
     final List<String> bulan = [
-      'Januari',
-      'Februari',
-      'Maret',
-      'April',
-      'Mei',
-      'Juni',
-      'Juli',
-      'Agustus',
-      'September',
-      'Oktober',
-      'November',
-      'Desember',
+      'Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni',
+      'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember',
     ];
-    return '${hari[date.weekday - 1]}, ${date.day.toString().padLeft(2, '0')} ${bulan[date.month - 1]} ${date.year}';
+    return '${hari[localDate.weekday - 1]}, ${localDate.day.toString().padLeft(2, '0')} ${bulan[localDate.month - 1]} ${localDate.year}';
   }
 
   String _calculateDuration(DateTime? inTime, DateTime? outTime) {
@@ -83,6 +86,7 @@ class _DetailLogScreenState extends State<DetailLogScreen> {
               ),
               child: Image.network(
                 imageUrl,
+                headers: _token != null ? {'Authorization': 'Bearer $_token'} : null,
                 fit: BoxFit.contain,
                 errorBuilder: (context, error, stackTrace) => Container(
                   height: 200,
@@ -539,6 +543,7 @@ class _DetailLogScreenState extends State<DetailLogScreen> {
               child: imageUrl != null
                   ? Image.network(
                       imageUrl,
+                      headers: _token != null ? {'Authorization': 'Bearer $_token'} : null,
                       height: 120,
                       width: double.infinity,
                       fit: BoxFit.cover,

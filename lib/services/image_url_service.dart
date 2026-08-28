@@ -20,6 +20,12 @@ class ImageUrlService {
     }
 
     var normalizedPath = trimmed.startsWith('/') ? trimmed : '/$trimmed';
+    
+    // Jika URL adalah endpoint foto terproteksi, kembalikan langsung
+    if (trimmed.contains('api/absensi/foto')) {
+        return trimmed.startsWith('http') ? trimmed : '$base$normalizedPath';
+    }
+
     if (!normalizedPath.startsWith('/storage/')) {
       normalizedPath = '/storage$normalizedPath';
     }

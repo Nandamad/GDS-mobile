@@ -45,6 +45,10 @@ class _PresensiScreenState extends State<PresensiScreen> {
 
   LatLng _currentLocation = const LatLng(-7.7279, 109.0089);
 
+  StreamSubscription<Position>? _positionStream;
+  double _gpsAccuracy = 0.0;
+  bool _isMocked = false;
+
   @override
   void initState() {
     super.initState();
@@ -157,33 +161,85 @@ class _PresensiScreenState extends State<PresensiScreen> {
       _calculateOfficeDistance();
     } catch (e) {
       debugPrint('ERROR FETCHING PRESENSI: $e');
-      if (mounted) setState(() => _isLoading = false);
+      if (mounted) {
+        setState(() => _isLoading = false);
+        // INI TAMBAHANNYA BIAR ERROR MUNCUL DI LAYAR HP
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('ERROR API: ${e.toString()}'),
+            duration: const Duration(seconds: 5),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
     }
   }
 
   Future<void> _determinePosition() async {
     bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
-    if (!serviceEnabled) return;
+    if (!serviceEnabled) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text(
+              'Layanan lokasi dinonaktifkan. Silakan aktifkan GPS.',
+            ),
+          ),
+        );
+      }
+      return;
+    }
 
     LocationPermission permission = await Geolocator.checkPermission();
     if (permission == LocationPermission.denied) {
       permission = await Geolocator.requestPermission();
-      if (permission == LocationPermission.denied) return;
+      if (permission == LocationPermission.denied) {
+        if (mounted) {
+          ScaffoldMessenger.of(
+            context,
+          ).showSnackBar(const SnackBar(content: Text('Izin lokasi ditolak.')));
+        }
+        return;
+      }
     }
 
-    try {
-      final position = await Geolocator.getCurrentPosition(
-        desiredAccuracy: LocationAccuracy.high,
-      );
+    if (permission == LocationPermission.deniedForever) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text(
+              'Izin lokasi ditolak permanen. Buka pengaturan aplikasi untuk mengizinkan.',
+            ),
+          ),
+        );
+      }
+      return;
+    }
 
-      if (!mounted) return;
+    _startLocationStream();
+  }
 
-      setState(() {
-        _currentLocation = LatLng(position.latitude, position.longitude);
-      });
-
-      _calculateOfficeDistance();
-    } catch (_) {}
+  void _startLocationStream() {
+    _positionStream =
+        Geolocator.getPositionStream(
+          locationSettings: const LocationSettings(
+            accuracy: LocationAccuracy.high,
+            distanceFilter: 5,
+          ),
+        ).listen(
+          (position) {
+            if (!mounted) return;
+            setState(() {
+              _currentLocation = LatLng(position.latitude, position.longitude);
+              _gpsAccuracy = position.accuracy;
+              _isMocked = position.isMocked;
+            });
+            _calculateOfficeDistance();
+          },
+          onError: (e) {
+            debugPrint("Location Stream Error: $e");
+          },
+        );
   }
 
   void _calculateOfficeDistance() {
@@ -228,6 +284,8 @@ class _PresensiScreenState extends State<PresensiScreen> {
         'latitude': _currentLocation.latitude.toString(),
         'longitude': _currentLocation.longitude.toString(),
         'tipe': tipe,
+        'accuracy': _gpsAccuracy.toString(),
+        'is_mocked': _isMocked.toString(),
       });
 
       final response = await dio.post('/absensi', data: formData);
@@ -268,6 +326,7 @@ class _PresensiScreenState extends State<PresensiScreen> {
           alamatKantor: _alamatKantor,
           jarakMeter: _radiusMeters,
           isInRadius: _isInRadius,
+          gpsAccuracy: _gpsAccuracy,
         ),
       ),
     );
@@ -299,6 +358,7 @@ class _PresensiScreenState extends State<PresensiScreen> {
   @override
   void dispose() {
     _timer.cancel();
+    _positionStream?.cancel();
     super.dispose();
   }
 
@@ -586,13 +646,42 @@ class _PresensiScreenState extends State<PresensiScreen> {
           ),
           const SizedBox(width: 4),
           Text(
-            _isInRadius ? 'Dalam radius kantor' : 'Di luar radius kantor',
+            _isInRadius
+                ? 'Dalam radius (${_radiusMeters.toStringAsFixed(0)}m)'
+                : 'Di luar radius (${_radiusMeters.toStringAsFixed(0)}m)',
             style: TextStyle(
               color: _isInRadius ? const Color(0xFF009688) : Colors.red,
               fontSize: 10,
               fontWeight: FontWeight.bold,
             ),
           ),
+          if (_gpsAccuracy > 0) ...[
+            const SizedBox(width: 8),
+            Container(
+              width: 1,
+              height: 10,
+              color: Colors.grey.withOpacity(0.4),
+            ),
+            const SizedBox(width: 8),
+            Icon(
+              Icons.gps_fixed,
+              size: 12,
+              color: _gpsAccuracy <= 20
+                  ? const Color(0xFF009688)
+                  : Colors.orange,
+            ),
+            const SizedBox(width: 3),
+            Text(
+              '±${_gpsAccuracy.toStringAsFixed(0)}m',
+              style: TextStyle(
+                color: _gpsAccuracy <= 20
+                    ? const Color(0xFF009688)
+                    : Colors.orange,
+                fontSize: 9,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+          ],
         ],
       ),
     );
