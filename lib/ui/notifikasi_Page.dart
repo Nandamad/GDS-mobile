@@ -11,7 +11,11 @@ class NotifikasiScreen extends StatefulWidget {
 }
 
 class _NotifikasiScreenState extends State<NotifikasiScreen> {
-  List<Map<String, dynamic>> _notifications = [];
+  // We'll store parsed and grouped notifications here
+  List<Map<String, dynamic>> _todayNotifications = [];
+  List<Map<String, dynamic>> _yesterdayNotifications = [];
+  List<Map<String, dynamic>> _olderNotifications = [];
+  
   bool _isLoading = true;
 
   @override
@@ -20,36 +24,88 @@ class _NotifikasiScreenState extends State<NotifikasiScreen> {
     _fetchNotifications();
   }
 
-  String _formatDate(dynamic value) {
+  String _formatRelativeTime(dynamic value) {
     if (value == null) return '-';
     try {
       final date = DateTime.parse(value.toString()).toLocal();
-      const months = [
-        'Jan',
-        'Feb',
-        'Mar',
-        'Apr',
-        'Mei',
-        'Jun',
-        'Jul',
-        'Agt',
-        'Sep',
-        'Okt',
-        'Nov',
-        'Des',
-      ];
-      return '${date.day.toString().padLeft(2, '0')} ${months[date.month - 1]} ${date.year} ${date.hour.toString().padLeft(2, '0')}:${date.minute.toString().padLeft(2, '0')}';
+      final now = DateTime.now();
+      final diff = now.difference(date);
+
+      if (diff.inSeconds < 60) {
+        return 'Baru saja';
+      } else if (diff.inMinutes < 60) {
+        return '${diff.inMinutes} menit lalu';
+      } else if (diff.inHours < 24) {
+        return '${diff.inHours} jam lalu';
+      } else if (diff.inDays == 1) {
+        return '1 hari lalu';
+      } else if (diff.inDays < 7) {
+        return '${diff.inDays} hari lalu';
+      } else {
+        final months = ['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Agt', 'Sep', 'Okt', 'Nov', 'Des'];
+        return '${date.day} ${months[date.month - 1]} ${date.year}';
+      }
     } catch (_) {
       return value.toString();
     }
   }
+  
+  String _getGroupCategory(dynamic value) {
+    if (value == null) return 'Lainnya';
+    try {
+      final date = DateTime.parse(value.toString()).toLocal();
+      final now = DateTime.now();
+      final today = DateTime(now.year, now.month, now.day);
+      final yesterday = today.subtract(const Duration(days: 1));
+      final dateToCompare = DateTime(date.year, date.month, date.day);
+      
+      if (dateToCompare == today) {
+        return 'Hari ini';
+      } else if (dateToCompare == yesterday) {
+        return 'Kemarin';
+      } else {
+        return 'Lainnya';
+      }
+    } catch (_) {
+      return 'Lainnya';
+    }
+  }
 
-  Color _getDotColor(String title) {
+  Map<String, dynamic> _getIconAndColor(String title) {
     title = title.toLowerCase();
-    if (title.contains('tolak')) return Colors.red;
-    if (title.contains('tuju')) return Colors.teal;
-    if (title.contains('lembur')) return Colors.orange;
-    return Colors.blue;
+    
+    // Setujui
+    if (title.contains('disetujui') || title.contains('tuju')) {
+      return {
+        'icon': Icons.check_circle_outline,
+        'color': const Color(0xFF009688), // Teal
+        'bgColor': const Color(0xFFE0F2F1),
+      };
+    } 
+    // Ditolak
+    else if (title.contains('ditolak') || title.contains('tolak')) {
+      return {
+        'icon': Icons.cancel_outlined,
+        'color': const Color(0xFFDC2626), // Red
+        'bgColor': const Color(0xFFFEE2E2),
+      };
+    } 
+    // Lembur/Update
+    else if (title.contains('lembur')) {
+      return {
+        'icon': Icons.access_time,
+        'color': const Color(0xFFF59E0B), // Orange
+        'bgColor': const Color(0xFFFEF3C7),
+      };
+    } 
+    // Default (Pengingat / dll)
+    else {
+      return {
+        'icon': Icons.notifications_none,
+        'color': const Color(0xFF3B82F6), // Blue
+        'bgColor': const Color(0xFFDBEAFE),
+      };
+    }
   }
 
   Map<String, dynamic> _readNotificationData(Map item) {
@@ -78,40 +134,67 @@ class _NotifikasiScreenState extends State<NotifikasiScreen> {
     return value is List ? value : const [];
   }
 
+  String _buildFormattedMessage(Map<String, dynamic> data, Map rawItem) {
+    final String rawMessage = (data['message'] ?? data['body'] ?? rawItem['message'] ?? '').toString().trim();
+    if (rawMessage.isNotEmpty && !rawMessage.toLowerCase().contains('ada pembaruan')) {
+      return rawMessage;
+    }
+    final String jenis = (data['jenis'] ?? data['type'] ?? data['kategori'] ?? 'Pengajuan').toString();
+    final String status = (data['status'] ?? 'diproses').toString();
+    final String tgl = data['tanggal'] != null ? ' tanggal ${data['tanggal']}' : '';
+    final String oleh = data['approved_by'] != null ? ' oleh ${data['approved_by']}' : '';
+
+    if (status.toLowerCase().contains('setuju') || status.toLowerCase().contains('approved')) {
+      return 'Pengajuan $jenis Anda$tgl telah disetujui$oleh.';
+    } else if (status.toLowerCase().contains('tolak') || status.toLowerCase().contains('rejected')) {
+      final String alasan = data['alasan'] != null ? ' (${data['alasan']})' : '';
+      return 'Pengajuan $jenis Anda$tgl ditolak$alasan.';
+    }
+    return 'Pengajuan $jenis Anda$tgl sedang dalam proses verifikasi.';
+  }
+
   Future<void> _fetchNotifications() async {
     setState(() => _isLoading = true);
     try {
       final dio = ApiService().dio;
       final response = await dio.get('/notifikasi');
+      
+      List<Map<String, dynamic>> allNotifs = [];
+
       if (response.statusCode == 200) {
         final payload = response.data;
         final list = _readList(payload);
 
-        setState(() {
-          _notifications = list.whereType<Map>().map((e) {
-            final data = _readNotificationData(e);
-            final title =
-                (data['title'] ?? e['title'] ?? e['type'] ?? 'Notifikasi')
-                    .toString();
-            final message =
-                (data['message'] ??
-                        data['body'] ??
-                        e['message'] ??
-                        'Ada pembaruan pada pengajuan Anda.')
-                    .toString();
-            return {
-              'id': e['id'],
-              'title': title,
-              'message': message,
-              'time': _formatDate(e['created_at']),
-              'isUnread': e['read_at'] == null,
-              'dotColor': _getDotColor(title),
-            };
-          }).toList();
-        });
-
-        await _appendPendingApprovals();
+        allNotifs = list.whereType<Map>().map((e) {
+          final data = _readNotificationData(e);
+          final title = (data['title'] ?? e['title'] ?? e['type'] ?? 'Notifikasi System').toString();
+          final message = _buildFormattedMessage(data, e);
+          final iconData = _getIconAndColor(title);
+          
+          return {
+            'id': e['id'],
+            'title': title,
+            'message': message,
+            'timeRaw': e['created_at'],
+            'time': _formatRelativeTime(e['created_at']),
+            'isUnread': e['read_at'] == null,
+            'icon': iconData['icon'],
+            'iconColor': iconData['color'],
+            'iconBgColor': iconData['bgColor'],
+            'group': _getGroupCategory(e['created_at']),
+          };
+        }).toList();
       }
+      
+      // Append pending approvals
+      final pendingList = await _fetchPendingApprovals();
+      allNotifs = [...pendingList, ...allNotifs];
+      
+      // Group them
+      _todayNotifications = allNotifs.where((e) => e['group'] == 'Hari ini').toList();
+      _yesterdayNotifications = allNotifs.where((e) => e['group'] == 'Kemarin').toList();
+      _olderNotifications = allNotifs.where((e) => e['group'] == 'Lainnya').toList();
+      
     } catch (e) {
       debugPrint('GET /notifikasi ERROR: $e');
     } finally {
@@ -121,40 +204,44 @@ class _NotifikasiScreenState extends State<NotifikasiScreen> {
     }
   }
 
-  Future<void> _appendPendingApprovals() async {
+  Future<List<Map<String, dynamic>>> _fetchPendingApprovals() async {
     try {
       final response = await ApiService().dio.get('/approval/pending');
       final pending = _readList(response.data);
-      if (!mounted || pending.isEmpty) return;
+      if (pending.isEmpty) return [];
 
-      final pendingNotifications = pending.whereType<Map>().map((item) {
-        final type = (item['type'] ?? item['jenis_pengajuan'] ?? 'Pengajuan')
-            .toString()
-            .toLowerCase();
+      return pending.whereType<Map>().map((item) {
+        final type = (item['type'] ?? item['jenis_pengajuan'] ?? 'Pengajuan').toString().toLowerCase();
         final isLembur = type.contains('lembur');
-        final employee =
-            item['user']?['name'] ??
-            item['karyawan']?['nama'] ??
-            item['nama_karyawan'] ??
-            'Karyawan';
+        final isCuti = type.contains('cuti');
+        final isIzin = type.contains('izin');
+
+        String kat = 'Persetujuan Baru';
+        if (isLembur) kat = 'Persetujuan Lembur';
+        if (isCuti) kat = 'Persetujuan Cuti';
+        if (isIzin) kat = 'Persetujuan Izin';
+
+        final employee = item['user']?['name'] ?? item['karyawan']?['nama_lengkap'] ?? item['karyawan']?['nama'] ?? item['nama_karyawan'] ?? 'Karyawan';
+        final durasi = item['durasi'] != null ? ' (${item['durasi']})' : '';
+        
+        final iconData = _getIconAndColor(kat);
+
         return <String, dynamic>{
           'id': null,
-          'title': 'Pengajuan ${isLembur ? 'Lembur' : 'Cuti/Izin'} Baru',
-          'message':
-              '$employee mengajukan ${isLembur ? 'lembur' : 'cuti/izin'} untuk persetujuan Anda.',
-          'time': _formatDate(item['created_at']),
+          'title': kat,
+          'message': '$employee mengajukan ${isLembur ? 'lembur' : 'izin/cuti'}$durasi. Membutuhkan persetujuan Anda.',
+          'timeRaw': item['created_at'],
+          'time': _formatRelativeTime(item['created_at']),
           'isUnread': true,
-          'dotColor': isLembur ? Colors.orange : Colors.teal,
+          'icon': iconData['icon'],
+          'iconColor': iconData['color'],
+          'iconBgColor': iconData['bgColor'],
+          'group': _getGroupCategory(item['created_at']),
         };
-      });
-
-      setState(
-        () => _notifications = [...pendingNotifications, ..._notifications],
-      );
-    } on DioException catch (e) {
-      debugPrint(
-        'GET /approval/pending NOTIFICATION ERROR: ${e.response?.data}',
-      );
+      }).toList();
+    } catch (e) {
+      debugPrint('GET /approval/pending NOTIFICATION ERROR: $e');
+      return [];
     }
   }
 
@@ -162,17 +249,22 @@ class _NotifikasiScreenState extends State<NotifikasiScreen> {
     try {
       final dio = ApiService().dio;
       await dio.patch('/notifikasi/read-all');
-      setState(() {
-        for (var item in _notifications) {
+      
+      void markListAsRead(List<Map<String, dynamic>> list) {
+        for (var item in list) {
           item['isUnread'] = false;
         }
+      }
+      
+      setState(() {
+        markListAsRead(_todayNotifications);
+        markListAsRead(_yesterdayNotifications);
+        markListAsRead(_olderNotifications);
       });
+      
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Semua notifikasi ditandai telah dibaca'),
-            duration: Duration(seconds: 1),
-          ),
+          const SnackBar(content: Text('Semua notifikasi ditandai telah dibaca'), duration: Duration(seconds: 1)),
         );
       }
     } catch (e) {
@@ -180,13 +272,13 @@ class _NotifikasiScreenState extends State<NotifikasiScreen> {
     }
   }
 
-  Future<void> _markAsRead(String id, int index) async {
-    if (!_notifications[index]['isUnread']) return;
+  Future<void> _markAsRead(Map<String, dynamic> item) async {
+    if (item['isUnread'] == false || item['id'] == null) return;
 
-    setState(() => _notifications[index]['isUnread'] = false);
+    setState(() => item['isUnread'] = false);
     try {
       final dio = ApiService().dio;
-      await dio.patch('/notifikasi/$id/read');
+      await dio.patch('/notifikasi/${item['id']}/read');
     } catch (e) {
       debugPrint('PATCH /notifikasi/id/read ERROR: $e');
     }
@@ -194,60 +286,42 @@ class _NotifikasiScreenState extends State<NotifikasiScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final bool isEmpty = _todayNotifications.isEmpty && _yesterdayNotifications.isEmpty && _olderNotifications.isEmpty;
+
     return Scaffold(
       backgroundColor: const Color(0xFFF8FAFC),
       appBar: AppBar(
         backgroundColor: Colors.white,
         elevation: 0,
-        // TOMBOL BACK LINGKARAN DI SEBELAH KIRI
         leading: Padding(
           padding: const EdgeInsets.all(8.0),
           child: InkWell(
             onTap: () => Navigator.pop(context),
             borderRadius: BorderRadius.circular(20),
             child: Container(
-              decoration: BoxDecoration(
-                color: Colors.grey.shade100,
-                shape: BoxShape.circle,
-              ),
-              child: const Icon(
-                Icons.arrow_back,
-                size: 18,
-                color: Color(0xFF0F172A),
-              ),
+              decoration: BoxDecoration(color: Colors.grey.shade100, shape: BoxShape.circle),
+              child: const Icon(Icons.arrow_back, size: 18, color: Color(0xFF0F172A)),
             ),
           ),
         ),
         title: const Text(
           'Notifikasi',
-          style: TextStyle(
-            color: Color(0xFF0F172A),
-            fontWeight: FontWeight.bold,
-            fontSize: 16,
-          ),
+          style: TextStyle(color: Color(0xFF0F172A), fontWeight: FontWeight.bold, fontSize: 16),
         ),
         centerTitle: true,
         actions: [
           Padding(
             padding: const EdgeInsets.only(right: 12.0),
             child: TextButton(
-              onPressed: _markAllAsRead,
-              style: TextButton.styleFrom(
-                backgroundColor: const Color(0xFFE0F2F1),
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 10,
-                  vertical: 4,
-                ),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(8),
-                ),
-              ),
-              child: const Text(
+              onPressed: isEmpty ? null : _markAllAsRead,
+              child: Text(
                 'Tandai Dibaca Semua',
                 style: TextStyle(
-                  color: Color(0xFF009688),
-                  fontSize: 10,
+                  color: isEmpty ? Colors.grey : const Color(0xFF009688),
+                  fontSize: 11,
                   fontWeight: FontWeight.bold,
+                  decoration: TextDecoration.underline,
+                  decorationColor: isEmpty ? Colors.grey : const Color(0xFF009688),
                 ),
               ),
             ),
@@ -255,135 +329,94 @@ class _NotifikasiScreenState extends State<NotifikasiScreen> {
         ],
       ),
       body: _isLoading
-          ? const Center(
-              child: CircularProgressIndicator(color: Color(0xFF009688)),
-            )
-          : _notifications.isEmpty
-          ? const Center(
-              child: Text(
-                'Belum ada notifikasi.',
-                style: TextStyle(color: Colors.grey),
-              ),
-            )
-          : SingleChildScrollView(
-              padding: const EdgeInsets.symmetric(
-                horizontal: 14.0,
-                vertical: 12.0,
-              ),
-              child: Column(
-                children: _notifications.asMap().entries.map((entry) {
-                  int index = entry.key;
-                  var item = entry.value;
-                  return Padding(
-                    padding: const EdgeInsets.only(bottom: 10.0),
-                    child: _buildNotificationCard(
-                      title: item['title'],
-                      message: item['message'],
-                      time: item['time'],
-                      dotColor: item['dotColor'],
-                      isUnread: item['isUnread'],
-                      onTap: () {
-                        if (item['id'] != null) {
-                          _markAsRead(item['id'].toString(), index);
-                        }
-                      },
-                    ),
-                  );
-                }).toList(),
-              ),
-            ),
+          ? const Center(child: CircularProgressIndicator(color: Color(0xFF009688)))
+          : isEmpty
+              ? const Center(child: Text('Belum ada notifikasi.', style: TextStyle(color: Colors.grey)))
+              : SingleChildScrollView(
+                  padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 12.0),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      if (_todayNotifications.isNotEmpty) ...[
+                        const Text('Hari ini', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: Color(0xFF0F172A))),
+                        const SizedBox(height: 12),
+                        ..._todayNotifications.map((item) => _buildNotificationCard(item)).toList(),
+                        const SizedBox(height: 12),
+                      ],
+                      if (_yesterdayNotifications.isNotEmpty) ...[
+                        const Text('Kemarin', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: Color(0xFF0F172A))),
+                        const SizedBox(height: 12),
+                        ..._yesterdayNotifications.map((item) => _buildNotificationCard(item)).toList(),
+                        const SizedBox(height: 12),
+                      ],
+                      if (_olderNotifications.isNotEmpty) ...[
+                        const Text('Lainnya', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: Color(0xFF0F172A))),
+                        const SizedBox(height: 12),
+                        ..._olderNotifications.map((item) => _buildNotificationCard(item)).toList(),
+                        const SizedBox(height: 12),
+                      ],
+                    ],
+                  ),
+                ),
     );
   }
 
-  Widget _buildNotificationCard({
-    required String title,
-    required String message,
-    required String time,
-    required Color dotColor,
-    required bool isUnread,
-    required VoidCallback onTap,
-  }) {
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(12),
-      child: Container(
-        padding: const EdgeInsets.all(12),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(12),
-          border: Border.all(
-            color: isUnread ? const Color(0xFF009688) : Colors.grey.shade200,
-            width: isUnread ? 1.2 : 1.0,
-          ),
-        ),
-        child: Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Container(
-              width: 32,
-              height: 32,
-              decoration: BoxDecoration(
-                color: dotColor.withOpacity(0.15),
-                shape: BoxShape.circle,
-              ),
-              child: Center(
-                child: Container(
-                  width: 8,
-                  height: 8,
-                  decoration: BoxDecoration(
-                    color: dotColor,
-                    shape: BoxShape.circle,
-                  ),
-                ),
-              ),
+  Widget _buildNotificationCard(Map<String, dynamic> item) {
+    final bool isUnread = item['isUnread'];
+    
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 12.0),
+      child: InkWell(
+        onTap: () => _markAsRead(item),
+        borderRadius: BorderRadius.circular(12),
+        child: Container(
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(
+              color: isUnread ? const Color(0xFF009688).withOpacity(0.5) : Colors.grey.shade200,
+              width: isUnread ? 1.5 : 1.0,
             ),
-            const SizedBox(width: 10),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
+            boxShadow: [
+              if (isUnread)
+                BoxShadow(color: const Color(0xFF009688).withOpacity(0.05), blurRadius: 10, offset: const Offset(0, 4))
+            ],
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
                 children: [
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Expanded(
-                        child: Text(
-                          title,
-                          style: const TextStyle(
-                            fontWeight: FontWeight.bold,
-                            fontSize: 12,
-                            color: Color(0xFF0F172A),
-                          ),
-                        ),
-                      ),
-                      if (isUnread)
-                        Container(
-                          width: 6,
-                          height: 6,
-                          decoration: const BoxDecoration(
-                            color: Color(0xFF009688),
-                            shape: BoxShape.circle,
-                          ),
-                        ),
-                    ],
-                  ),
-                  const SizedBox(height: 3),
-                  Text(
-                    message,
-                    style: const TextStyle(
-                      color: Color(0xFF64748B),
-                      fontSize: 10,
-                      height: 1.3,
+                   Container(
+                    padding: const EdgeInsets.all(4),
+                    decoration: BoxDecoration(
+                      color: item['iconBgColor'],
+                      shape: BoxShape.circle,
                     ),
+                    child: Icon(item['icon'], size: 16, color: item['iconColor']),
                   ),
-                  const SizedBox(height: 6),
-                  Text(
-                    time,
-                    style: const TextStyle(color: Colors.grey, fontSize: 9),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      item['title'],
+                      style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: Color(0xFF0F172A)),
+                    ),
                   ),
                 ],
               ),
-            ),
-          ],
+              const SizedBox(height: 8),
+              Text(
+                item['message'],
+                style: const TextStyle(color: Color(0xFF64748B), fontSize: 11, height: 1.4),
+              ),
+              const SizedBox(height: 10),
+              Text(
+                item['time'],
+                style: const TextStyle(color: Colors.grey, fontSize: 10),
+              ),
+            ],
+          ),
         ),
       ),
     );

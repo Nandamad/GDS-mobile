@@ -115,45 +115,49 @@ class _DetailLogScreenState extends State<DetailLogScreen> {
         backgroundColor: Colors.white,
         elevation: 0,
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back, color: Color(0xFF0F172A)),
+          icon: const Icon(Icons.arrow_back_ios_new_rounded, color: Color(0xFF0F172A), size: 18),
           onPressed: () => Navigator.pop(context),
         ),
         title: const Text(
-          'Detail Log Presensi',
+          'Detail Presensi',
           style: TextStyle(
             color: Color(0xFF0F172A),
             fontWeight: FontWeight.bold,
             fontSize: 16,
           ),
         ),
+        centerTitle: true,
       ),
       body: SingleChildScrollView(
-        padding: const EdgeInsets.symmetric(horizontal: 14.0, vertical: 12.0),
+        padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 16.0),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             _buildHeaderCard(),
-            const SizedBox(height: 14),
-            _buildSectionTitle('REKAP WAKTU'),
-            const SizedBox(height: 6),
+            const SizedBox(height: 20),
+            
             _buildRekapWaktuRow(),
-            const SizedBox(height: 14),
+            const SizedBox(height: 20),
+            
             _buildSectionTitle('TOTAL DURASI KERJA'),
-            const SizedBox(height: 6),
+            const SizedBox(height: 8),
             _buildDurasiBanner(),
-            const SizedBox(height: 14),
+            const SizedBox(height: 20),
+            
             _buildSectionTitle('DETAIL LOKASI GPS'),
-            const SizedBox(height: 6),
+            const SizedBox(height: 8),
             _buildGpsCard(),
-            const SizedBox(height: 14),
+            const SizedBox(height: 20),
+            
             _buildSectionTitle('FOTO VERIFIKASI'),
-            const SizedBox(height: 6),
+            const SizedBox(height: 8),
             _buildFotoVerifikasiRow(),
-            const SizedBox(height: 14),
+            const SizedBox(height: 20),
+            
             _buildSectionTitle('CATATAN'),
-            const SizedBox(height: 6),
+            const SizedBox(height: 8),
             _buildCatatanCard(),
-            const SizedBox(height: 16),
+            const SizedBox(height: 30),
           ],
         ),
       ),
@@ -164,7 +168,7 @@ class _DetailLogScreenState extends State<DetailLogScreen> {
     return Text(
       title,
       style: const TextStyle(
-        fontSize: 10,
+        fontSize: 11,
         fontWeight: FontWeight.bold,
         color: Color(0xFF64748B),
         letterSpacing: 0.5,
@@ -177,95 +181,37 @@ class _DetailLogScreenState extends State<DetailLogScreen> {
     final isLate = status.toLowerCase().contains('terlambat');
 
     return Container(
-      padding: const EdgeInsets.all(12),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(20),
         border: Border.all(color: Colors.grey.shade200),
       ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Text(
-                _formatDate(widget.absensi?.tanggal),
-                style: const TextStyle(
-                  fontWeight: FontWeight.bold,
-                  fontSize: 13,
-                  color: Color(0xFF0F172A),
-                ),
-              ),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                decoration: BoxDecoration(
-                  color: isLate
-                      ? const Color(0xFFFFEDD5)
-                      : const Color(0xFFDCFCE7),
-                  borderRadius: BorderRadius.circular(4),
-                ),
-                child: Text(
-                  isLate ? 'Terlambat' : 'Hadir Tepat Waktu',
-                  style: TextStyle(
-                    color: isLate
-                        ? const Color(0xFFC2410C)
-                        : const Color(0xFF15803D),
-                    fontWeight: FontWeight.bold,
-                    fontSize: 8,
-                  ),
-                ),
-              ),
-            ],
+          Text(
+            _formatDate(widget.absensi?.tanggal),
+            style: const TextStyle(
+              fontWeight: FontWeight.bold,
+              fontSize: 13,
+              color: Color(0xFF0F172A),
+            ),
           ),
-          const SizedBox(height: 10),
-          Row(
-            children: [
-              const Icon(
-                Icons.access_time_outlined,
-                size: 14,
-                color: Colors.grey,
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+            decoration: BoxDecoration(
+              color: isLate ? const Color(0xFFFFEDD5) : const Color(0xFFDCFCE7),
+              borderRadius: BorderRadius.circular(6),
+            ),
+            child: Text(
+              isLate ? 'Terlambat' : 'Tepat Waktu',
+              style: TextStyle(
+                color: isLate ? const Color(0xFFC2410C) : const Color(0xFF15803D),
+                fontWeight: FontWeight.bold,
+                fontSize: 9,
               ),
-              const SizedBox(width: 6),
-              const Text(
-                'Shift: ',
-                style: TextStyle(fontSize: 10, color: Colors.grey),
-              ),
-              Text(
-                widget.absensi?.shift ?? 'Shift tidak tersedia',
-                style: const TextStyle(
-                  fontSize: 10,
-                  fontWeight: FontWeight.w600,
-                  color: Color(0xFF0F172A),
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 4),
-          Row(
-            children: [
-              const Icon(
-                Icons.location_on_outlined,
-                size: 14,
-                color: Colors.grey,
-              ),
-              const SizedBox(width: 6),
-              const Text(
-                'GPS Masuk: ',
-                style: TextStyle(fontSize: 10, color: Colors.grey),
-              ),
-              Expanded(
-                child: Text(
-                  widget.absensi?.lokasiMasuk ?? 'Lokasi tidak terekam',
-                  style: const TextStyle(
-                    fontSize: 10,
-                    fontWeight: FontWeight.w600,
-                    color: Color(0xFF0F172A),
-                  ),
-                  overflow: TextOverflow.ellipsis,
-                ),
-              ),
-            ],
+            ),
           ),
         ],
       ),
@@ -273,59 +219,37 @@ class _DetailLogScreenState extends State<DetailLogScreen> {
   }
 
   Widget _buildRekapWaktuRow() {
-    final isLate = (widget.absensi?.status ?? '').toLowerCase().contains(
-      'terlambat',
-    );
+    final status = widget.absensi?.status ?? 'hadir';
+    final isLate = status.toLowerCase().contains('terlambat');
 
     return Row(
       children: [
         Expanded(
           child: Container(
-            padding: const EdgeInsets.all(10),
+            padding: const EdgeInsets.all(14),
             decoration: BoxDecoration(
               color: Colors.white,
-              borderRadius: BorderRadius.circular(10),
+              borderRadius: BorderRadius.circular(16),
               border: Border.all(color: Colors.grey.shade200),
             ),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text(
-                  'JAM MASUK',
-                  style: TextStyle(
-                    fontSize: 8,
-                    color: Colors.grey,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  _formatTime(widget.absensi?.jamMasuk),
-                  style: const TextStyle(
-                    fontSize: 14,
-                    fontWeight: FontWeight.bold,
-                    color: Color(0xFF0F172A),
-                  ),
-                ),
-                const SizedBox(height: 4),
+                const Text('JAM MASUK', style: TextStyle(fontSize: 9, color: Colors.grey, fontWeight: FontWeight.bold)),
+                const SizedBox(height: 6),
+                Text(_formatTime(widget.absensi?.jamMasuk), style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Color(0xFF0F172A))),
+                const SizedBox(height: 8),
                 Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 4,
-                    vertical: 2,
-                  ),
+                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
                   decoration: BoxDecoration(
-                    color: isLate
-                        ? const Color(0xFFFEF2F2)
-                        : const Color(0xFFDCFCE7),
+                    color: isLate ? const Color(0xFFFFEDD5) : const Color(0xFFDCFCE7),
                     borderRadius: BorderRadius.circular(4),
                   ),
                   child: Text(
                     isLate ? 'Terlambat' : 'Tepat Waktu',
                     style: TextStyle(
-                      fontSize: 8,
-                      color: isLate
-                          ? const Color(0xFFDC2626)
-                          : const Color(0xFF15803D),
+                      fontSize: 9,
+                      color: isLate ? const Color(0xFFC2410C) : const Color(0xFF15803D),
                       fontWeight: FontWeight.bold,
                     ),
                   ),
@@ -334,41 +258,24 @@ class _DetailLogScreenState extends State<DetailLogScreen> {
             ),
           ),
         ),
-        const SizedBox(width: 8),
+        const SizedBox(width: 12),
         Expanded(
           child: Container(
-            padding: const EdgeInsets.all(10),
+            padding: const EdgeInsets.all(14),
             decoration: BoxDecoration(
               color: Colors.white,
-              borderRadius: BorderRadius.circular(10),
+              borderRadius: BorderRadius.circular(16),
               border: Border.all(color: Colors.grey.shade200),
             ),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text(
-                  'JAM PULANG',
-                  style: TextStyle(
-                    fontSize: 8,
-                    color: Colors.grey,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  _formatTime(widget.absensi?.jamPulang),
-                  style: const TextStyle(
-                    fontSize: 14,
-                    fontWeight: FontWeight.bold,
-                    color: Color(0xFF0F172A),
-                  ),
-                ),
-                const SizedBox(height: 4),
+                const Text('JAM PULANG', style: TextStyle(fontSize: 9, color: Colors.grey, fontWeight: FontWeight.bold)),
+                const SizedBox(height: 6),
+                Text(_formatTime(widget.absensi?.jamPulang), style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Color(0xFF0F172A))),
+                const SizedBox(height: 8),
                 Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 4,
-                    vertical: 2,
-                  ),
+                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
                   decoration: BoxDecoration(
                     color: const Color(0xFFDCFCE7),
                     borderRadius: BorderRadius.circular(4),
@@ -376,7 +283,7 @@ class _DetailLogScreenState extends State<DetailLogScreen> {
                   child: const Text(
                     'Normal',
                     style: TextStyle(
-                      fontSize: 8,
+                      fontSize: 9,
                       color: Color(0xFF15803D),
                       fontWeight: FontWeight.bold,
                     ),
@@ -393,35 +300,32 @@ class _DetailLogScreenState extends State<DetailLogScreen> {
   Widget _buildDurasiBanner() {
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.all(10),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
       decoration: BoxDecoration(
         color: const Color(0xFFCCFBF1),
-        borderRadius: BorderRadius.circular(10),
+        borderRadius: BorderRadius.circular(16),
       ),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
           Row(
             children: const [
-              Icon(Icons.badge_outlined, size: 16, color: Color(0xFF0F766E)),
-              SizedBox(width: 6),
+              Icon(Icons.work_outline_rounded, size: 20, color: Color(0xFF0F766E)),
+              SizedBox(width: 8),
               Text(
-                'Durasi Kerja',
+                'Durasi Aktual',
                 style: TextStyle(
-                  fontSize: 11,
-                  fontWeight: FontWeight.bold,
+                  fontSize: 12,
+                  fontWeight: FontWeight.w600,
                   color: Color(0xFF0F766E),
                 ),
               ),
             ],
           ),
           Text(
-            _calculateDuration(
-              widget.absensi?.jamMasuk,
-              widget.absensi?.jamPulang,
-            ),
+            _calculateDuration(widget.absensi?.jamMasuk, widget.absensi?.jamPulang),
             style: const TextStyle(
-              fontSize: 12,
+              fontSize: 13,
               fontWeight: FontWeight.bold,
               color: Color(0xFF0F766E),
             ),
@@ -433,10 +337,10 @@ class _DetailLogScreenState extends State<DetailLogScreen> {
 
   Widget _buildGpsCard() {
     return Container(
-      padding: const EdgeInsets.all(12),
+      padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(16),
         border: Border.all(color: Colors.grey.shade200),
       ),
       child: Column(
@@ -445,15 +349,18 @@ class _DetailLogScreenState extends State<DetailLogScreen> {
             title: 'Lokasi Masuk',
             address: widget.absensi?.lokasiMasuk ?? 'Lokasi GPS Tidak Ada',
             distance: widget.absensi?.lokasiMasuk != null
-                ? 'Koordinat: ${widget.absensi!.lokasiMasuk}'
+                ? 'Jarak telah tercatat di sistem'
                 : 'GPS tidak terekam',
           ),
-          const Divider(height: 20),
+          const Padding(
+            padding: EdgeInsets.symmetric(vertical: 12),
+            child: Divider(height: 1),
+          ),
           _buildGpsItem(
             title: 'Lokasi Pulang',
             address: widget.absensi?.lokasiPulang ?? 'Lokasi GPS Tidak Ada',
             distance: widget.absensi?.lokasiPulang != null
-                ? 'Koordinat: ${widget.absensi!.lokasiPulang}'
+                ? 'Jarak telah tercatat di sistem'
                 : 'GPS tidak terekam',
           ),
         ],
@@ -469,8 +376,11 @@ class _DetailLogScreenState extends State<DetailLogScreen> {
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Icon(Icons.near_me_outlined, size: 14, color: Colors.grey),
-        const SizedBox(width: 8),
+        Padding(
+          padding: const EdgeInsets.only(top: 2),
+          child: Icon(Icons.diamond, size: 14, color: Colors.grey.shade600),
+        ),
+        const SizedBox(width: 10),
         Expanded(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -479,25 +389,25 @@ class _DetailLogScreenState extends State<DetailLogScreen> {
                 title,
                 style: const TextStyle(
                   fontWeight: FontWeight.bold,
-                  fontSize: 11,
+                  fontSize: 12,
                   color: Color(0xFF0F172A),
                 ),
               ),
-              const SizedBox(height: 2),
+              const SizedBox(height: 4),
               Text(
                 address,
-                style: const TextStyle(fontSize: 10, color: Color(0xFF64748B)),
+                style: const TextStyle(fontSize: 11, color: Color(0xFF64748B)),
               ),
-              const SizedBox(height: 2),
+              const SizedBox(height: 8),
               Row(
                 children: [
-                  const Icon(Icons.check, size: 10, color: Color(0xFF16A34A)),
-                  const SizedBox(width: 2),
+                  const Icon(Icons.check, size: 12, color: Color(0xFF10B981)),
+                  const SizedBox(width: 4),
                   Text(
                     distance,
                     style: const TextStyle(
-                      fontSize: 9,
-                      color: Color(0xFF16A34A),
+                      fontSize: 10,
+                      color: Color(0xFF10B981),
                       fontWeight: FontWeight.w500,
                     ),
                   ),
@@ -521,7 +431,7 @@ class _DetailLogScreenState extends State<DetailLogScreen> {
           _formatTime(widget.absensi?.jamMasuk),
           fotoMasukUrl,
         ),
-        const SizedBox(width: 8),
+        const SizedBox(width: 12),
         _buildFotoCard(
           'Foto Pulang',
           _formatTime(widget.absensi?.jamPulang),
@@ -535,20 +445,20 @@ class _DetailLogScreenState extends State<DetailLogScreen> {
     return Expanded(
       child: InkWell(
         onTap: () => _showPhotoPreview(label, imageUrl),
-        borderRadius: BorderRadius.circular(10),
+        borderRadius: BorderRadius.circular(16),
         child: Column(
           children: [
             ClipRRect(
-              borderRadius: BorderRadius.circular(10),
+              borderRadius: BorderRadius.circular(16),
               child: imageUrl != null
                   ? Image.network(
                       imageUrl,
                       headers: _token != null ? {'Authorization': 'Bearer $_token'} : null,
-                      height: 120,
+                      height: 140,
                       width: double.infinity,
                       fit: BoxFit.cover,
                       errorBuilder: (context, error, stackTrace) => Container(
-                        height: 120,
+                        height: 140,
                         color: Colors.grey.shade200,
                         child: const Icon(
                           Icons.no_photography,
@@ -557,7 +467,7 @@ class _DetailLogScreenState extends State<DetailLogScreen> {
                       ),
                     )
                   : Container(
-                      height: 120,
+                      height: 140,
                       color: Colors.grey.shade200,
                       child: const Center(
                         child: Column(
@@ -578,16 +488,17 @@ class _DetailLogScreenState extends State<DetailLogScreen> {
                       ),
                     ),
             ),
-            const SizedBox(height: 4),
+            const SizedBox(height: 10),
             Text(
               label,
               style: const TextStyle(
-                fontSize: 10,
+                fontSize: 11,
                 fontWeight: FontWeight.bold,
                 color: Color(0xFF0F172A),
               ),
             ),
-            Text(time, style: const TextStyle(fontSize: 9, color: Colors.grey)),
+            const SizedBox(height: 2),
+            Text(time, style: const TextStyle(fontSize: 10, color: Colors.grey)),
           ],
         ),
       ),
@@ -597,15 +508,15 @@ class _DetailLogScreenState extends State<DetailLogScreen> {
   Widget _buildCatatanCard() {
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.all(12),
+      padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(10),
+        borderRadius: BorderRadius.circular(16),
         border: Border.all(color: Colors.grey.shade200),
       ),
       child: Text(
         widget.absensi?.catatanMasuk ?? 'Tidak ada catatan untuk hari ini.',
-        style: const TextStyle(fontSize: 10, color: Colors.grey),
+        style: const TextStyle(fontSize: 11, color: Colors.grey),
       ),
     );
   }

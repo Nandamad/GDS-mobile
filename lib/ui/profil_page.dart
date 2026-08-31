@@ -3,6 +3,12 @@ import 'package:dio/dio.dart';
 import '../services/api_service.dart';
 import '../services/image_url_service.dart';
 import 'login_page.dart';
+import 'data_pribadi_page.dart';
+import 'pengaturan_notifikasi_page.dart';
+import 'ubah_password_page.dart';
+import 'riwayat_kontrak_page.dart';
+import 'bantuan_faq_page.dart';
+import 'tentang_aplikasi_page.dart';
 
 class ProfilPage extends StatefulWidget {
   const ProfilPage({super.key});
@@ -108,120 +114,22 @@ class _ProfilPageState extends State<ProfilPage> {
     }
   }
 
-  // Dialog Ubah Password
-  Future<void> _changePassword() async {
-    final oldPasswordController = TextEditingController();
-    final newPasswordController = TextEditingController();
-    var isSubmitting = false;
-
-    final submitted = await showDialog<bool>(
-      context: context,
-      builder: (dialogContext) => StatefulBuilder(
-        builder: (context, setDialogState) => AlertDialog(
-          title: const Text('Ubah Password'),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              TextField(
-                controller: oldPasswordController,
-                obscureText: true,
-                decoration: const InputDecoration(labelText: 'Password lama'),
-              ),
-              TextField(
-                controller: newPasswordController,
-                obscureText: true,
-                decoration: const InputDecoration(
-                  labelText: 'Password baru (min. 8 karakter)',
-                ),
-              ),
-            ],
-          ),
-          actions: [
-            TextButton(
-              onPressed: isSubmitting
-                  ? null
-                  : () => Navigator.pop(dialogContext),
-              child: const Text('Batal'),
-            ),
-            ElevatedButton(
-              onPressed: isSubmitting
-                  ? null
-                  : () async {
-                      if (oldPasswordController.text.isEmpty ||
-                          newPasswordController.text.length < 8) {
-                        ScaffoldMessenger.of(this.context).showSnackBar(
-                          const SnackBar(
-                            content: Text(
-                              'Isi password lama dan password baru minimal 8 karakter.',
-                            ),
-                          ),
-                        );
-                        return;
-                      }
-
-                      setDialogState(() => isSubmitting = true);
-                      try {
-                        await ApiService().dio.post(
-                          '/change-password',
-                          data: {
-                            'old_password': oldPasswordController.text,
-                            'new_password': newPasswordController.text,
-                          },
-                        );
-                        if (dialogContext.mounted) {
-                          Navigator.pop(dialogContext, true);
-                        }
-                      } on DioException catch (e) {
-                        if (!mounted) return;
-                        setDialogState(() => isSubmitting = false);
-                        final data = e.response?.data;
-                        final message = data is Map
-                            ? data['message']?.toString() ??
-                                  'Gagal mengubah password.'
-                            : 'Gagal mengubah password.';
-                        ScaffoldMessenger.of(
-                          this.context,
-                        ).showSnackBar(SnackBar(content: Text(message)));
-                      }
-                    },
-              child: isSubmitting
-                  ? const SizedBox(
-                      width: 16,
-                      height: 16,
-                      child: CircularProgressIndicator(strokeWidth: 2),
-                    )
-                  : const Text('Simpan'),
-            ),
-          ],
-        ),
-      ),
-    );
-
-    oldPasswordController.dispose();
-    newPasswordController.dispose();
-
-    if (submitted == true && mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Password berhasil diubah.')),
-      );
-    }
-  }
-
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: const Color(0xFFF8FAFC),
       appBar: AppBar(
-        backgroundColor: Colors.white,
+        backgroundColor: const Color(0xFFF8FAFC),
         elevation: 0,
         title: const Text(
-          'Profil Saya',
+          'Profil',
           style: TextStyle(
             color: Color(0xFF0F172A),
             fontWeight: FontWeight.bold,
-            fontSize: 18,
+            fontSize: 16,
           ),
         ),
+        centerTitle: true,
       ),
       body: _isLoading
           ? Center(child: CircularProgressIndicator(color: primaryTeal))
@@ -256,24 +164,116 @@ class _ProfilPageState extends State<ProfilPage> {
               ),
             )
           : SingleChildScrollView(
-              padding: const EdgeInsets.all(16.0),
+              padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
               child: Column(
                 children: [
                   _buildProfileHeaderCard(),
-                  const SizedBox(height: 16),
-                  _buildInformasiPekerjaanCard(),
-                  const SizedBox(height: 16),
-                  _buildPengaturanAkunCard(),
-                  const SizedBox(height: 20),
+                  const SizedBox(height: 24),
+                  
+                  // Menu List Group
+                  Container(
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(16),
+                      border: Border.all(color: Colors.grey.shade200),
+                    ),
+                    child: Column(
+                      children: [
+                        _buildMenuItem(
+                          icon: Icons.person_outline_rounded,
+                          title: 'Data Pribadi',
+                          onTap: () {
+                            if (_userProfile != null) {
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (context) => DataPribadiScreen(
+                                    userProfile: _userProfile!,
+                                  ),
+                                ),
+                              );
+                            }
+                          },
+                        ),
+                        _buildDivider(),
+                        _buildMenuItem(
+                          icon: Icons.notifications_none_rounded,
+                          title: 'Pengaturan Notifikasi',
+                          onTap: () {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (context) => const PengaturanNotifikasiScreen(),
+                              ),
+                            );
+                          },
+                        ),
+                        _buildDivider(),
+                        _buildMenuItem(
+                          icon: Icons.lock_outline_rounded,
+                          title: 'Ubah Password',
+                          onTap: () {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (context) => const UbahPasswordScreen(),
+                              ),
+                            );
+                          },
+                        ),
+                        _buildDivider(),
+                        _buildMenuItem(
+                          icon: Icons.article_outlined,
+                          title: 'Riwayat Kontrak',
+                          onTap: () {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (context) => const RiwayatKontrakScreen(),
+                              ),
+                            );
+                          },
+                        ),
+                        _buildDivider(),
+                        _buildMenuItem(
+                          icon: Icons.help_outline_rounded,
+                          title: 'Bantuan & FAQ',
+                          onTap: () {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (context) => const BantuanFaqScreen(),
+                              ),
+                            );
+                          },
+                        ),
+                        _buildDivider(),
+                        _buildMenuItem(
+                          icon: Icons.info_outline_rounded,
+                          title: 'Tentang Aplikasi',
+                          onTap: () {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (context) => const TentangAplikasiScreen(),
+                              ),
+                            );
+                          },
+                        ),
+                      ],
+                    ),
+                  ),
+                  
+                  const SizedBox(height: 30),
                   _buildTombolKeluar(),
-                  const SizedBox(height: 16),
+                  const SizedBox(height: 40),
                 ],
               ),
             ),
     );
   }
 
-  // Header Profil (Pemeriksaan Tipe Data Aman untuk Mencegah Crash)
+  // Header Profil
   Widget _buildProfileHeaderCard() {
     final rawKaryawan = _userProfile?['karyawan'];
     final Map<String, dynamic> karyawan = rawKaryawan is Map
@@ -296,6 +296,8 @@ class _ProfilPageState extends State<ProfilPage> {
     final divisi =
         (rawDivisi is Map ? rawDivisi['nama_divisi'] : rawDivisi ?? 'Umum')
             .toString();
+            
+    final nip = (karyawan['nip'] ?? '19940301').toString();
 
     // Cek semua kemungkinan key nama foto dari API Laravel
     final rawFoto =
@@ -306,10 +308,19 @@ class _ProfilPageState extends State<ProfilPage> {
         _userProfile?['avatar'];
 
     final fotoUrl = ImageUrlService.resolve(rawFoto?.toString());
+    
+    // Parse year joined for badge
+    String yearJoined = '2020';
+    if (karyawan['tanggal_mulai_kerja'] != null) {
+       try {
+          // just take first 4 chars assuming YYYY-MM-DD
+          yearJoined = karyawan['tanggal_mulai_kerja'].toString().substring(0, 4);
+       } catch (_) {}
+    }
 
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.symmetric(vertical: 20, horizontal: 16),
+      padding: const EdgeInsets.symmetric(vertical: 24, horizontal: 16),
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(16),
@@ -332,7 +343,6 @@ class _ProfilPageState extends State<ProfilPage> {
               onBackgroundImageError: fotoUrl == null
                   ? null
                   : (error, stackTrace) {
-                      debugPrint('ERROR LOAD PROFILE IMAGE ($fotoUrl): $error');
                       if (mounted && !_profileImageFailed) {
                         setState(() => _profileImageFailed = true);
                       }
@@ -342,168 +352,118 @@ class _ProfilPageState extends State<ProfilPage> {
                   : null,
             ),
           ),
-          const SizedBox(height: 12),
+          const SizedBox(height: 16),
           Text(
             nama,
             style: const TextStyle(
-              fontSize: 16,
+              fontSize: 18,
               fontWeight: FontWeight.bold,
               color: Color(0xFF0F172A),
             ),
+            textAlign: TextAlign.center,
           ),
           const SizedBox(height: 4),
           Text(
-            jabatan,
+            '$jabatan - $divisi',
             style: const TextStyle(fontSize: 12, color: Color(0xFF64748B)),
+            textAlign: TextAlign.center,
           ),
-          const SizedBox(height: 8),
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-            decoration: BoxDecoration(
-              color: lightTealBadge,
-              borderRadius: BorderRadius.circular(20),
-            ),
-            child: Text(
-              divisi,
-              style: TextStyle(
-                fontSize: 11,
-                fontWeight: FontWeight.w600,
-                color: primaryTeal,
+          const SizedBox(height: 4),
+          Text(
+            'NIP: $nip',
+            style: const TextStyle(fontSize: 11, color: Color(0xFF94A3B8)),
+            textAlign: TextAlign.center,
+          ),
+          const SizedBox(height: 16),
+          
+          // Badges Row
+          Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFF1F5F9),
+                  borderRadius: BorderRadius.circular(20),
+                ),
+                child: Row(
+                  children: const [
+                    Icon(Icons.business_rounded, size: 12, color: Color(0xFF64748B)),
+                    SizedBox(width: 4),
+                    Text(
+                      'Kantor Pusat',
+                      style: TextStyle(
+                        fontSize: 10,
+                        fontWeight: FontWeight.w600,
+                        color: Color(0xFF64748B),
+                      ),
+                    ),
+                  ],
+                ),
               ),
-            ),
+              const SizedBox(width: 12),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFF1F5F9),
+                  borderRadius: BorderRadius.circular(20),
+                ),
+                child: Row(
+                  children: [
+                    const Icon(Icons.event_available_rounded, size: 12, color: Color(0xFF64748B)),
+                    const SizedBox(width: 4),
+                    Text(
+                      'Bergabung: $yearJoined',
+                      style: const TextStyle(
+                        fontSize: 10,
+                        fontWeight: FontWeight.w600,
+                        color: Color(0xFF64748B),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
           ),
         ],
       ),
     );
   }
 
-  // Informasi Pekerjaan Karyawan
-  Widget _buildInformasiPekerjaanCard() {
-    final rawKaryawan = _userProfile?['karyawan'];
-    final Map<String, dynamic> karyawan = rawKaryawan is Map
-        ? Map<String, dynamic>.from(rawKaryawan)
-        : (_userProfile ?? {});
-
-    final email = (_userProfile?['email'] ?? karyawan['email'] ?? '-')
-        .toString();
-    final noHp = (karyawan['no_hp'] ?? '-').toString();
-    final tanggalMulai = (karyawan['tanggal_mulai_kerja'] ?? '-').toString();
-    final nip = (karyawan['nip'] ?? '-').toString();
-
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: Colors.grey.shade200),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Text(
-            'Informasi Pekerjaan',
-            style: TextStyle(
-              fontSize: 13,
-              fontWeight: FontWeight.bold,
-              color: Color(0xFF0F172A),
-            ),
-          ),
-          const SizedBox(height: 12),
-          _buildInfoRow('NIP', nip),
-          const Divider(height: 20),
-          _buildInfoRow('Email', email),
-          const Divider(height: 20),
-          _buildInfoRow('No. HP', noHp),
-          const Divider(height: 20),
-          _buildInfoRow('Tanggal Bergabung', tanggalMulai),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildInfoRow(String label, String value) {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-      children: [
-        Text(
-          label,
-          style: const TextStyle(fontSize: 11, color: Color(0xFF64748B)),
-        ),
-        Text(
-          value,
-          style: const TextStyle(
-            fontSize: 11,
-            fontWeight: FontWeight.bold,
-            color: Color(0xFF0F172A),
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildPengaturanAkunCard() {
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: Colors.grey.shade200),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Text(
-            'Pengaturan Akun',
-            style: TextStyle(
-              fontSize: 13,
-              fontWeight: FontWeight.bold,
-              color: Color(0xFF0F172A),
-            ),
-          ),
-          const SizedBox(height: 8),
-          _buildSettingMenu(
-            icon: Icons.lock_outline_rounded,
-            title: 'Ubah Password',
-            onTap: _changePassword,
-          ),
-          const Divider(height: 16),
-          _buildSettingMenu(
-            icon: Icons.info_outline_rounded,
-            title: 'Tentang Aplikasi',
-            onTap: () {},
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildSettingMenu({
+  Widget _buildMenuItem({
     required IconData icon,
     required String title,
     required VoidCallback onTap,
   }) {
     return InkWell(
       onTap: onTap,
-      borderRadius: BorderRadius.circular(8),
+      borderRadius: BorderRadius.circular(16),
       child: Padding(
-        padding: const EdgeInsets.symmetric(vertical: 4.0),
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
         child: Row(
           children: [
-            Icon(icon, size: 18, color: const Color(0xFF64748B)),
-            const SizedBox(width: 12),
+            Container(
+              padding: const EdgeInsets.all(8),
+              decoration: const BoxDecoration(
+                color: Color(0xFFE0F2F1), // light teal
+                shape: BoxShape.circle,
+              ),
+              child: Icon(icon, size: 20, color: const Color(0xFF009688)),
+            ),
+            const SizedBox(width: 14),
             Expanded(
               child: Text(
                 title,
                 style: const TextStyle(
-                  fontSize: 12,
-                  fontWeight: FontWeight.w500,
+                  fontSize: 13,
+                  fontWeight: FontWeight.bold,
                   color: Color(0xFF0F172A),
                 ),
               ),
             ),
             const Icon(
               Icons.chevron_right_rounded,
-              size: 18,
+              size: 20,
               color: Color(0xFF94A3B8),
             ),
           ],
@@ -512,29 +472,32 @@ class _ProfilPageState extends State<ProfilPage> {
     );
   }
 
+  Widget _buildDivider() {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16),
+      child: Divider(height: 1, color: Colors.grey.shade100),
+    );
+  }
+
   Widget _buildTombolKeluar() {
     return SizedBox(
       width: double.infinity,
-      height: 44,
-      child: OutlinedButton.icon(
+      height: 48,
+      child: OutlinedButton(
         onPressed: _logout,
-        icon: const Icon(
-          Icons.logout_rounded,
-          color: Colors.redAccent,
-          size: 16,
-        ),
-        label: const Text(
-          'Keluar Aplikasi',
-          style: TextStyle(
-            color: Colors.redAccent,
-            fontWeight: FontWeight.bold,
-            fontSize: 12,
-          ),
-        ),
         style: OutlinedButton.styleFrom(
-          side: const BorderSide(color: Colors.redAccent),
+          side: const BorderSide(color: Color(0xFFEF4444)),
           shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(10),
+            borderRadius: BorderRadius.circular(12),
+          ),
+          backgroundColor: Colors.white,
+        ),
+        child: const Text(
+          'Keluar',
+          style: TextStyle(
+            color: Color(0xFFEF4444),
+            fontWeight: FontWeight.bold,
+            fontSize: 14,
           ),
         ),
       ),

@@ -18,6 +18,10 @@ class _LupaPasswordScreenState extends State<LupaPasswordScreen> {
   bool _isLoading = false;
   int _step = 1; // 1: Masukkan Email, 2: Masukkan Token & Password Baru
 
+  // State untuk toggle visibilitas password
+  bool _obscurePassword = true;
+  bool _obscureConfirmPassword = true;
+
   // 1. Fungsi Kirim Email (Request Token)
   Future<void> _requestToken() async {
     if (_emailController.text.isEmpty) {
@@ -36,20 +40,25 @@ class _LupaPasswordScreenState extends State<LupaPasswordScreen> {
       });
 
       if (response.statusCode == 200) {
-        // Untuk tahap development, token dikembalikan via response JSON agar gampang diuji
         final serverToken = response.data['token'];
         if (serverToken != null) {
-          _tokenController.text = serverToken; // Auto-fill token untuk kemudahan testing
+          _tokenController.text = serverToken;
         }
 
         if (!mounted) return;
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(response.data['message'] ?? 'Token berhasil dikirim')),
+          SnackBar(
+            content: Text(
+              response.data['message'] ?? 'Token berhasil dikirim',
+            ),
+          ),
         );
-        setState(() => _step = 2); // Pindah ke form input token & password baru
+        setState(() => _step = 2);
       }
     } on DioException catch (e) {
-      final msg = e.response?.data['message'] ?? 'Gagal mengirim permintaan reset password.';
+      final msg =
+          e.response?.data['message'] ??
+          'Gagal mengirim permintaan reset password.';
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text(msg), backgroundColor: Colors.red),
@@ -72,7 +81,10 @@ class _LupaPasswordScreenState extends State<LupaPasswordScreen> {
 
     if (_passwordController.text != _confirmPasswordController.text) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Konfirmasi password tidak cocok'), backgroundColor: Colors.red),
+        const SnackBar(
+          content: Text('Konfirmasi password tidak cocok'),
+          backgroundColor: Colors.red,
+        ),
       );
       return;
     }
@@ -91,9 +103,12 @@ class _LupaPasswordScreenState extends State<LupaPasswordScreen> {
       if (response.statusCode == 200) {
         if (!mounted) return;
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(response.data['message'] ?? 'Password berhasil direset')),
+          SnackBar(
+            content: Text(
+              response.data['message'] ?? 'Password berhasil direset',
+            ),
+          ),
         );
-        // Kembali ke halaman login
         Navigator.pop(context);
       }
     } on DioException catch (e) {
@@ -150,7 +165,6 @@ class _LupaPasswordScreenState extends State<LupaPasswordScreen> {
             ),
             const SizedBox(height: 24),
 
-            // KONDISI TAMPILAN FORM BERDASARKAN STEP
             if (_step == 1) ...[
               TextField(
                 controller: _emailController,
@@ -189,7 +203,10 @@ class _LupaPasswordScreenState extends State<LupaPasswordScreen> {
                         )
                       : const Text(
                           'Kirim Token',
-                          style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
+                          style: TextStyle(
+                            fontWeight: FontWeight.bold,
+                            fontSize: 14,
+                          ),
                         ),
                 ),
               ),
@@ -205,24 +222,54 @@ class _LupaPasswordScreenState extends State<LupaPasswordScreen> {
                 ),
               ),
               const SizedBox(height: 14),
+
+              // INPUT PASSWORD BARU WITH EYE ICON
               TextField(
                 controller: _passwordController,
-                obscureText: true,
+                obscureText: _obscurePassword,
                 decoration: InputDecoration(
                   labelText: 'Password Baru',
                   prefixIcon: const Icon(Icons.lock_outline),
+                  suffixIcon: IconButton(
+                    icon: Icon(
+                      _obscurePassword
+                          ? Icons.visibility_off_outlined
+                          : Icons.visibility_outlined,
+                      color: Colors.grey,
+                    ),
+                    onPressed: () {
+                      setState(() {
+                        _obscurePassword = !_obscurePassword;
+                      });
+                    },
+                  ),
                   border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(12),
                   ),
                 ),
               ),
               const SizedBox(height: 14),
+
+              // INPUT KONFIRMASI PASSWORD BARU WITH EYE ICON
               TextField(
                 controller: _confirmPasswordController,
-                obscureText: true,
+                obscureText: _obscureConfirmPassword,
                 decoration: InputDecoration(
                   labelText: 'Konfirmasi Password Baru',
                   prefixIcon: const Icon(Icons.lock_reset),
+                  suffixIcon: IconButton(
+                    icon: Icon(
+                      _obscureConfirmPassword
+                          ? Icons.visibility_off_outlined
+                          : Icons.visibility_outlined,
+                      color: Colors.grey,
+                    ),
+                    onPressed: () {
+                      setState(() {
+                        _obscureConfirmPassword = !_obscureConfirmPassword;
+                      });
+                    },
+                  ),
                   border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(12),
                   ),
@@ -252,8 +299,11 @@ class _LupaPasswordScreenState extends State<LupaPasswordScreen> {
                           ),
                         )
                       : const Text(
-                          'Reset Password',
-                          style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
+                          'Ganti Password',
+                          style: TextStyle(
+                            fontWeight: FontWeight.bold,
+                            fontSize: 14,
+                          ),
                         ),
                 ),
               ),

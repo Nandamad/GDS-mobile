@@ -2,23 +2,14 @@ import 'package:flutter/material.dart';
 import 'package:dio/dio.dart';
 import '../services/api_service.dart';
 
-class AjukanLemburSheet extends StatefulWidget {
-  const AjukanLemburSheet({super.key});
-
-  static void show(BuildContext context) {
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
-      builder: (context) => const AjukanLemburSheet(),
-    );
-  }
+class AjukanLemburScreen extends StatefulWidget {
+  const AjukanLemburScreen({super.key});
 
   @override
-  State<AjukanLemburSheet> createState() => _AjukanLemburSheetState();
+  State<AjukanLemburScreen> createState() => _AjukanLemburScreenState();
 }
 
-class _AjukanLemburSheetState extends State<AjukanLemburSheet> {
+class _AjukanLemburScreenState extends State<AjukanLemburScreen> {
   DateTime _tanggalLembur = DateTime.now();
 
   TimeOfDay _jamMulai = const TimeOfDay(hour: 17, minute: 0);
@@ -88,7 +79,7 @@ class _AjukanLemburSheetState extends State<AjukanLemburSheet> {
         ),
       );
 
-      Navigator.pop(context);
+      Navigator.pop(context, true); // true as indicator of success
     } on DioException catch (e) {
       String message = 'Gagal mengirim pengajuan';
       final data = e.response?.data;
@@ -186,57 +177,38 @@ class _AjukanLemburSheetState extends State<AjukanLemburSheet> {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      decoration: const BoxDecoration(
-        color: Color(0xFFF8FAFC),
-        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+    return Scaffold(
+      backgroundColor: const Color(0xFFF8FAFC),
+      appBar: AppBar(
+        backgroundColor: Colors.white,
+        elevation: 0,
+        leading: Padding(
+          padding: const EdgeInsets.all(8.0),
+          child: InkWell(
+            onTap: () => Navigator.pop(context),
+            borderRadius: BorderRadius.circular(20),
+            child: Container(
+              decoration: BoxDecoration(color: Colors.grey.shade100, shape: BoxShape.circle),
+              child: const Icon(Icons.arrow_back, size: 18, color: Color(0xFF0F172A)),
+            ),
+          ),
+        ),
+        title: const Text(
+          'Ajukan Lembur',
+          style: TextStyle(color: Color(0xFF0F172A), fontWeight: FontWeight.bold, fontSize: 16),
+        ),
+        centerTitle: true,
       ),
-      padding: EdgeInsets.only(
-        top: 12,
-        left: 16,
-        right: 16,
-        bottom: MediaQuery.of(context).viewInsets.bottom + 20,
-      ),
-      child: SingleChildScrollView(
+      body: SingleChildScrollView(
+        padding: EdgeInsets.only(
+          top: 16,
+          left: 16,
+          right: 16,
+          bottom: MediaQuery.of(context).viewInsets.bottom + 20,
+        ),
         child: Column(
-          mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // HEADER BAR WITH BACK BUTTON & TITLE
-            Row(
-              children: [
-                InkWell(
-                  onTap: () => Navigator.pop(context),
-                  borderRadius: BorderRadius.circular(20),
-                  child: Container(
-                    padding: const EdgeInsets.all(8),
-                    decoration: const BoxDecoration(
-                      color: Colors.white,
-                      shape: BoxShape.circle,
-                    ),
-                    child: const Icon(
-                      Icons.arrow_back,
-                      size: 18,
-                      color: Color(0xFF0F172A),
-                    ),
-                  ),
-                ),
-                const Expanded(
-                  child: Text(
-                    'Ajukan Lembur',
-                    textAlign: TextAlign.center,
-                    style: TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.bold,
-                      color: Color(0xFF0F172A),
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 34), // Spacer agar title berada di tengah
-              ],
-            ),
-            const SizedBox(height: 16),
-
             // BANNER JAM KERJA NORMAL
             Container(
               width: double.infinity,
@@ -408,7 +380,7 @@ class _AjukanLemburSheetState extends State<AjukanLemburSheet> {
                       .map<DropdownMenuItem<int>>((int value) {
                         return DropdownMenuItem<int>(
                           value: value,
-                          child: Text(' Jam'),
+                          child: Text('$value Jam'),
                         );
                       })
                       .toList(),
@@ -488,7 +460,7 @@ class _AjukanLemburSheetState extends State<AjukanLemburSheet> {
                 ),
               ),
             ),
-            const SizedBox(height: 20),
+            const SizedBox(height: 30),
 
             // TOMBOL SUBMIT
             SizedBox(

@@ -1,28 +1,19 @@
 import 'dart:io';
-import 'dart:ui'; // <--- Tambahkan baris ini
+import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:dio/dio.dart';
 import 'package:http_parser/http_parser.dart';
 import '../services/api_service.dart';
 
-class AjukanCutiSheet extends StatefulWidget {
-  const AjukanCutiSheet({super.key});
-
-  static void show(BuildContext context) {
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
-      builder: (context) => const AjukanCutiSheet(),
-    );
-  }
+class AjukanCutiScreen extends StatefulWidget {
+  const AjukanCutiScreen({super.key});
 
   @override
-  State<AjukanCutiSheet> createState() => _AjukanCutiSheetState();
+  State<AjukanCutiScreen> createState() => _AjukanCutiScreenState();
 }
 
-class _AjukanCutiSheetState extends State<AjukanCutiSheet> {
+class _AjukanCutiScreenState extends State<AjukanCutiScreen> {
   String _tipePengajuan = 'Cuti';
 
   DateTime _tanggalMulai = DateTime.now();
@@ -135,7 +126,7 @@ class _AjukanCutiSheetState extends State<AjukanCutiSheet> {
         ),
       );
 
-      Navigator.pop(context);
+      Navigator.pop(context, true); // true as indicator of success
     } on DioException catch (e) {
       String message = 'Gagal mengirim pengajuan';
       if (e.response?.data is Map) {
@@ -217,53 +208,38 @@ class _AjukanCutiSheetState extends State<AjukanCutiSheet> {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      decoration: const BoxDecoration(
-        color: Color(0xFFF8FAFC),
-        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+    return Scaffold(
+      backgroundColor: const Color(0xFFF8FAFC),
+      appBar: AppBar(
+        backgroundColor: Colors.white,
+        elevation: 0,
+        leading: Padding(
+          padding: const EdgeInsets.all(8.0),
+          child: InkWell(
+            onTap: () => Navigator.pop(context),
+            borderRadius: BorderRadius.circular(20),
+            child: Container(
+              decoration: BoxDecoration(color: Colors.grey.shade100, shape: BoxShape.circle),
+              child: const Icon(Icons.arrow_back, size: 18, color: Color(0xFF0F172A)),
+            ),
+          ),
+        ),
+        title: const Text(
+          'Ajukan Cuti',
+          style: TextStyle(color: Color(0xFF0F172A), fontWeight: FontWeight.bold, fontSize: 16),
+        ),
+        centerTitle: true,
       ),
-      padding: EdgeInsets.only(
-        top: 12,
-        left: 16,
-        right: 16,
-        bottom: MediaQuery.of(context).viewInsets.bottom + 20,
-      ),
-      child: SingleChildScrollView(
+      body: SingleChildScrollView(
+        padding: EdgeInsets.only(
+          top: 16,
+          left: 16,
+          right: 16,
+          bottom: MediaQuery.of(context).viewInsets.bottom + 20,
+        ),
         child: Column(
-          mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // HEADER BAR WITH BACK/CLOSE BUTTON & TITLE
-            Row(
-              children: [
-                InkWell(
-                  onTap: () => Navigator.pop(context),
-                  borderRadius: BorderRadius.circular(20),
-                  child: Container(
-                    padding: const EdgeInsets.all(8),
-                    decoration: const BoxDecoration(
-                      color: Colors.white,
-                      shape: BoxShape.circle,
-                    ),
-                    child: const Icon(Icons.arrow_back, size: 18, color: Color(0xFF0F172A)),
-                  ),
-                ),
-                const Expanded(
-                  child: Text(
-                    'Ajukan Cuti',
-                    textAlign: TextAlign.center,
-                    style: TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.bold,
-                      color: Color(0xFF0F172A),
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 34), // Spacer agar judul tetap presisi di tengah
-              ],
-            ),
-            const SizedBox(height: 16),
-
             // SISA CUTI BANNER
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
@@ -500,7 +476,7 @@ class _AjukanCutiSheetState extends State<AjukanCutiSheet> {
                 ),
               ),
             ),
-            const SizedBox(height: 20),
+            const SizedBox(height: 30),
 
             // SUBMIT BUTTON
             SizedBox(

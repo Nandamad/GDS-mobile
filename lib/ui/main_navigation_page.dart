@@ -92,7 +92,7 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
     final base = <Widget>[
       DashboardScreen(onNotificationTap: _openNotifikasi),
       const PengajuanScreen(),
-      const PresensiScreen(),
+      const PresensiHarianScreen(),
     ];
 
     if (_isAtasan) {
@@ -116,28 +116,8 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
     return Scaffold(
       body: IndexedStack(index: _currentIndex, children: pages),
 
-      // FAB TOMBOL LINGKARAN HIJAU DI TENGAH
-      floatingActionButton: SizedBox(
-        width: 56,
-        height: 56,
-        child: FloatingActionButton(
-          onPressed: () => setState(() => _currentIndex = _presensiIndex),
-          backgroundColor: const Color(0xFF009688),
-          elevation: 4,
-          shape: const CircleBorder(),
-          child: const Icon(
-            Icons.access_time_rounded,
-            color: Colors.white,
-            size: 28,
-          ),
-        ),
-      ),
-      floatingActionButtonLocation: FloatingActionButtonLocation.centerDocked,
-
       // BOTTOM NAVBAR
       bottomNavigationBar: BottomAppBar(
-        shape: const CircularNotchedRectangle(),
-        notchMargin: 6.0,
         color: Colors.white,
         elevation: 10,
         child: SizedBox(
@@ -161,8 +141,62 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
                 label: 'Pengajuan',
               ),
 
-              // SPACER UNTUK FAB TENGAH
-              const SizedBox(width: 48),
+              // 3. PRESENSI (Desain menonjol ke atas dari bar)
+              GestureDetector(
+                onTap: () => setState(() => _currentIndex = _presensiIndex),
+                behavior: HitTestBehavior.opaque,
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 2),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      SizedBox(
+                        width: 56,
+                        height: 22,
+                        child: Stack(
+                          clipBehavior: Clip.none,
+                          alignment: Alignment.bottomCenter,
+                          children: [
+                            Positioned(
+                              bottom: 6, // Posisi ini akan mendorong lingkaran naik jauh ke atas
+                              child: Container(
+                                width: 56,
+                                height: 56,
+                                decoration: BoxDecoration(
+                                  color: const Color(0xFF009688),
+                                  shape: BoxShape.circle,
+                                  boxShadow: [
+                                    BoxShadow(
+                                      color: const Color(0xFF009688).withValues(alpha: 0.3),
+                                      blurRadius: 6,
+                                      offset: const Offset(0, 3),
+                                    ),
+                                  ],
+                                ),
+                                child: const Icon(
+                                  Icons.access_time_rounded,
+                                  color: Colors.white,
+                                  size: 28, // Icon juga dibesarkan agar proporsional
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        'Kehadiran',
+                        style: TextStyle(
+                          fontSize: 10,
+                          fontWeight: _currentIndex == _presensiIndex ? FontWeight.bold : FontWeight.normal,
+                          color: _currentIndex == _presensiIndex ? const Color(0xFF009688) : const Color(0xFF94A3B8),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
 
               // 3. APPROVAL (hanya untuk atasan) atau RIWAYAT
               if (_isAtasan)

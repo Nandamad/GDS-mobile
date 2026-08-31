@@ -525,9 +525,14 @@ class _PengajuanScreenState extends State<PengajuanScreen> {
               title: 'Ajukan Cuti / Izin',
               subtitle: 'Permohonan cuti, izin, atau sakit',
               onTap: () async {
-                AjukanCutiSheet.show(context);
+                final result = await Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => const AjukanCutiScreen(),
+                  ),
+                );
 
-                if (mounted) {
+                if (mounted && result == true) {
                   _fetchHistory();
                 }
               },
@@ -542,9 +547,14 @@ class _PengajuanScreenState extends State<PengajuanScreen> {
               title: 'Ajukan Lembur',
               subtitle: 'Permohonan jam kerja tambahan',
               onTap: () async {
-                AjukanLemburSheet.show(context);
+                final result = await Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => const AjukanLemburScreen(),
+                  ),
+                );
 
-                if (mounted) {
+                if (mounted && result == true) {
                   _fetchHistory();
                 }
               },
