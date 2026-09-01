@@ -1,7 +1,10 @@
+import 'dart:convert';
 import 'package:flutter/material.dart';
+import 'package:image_picker/image_picker.dart';
+import 'package:dio/dio.dart';
 import '../services/image_url_service.dart';
 import '../services/api_service.dart';
-
+import 'kamera_page.dart';
 class EditProfilScreen extends StatefulWidget {
   final Map<String, dynamic> userProfile;
 
@@ -18,6 +21,8 @@ class _EditProfilScreenState extends State<EditProfilScreen> {
   late TextEditingController _alamatController;
   
   bool _isSubmitting = false;
+  String? _base64Image;
+  final ImagePicker _picker = ImagePicker();
 
   @override
   void initState() {
@@ -57,14 +62,24 @@ class _EditProfilScreenState extends State<EditProfilScreen> {
     });
 
     try {
+      final formData = FormData.fromMap({
+        'nama_lengkap': _namaController.text,
+        'email': _emailController.text,
+        'no_hp': _noHpController.text,
+        'alamat': _alamatController.text,
+      });
+
+      if (_base64Image != null) {
+        final bytes = base64Decode(_base64Image!.split(',').last);
+        formData.files.add(MapEntry(
+          'foto',
+          MultipartFile.fromBytes(bytes, filename: 'profile.jpg'),
+        ));
+      }
+
       final response = await ApiService().dio.post(
         '/profile/update',
-        data: {
-          'nama_lengkap': _namaController.text,
-          'email': _emailController.text,
-          'no_hp': _noHpController.text,
-          'alamat': _alamatController.text,
-        },
+        data: formData,
       );
 
       if (mounted) {
@@ -102,6 +117,57 @@ class _EditProfilScreenState extends State<EditProfilScreen> {
         );
       }
     }
+  }
+
+  void _tampilkanPilihanFoto() {
+    showModalBottomSheet(
+      context: context,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+      ),
+      builder: (context) {
+        return SafeArea(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              ListTile(
+                leading: const Icon(Icons.camera_alt_rounded),
+                title: const Text('Ambil dari Kamera'),
+                onTap: () async {
+                  Navigator.pop(context);
+                  final result = await Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => const KameraScreen(namaKantor: 'Foto Profil'),
+                    ),
+                  );
+                  if (result != null && result is String) {
+                    setState(() {
+                      _base64Image = result;
+                    });
+                  }
+                },
+              ),
+              ListTile(
+                leading: const Icon(Icons.photo_library_rounded),
+                title: const Text('Pilih dari Galeri'),
+                onTap: () async {
+                  Navigator.pop(context);
+                  final XFile? image = await _picker.pickImage(source: ImageSource.gallery, imageQuality: 70);
+                  if (image != null) {
+                    final bytes = await image.readAsBytes();
+                    final base64String = base64Encode(bytes);
+                    setState(() {
+                      _base64Image = 'data:image/jpeg;base64,$base64String';
+                    });
+                  }
+                },
+              ),
+            ],
+          ),
+        );
+      },
+    );
   }
 
   @override
@@ -143,52 +209,57 @@ class _EditProfilScreenState extends State<EditProfilScreen> {
           children: [
             // Foto Profil with Camera Badge
             Center(
-              child: Column(
-                children: [
-                  Stack(
-                    alignment: Alignment.bottomRight,
-                    children: [
-                      Container(
-                        padding: const EdgeInsets.all(4),
-                        decoration: BoxDecoration(
-                          shape: BoxShape.circle,
-                          border: Border.all(color: const Color(0xFF009688), width: 2.5),
+              child: GestureDetector(
+                onTap: _tampilkanPilihanFoto,
+                child: Column(
+                  children: [
+                    Stack(
+                      alignment: Alignment.bottomRight,
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.all(4),
+                          decoration: BoxDecoration(
+                            shape: BoxShape.circle,
+                            border: Border.all(color: const Color(0xFF009688), width: 2.5),
+                          ),
+                          child: CircleAvatar(
+                            radius: 40,
+                            backgroundColor: const Color(0xFFE0F2F1),
+                            backgroundImage: _base64Image != null
+                                ? MemoryImage(base64Decode(_base64Image!.split(',').last)) as ImageProvider
+                                : (fotoUrl != null ? NetworkImage(fotoUrl) : null),
+                            child: (_base64Image == null && fotoUrl == null)
+                                ? const Icon(Icons.person, size: 40, color: Color(0xFF009688))
+                                : null,
+                          ),
                         ),
-                        child: CircleAvatar(
-                          radius: 40,
-                          backgroundColor: const Color(0xFFE0F2F1),
-                          backgroundImage: fotoUrl != null ? NetworkImage(fotoUrl) : null,
-                          child: fotoUrl == null
-                              ? const Icon(Icons.person, size: 40, color: Color(0xFF009688))
-                              : null,
+                        Container(
+                          margin: const EdgeInsets.only(bottom: 2, right: 2),
+                          padding: const EdgeInsets.all(4),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFF009688),
+                            shape: BoxShape.circle,
+                            border: Border.all(color: Colors.white, width: 2),
+                          ),
+                          child: const Icon(
+                            Icons.camera_alt_rounded,
+                            color: Colors.white,
+                            size: 14,
+                          ),
                         ),
-                      ),
-                      Container(
-                        margin: const EdgeInsets.only(bottom: 2, right: 2),
-                        padding: const EdgeInsets.all(4),
-                        decoration: BoxDecoration(
-                          color: const Color(0xFF009688),
-                          shape: BoxShape.circle,
-                          border: Border.all(color: Colors.white, width: 2),
-                        ),
-                        child: const Icon(
-                          Icons.camera_alt_rounded,
-                          color: Colors.white,
-                          size: 14,
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 8),
-                  const Text(
-                    'Ubah Foto Profil',
-                    style: TextStyle(
-                      fontSize: 12,
-                      fontWeight: FontWeight.bold,
-                      color: Color(0xFF009688),
+                      ],
                     ),
-                  ),
-                ],
+                    const SizedBox(height: 8),
+                    const Text(
+                      'Ubah Foto Profil',
+                      style: TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.bold,
+                        color: Color(0xFF009688),
+                      ),
+                    ),
+                  ],
+                ),
               ),
             ),
             const SizedBox(height: 32),

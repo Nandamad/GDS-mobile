@@ -137,8 +137,8 @@ class DataPribadiScreen extends StatelessWidget {
               width: double.infinity,
               height: 48,
               child: ElevatedButton(
-                onPressed: () {
-                  Navigator.push(
+                onPressed: () async {
+                  final result = await Navigator.push(
                     context,
                     MaterialPageRoute(
                       builder: (context) => EditProfilScreen(
@@ -146,6 +146,9 @@ class DataPribadiScreen extends StatelessWidget {
                       ),
                     ),
                   );
+                  if (result == true) {
+                    if (context.mounted) Navigator.pop(context, true);
+                  }
                 },
                 style: ElevatedButton.styleFrom(
                   backgroundColor: const Color(0xFF009688),

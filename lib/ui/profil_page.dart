@@ -206,9 +206,9 @@ class _ProfilPageState extends State<ProfilPage> {
                         _buildMenuItem(
                           icon: Icons.person_outline_rounded,
                           title: 'Data Pribadi',
-                          onTap: () {
+                          onTap: () async {
                             if (_userProfile != null) {
-                              Navigator.push(
+                              final result = await Navigator.push(
                                 context,
                                 MaterialPageRoute(
                                   builder: (context) => DataPribadiScreen(
@@ -216,6 +216,10 @@ class _ProfilPageState extends State<ProfilPage> {
                                   ),
                                 ),
                               );
+                              if (result == true) {
+                                setState(() { _isLoading = true; });
+                                _fetchUserProfile();
+                              }
                             }
                           },
                         ),
