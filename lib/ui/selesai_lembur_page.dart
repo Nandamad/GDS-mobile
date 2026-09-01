@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import '../services/api_service.dart';
 
 class SelesaiLemburScreen extends StatefulWidget {
   final String alasan;
@@ -64,21 +65,34 @@ class _SelesaiLemburScreenState extends State<SelesaiLemburScreen> {
   }
 
   Future<void> _akhiriLembur() async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.remove('is_lembur_active');
-    await prefs.remove('lembur_alasan');
-    await prefs.remove('lembur_estimasi');
-    await prefs.remove('lembur_catatan');
-    await prefs.remove('lembur_start_time');
+    try {
+      // Call backend API first
+      await ApiService().dio.post('/lembur/selesai');
 
-    if (!mounted) return;
-    Navigator.popUntil(context, (route) => route.isFirst);
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('Lembur berhasil diakhiri!'),
-        backgroundColor: Color(0xFF009688),
-      ),
-    );
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.remove('is_lembur_active');
+      await prefs.remove('lembur_alasan');
+      await prefs.remove('lembur_estimasi');
+      await prefs.remove('lembur_catatan');
+      await prefs.remove('lembur_start_time');
+
+      if (!mounted) return;
+      Navigator.popUntil(context, (route) => route.isFirst);
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Lembur berhasil diakhiri!'),
+          backgroundColor: Color(0xFF009688),
+        ),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Gagal mengakhiri lembur: $e'),
+          backgroundColor: const Color(0xFFEF4444),
+        ),
+      );
+    }
   }
 
   @override
