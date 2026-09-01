@@ -78,20 +78,24 @@ class TentangAplikasiScreen extends StatelessWidget {
               ),
               child: Column(
                 children: [
-                  _buildInfoRow('Dibuat oleh', 'PT Example Indonesia'),
+                  _buildInfoRow('Dibuat oleh', 'PT Global Digital Solusi'),
                   const Divider(height: 24),
-                  _buildInfoRow('Email', 'support@presensi.com'),
+                  _buildInfoRow('Email', 'admin@gds.com'),
                   const Divider(height: 24),
-                  _buildInfoRow('Website', 'www.presensi.com'),
+                  _buildInfoRow('Website', 'www.gds.com'),
                 ],
               ),
             ),
             const SizedBox(height: 24),
             
             // Policies
-            _buildActionCard('Kebijakan Privasi', () {}),
+            _buildActionCard('Kebijakan Privasi', () {
+              ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Halaman Kebijakan Privasi sedang dalam pengembangan.')));
+            }),
             const SizedBox(height: 12),
-            _buildActionCard('Syarat & Ketentuan', () {}),
+            _buildActionCard('Syarat & Ketentuan', () {
+              ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Halaman Syarat & Ketentuan sedang dalam pengembangan.')));
+            }),
             
             const SizedBox(height: 40),
             // Copyright

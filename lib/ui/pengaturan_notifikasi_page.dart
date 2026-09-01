@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/cupertino.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 class PengaturanNotifikasiScreen extends StatefulWidget {
   const PengaturanNotifikasiScreen({super.key});
@@ -10,12 +11,33 @@ class PengaturanNotifikasiScreen extends StatefulWidget {
 }
 
 class _PengaturanNotifikasiScreenState extends State<PengaturanNotifikasiScreen> {
-  // State switches (Dummy values for demonstration based on the design)
   bool _pengingatMasuk = true;
   bool _pengingatKeluar = true;
   bool _updatePengajuan = true;
   bool _infoLembur = false;
   bool _pengumumanPerusahaan = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadPreferences();
+  }
+
+  Future<void> _loadPreferences() async {
+    final prefs = await SharedPreferences.getInstance();
+    setState(() {
+      _pengingatMasuk = prefs.getBool('notif_masuk') ?? true;
+      _pengingatKeluar = prefs.getBool('notif_keluar') ?? true;
+      _updatePengajuan = prefs.getBool('notif_pengajuan') ?? true;
+      _infoLembur = prefs.getBool('notif_lembur') ?? false;
+      _pengumumanPerusahaan = prefs.getBool('notif_pengumuman') ?? true;
+    });
+  }
+
+  Future<void> _savePreference(String key, bool value) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool(key, value);
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -69,9 +91,8 @@ class _PengaturanNotifikasiScreenState extends State<PengaturanNotifikasiScreen>
               subtitle: 'Notifikasi sebelum jam masuk',
               value: _pengingatMasuk,
               onChanged: (val) {
-                setState(() {
-                  _pengingatMasuk = val;
-                });
+                setState(() => _pengingatMasuk = val);
+                _savePreference('notif_masuk', val);
               },
             ),
             const SizedBox(height: 12),
@@ -81,9 +102,8 @@ class _PengaturanNotifikasiScreenState extends State<PengaturanNotifikasiScreen>
               subtitle: 'Pemberitahuan harian waktu pulang kerja',
               value: _pengingatKeluar,
               onChanged: (val) {
-                setState(() {
-                  _pengingatKeluar = val;
-                });
+                setState(() => _pengingatKeluar = val);
+                _savePreference('notif_keluar', val);
               },
             ),
             const SizedBox(height: 12),
@@ -93,9 +113,8 @@ class _PengaturanNotifikasiScreenState extends State<PengaturanNotifikasiScreen>
               subtitle: 'Notifikasi saat pengajuan disetujui/ditolak',
               value: _updatePengajuan,
               onChanged: (val) {
-                setState(() {
-                  _updatePengajuan = val;
-                });
+                setState(() => _updatePengajuan = val);
+                _savePreference('notif_pengajuan', val);
               },
             ),
             const SizedBox(height: 12),
@@ -105,9 +124,8 @@ class _PengaturanNotifikasiScreenState extends State<PengaturanNotifikasiScreen>
               subtitle: 'Tingkat waktu lembur baru yang diajukan',
               value: _infoLembur,
               onChanged: (val) {
-                setState(() {
-                  _infoLembur = val;
-                });
+                setState(() => _infoLembur = val);
+                _savePreference('notif_lembur', val);
               },
             ),
             const SizedBox(height: 12),
@@ -117,9 +135,8 @@ class _PengaturanNotifikasiScreenState extends State<PengaturanNotifikasiScreen>
               subtitle: 'Info umum departemen dan kantor pusat',
               value: _pengumumanPerusahaan,
               onChanged: (val) {
-                setState(() {
-                  _pengumumanPerusahaan = val;
-                });
+                setState(() => _pengumumanPerusahaan = val);
+                _savePreference('notif_pengumuman', val);
               },
             ),
           ],

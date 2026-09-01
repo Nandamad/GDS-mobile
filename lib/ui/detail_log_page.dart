@@ -28,12 +28,12 @@ class _DetailLogScreenState extends State<DetailLogScreen> {
   }
 
   String _formatTime(DateTime? date) {
-    if (date == null) return '--:-- WIB';
-    // Mengonversi waktu UTC dari server ke waktu lokal HP (WIB / GMT+7)
+    if (date == null) return '--:-- ${DateTime.now().timeZoneName}';
+    // Mengonversi waktu UTC dari server ke waktu lokal HP
     final localDate = date.toLocal(); 
     final hour = localDate.hour.toString().padLeft(2, '0');
     final minute = localDate.minute.toString().padLeft(2, '0');
-    return '$hour:$minute WIB';
+    return '$hour:$minute ${localDate.timeZoneName}';
   }
 
   String _formatDate(DateTime? date) {

@@ -31,7 +31,8 @@ class _AjukanCutiScreenState extends State<AjukanCutiScreen> {
     int days = 0;
     DateTime current = _tanggalMulai;
     while (!current.isAfter(_tanggalSelesai)) {
-      if (current.weekday != DateTime.saturday && current.weekday != DateTime.sunday) {
+      if (current.weekday != DateTime.saturday &&
+          current.weekday != DateTime.sunday) {
         days++;
       }
       current = current.add(const Duration(days: 1));
@@ -51,7 +52,9 @@ class _AjukanCutiScreenState extends State<AjukanCutiScreen> {
       final response = await dio.get('/dashboard');
       if (response.statusCode == 200) {
         final payload = response.data;
-        final data = payload is Map && payload['data'] is Map ? payload['data'] : payload;
+        final data = payload is Map && payload['data'] is Map
+            ? payload['data']
+            : payload;
         final summary = data['summary'];
         if (summary != null && summary['sisa_cuti'] != null) {
           setState(() {
@@ -64,9 +67,9 @@ class _AjukanCutiScreenState extends State<AjukanCutiScreen> {
 
   Future<void> _submitCuti() async {
     if (_alasanController.text.trim().isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Alasan wajib diisi!')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('Alasan wajib diisi!')));
       return;
     }
 
@@ -109,13 +112,13 @@ class _AjukanCutiScreenState extends State<AjukanCutiScreen> {
             await MultipartFile.fromFile(
               _selectedFile!.path,
               filename: _fileName,
-                contentType: MediaType('image', 'jpeg'),
+              contentType: MediaType('image', 'jpeg'),
             ),
           ),
         );
       }
 
-      final response = await dio.post('/cuti', data: formData);
+      await dio.post('/cuti', data: formData);
 
       if (!mounted) return;
 
@@ -200,7 +203,18 @@ class _AjukanCutiScreenState extends State<AjukanCutiScreen> {
 
   String _formatDate(DateTime date) {
     final List<String> bulan = [
-      'Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Agt', 'Sep', 'Okt', 'Nov', 'Des'
+      'Jan',
+      'Feb',
+      'Mar',
+      'Apr',
+      'Mei',
+      'Jun',
+      'Jul',
+      'Agt',
+      'Sep',
+      'Okt',
+      'Nov',
+      'Des',
     ];
     // Menggunakan format pad dua digit tanggal dan tahun
     return '${date.day.toString().padLeft(2, '0')} ${bulan[date.month - 1]} ${date.year}';
@@ -219,14 +233,25 @@ class _AjukanCutiScreenState extends State<AjukanCutiScreen> {
             onTap: () => Navigator.pop(context),
             borderRadius: BorderRadius.circular(20),
             child: Container(
-              decoration: BoxDecoration(color: Colors.grey.shade100, shape: BoxShape.circle),
-              child: const Icon(Icons.arrow_back, size: 18, color: Color(0xFF0F172A)),
+              decoration: BoxDecoration(
+                color: Colors.grey.shade100,
+                shape: BoxShape.circle,
+              ),
+              child: const Icon(
+                Icons.arrow_back,
+                size: 18,
+                color: Color(0xFF0F172A),
+              ),
             ),
           ),
         ),
         title: const Text(
           'Ajukan Cuti',
-          style: TextStyle(color: Color(0xFF0F172A), fontWeight: FontWeight.bold, fontSize: 16),
+          style: TextStyle(
+            color: Color(0xFF0F172A),
+            fontWeight: FontWeight.bold,
+            fontSize: 16,
+          ),
         ),
         centerTitle: true,
       ),
@@ -250,11 +275,16 @@ class _AjukanCutiScreenState extends State<AjukanCutiScreen> {
               child: Row(
                 children: [
                   Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 10,
+                      vertical: 4,
+                    ),
                     decoration: BoxDecoration(
                       color: Colors.white,
                       borderRadius: BorderRadius.circular(20),
-                      border: Border.all(color: const Color(0xFF0F766E).withOpacity(0.3)),
+                      border: Border.all(
+                        color: const Color(0xFF0F766E).withOpacity(0.3),
+                      ),
                     ),
                     child: Row(
                       mainAxisSize: MainAxisSize.min,
@@ -334,7 +364,7 @@ class _AjukanCutiScreenState extends State<AjukanCutiScreen> {
             const SizedBox(height: 6),
             _buildDatePickerField(
               _formatDate(_tanggalMulai),
-                  () => _selectDate(context, true),
+              () => _selectDate(context, true),
             ),
             const SizedBox(height: 14),
 
@@ -350,7 +380,7 @@ class _AjukanCutiScreenState extends State<AjukanCutiScreen> {
             const SizedBox(height: 6),
             _buildDatePickerField(
               _formatDate(_tanggalSelesai),
-                  () => _selectDate(context, false),
+              () => _selectDate(context, false),
             ),
             const SizedBox(height: 14),
 
@@ -408,16 +438,10 @@ class _AjukanCutiScreenState extends State<AjukanCutiScreen> {
             TextField(
               controller: _alasanController,
               maxLines: 4,
-              style: const TextStyle(
-                fontSize: 11,
-                color: Color(0xFF0F172A),
-              ),
+              style: const TextStyle(fontSize: 11, color: Color(0xFF0F172A)),
               decoration: InputDecoration(
                 hintText: 'Tuliskan alasan cuti Anda...',
-                hintStyle: const TextStyle(
-                  fontSize: 11,
-                  color: Colors.grey,
-                ),
+                hintStyle: const TextStyle(fontSize: 11, color: Colors.grey),
                 fillColor: Colors.white,
                 filled: true,
                 contentPadding: const EdgeInsets.all(12),
@@ -493,21 +517,21 @@ class _AjukanCutiScreenState extends State<AjukanCutiScreen> {
                 ),
                 child: _isSubmitting
                     ? const SizedBox(
-                  width: 20,
-                  height: 20,
-                  child: CircularProgressIndicator(
-                    color: Colors.white,
-                    strokeWidth: 2,
-                  ),
-                )
+                        width: 20,
+                        height: 20,
+                        child: CircularProgressIndicator(
+                          color: Colors.white,
+                          strokeWidth: 2,
+                        ),
+                      )
                     : const Text(
-                  'Kirim Pengajuan',
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontSize: 13,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
+                        'Kirim Pengajuan',
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 13,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
               ),
             ),
           ],
@@ -538,7 +562,9 @@ class _AjukanCutiScreenState extends State<AjukanCutiScreen> {
             style: TextStyle(
               fontSize: 11,
               fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
-              color: isSelected ? const Color(0xFF0F766E) : const Color(0xFF64748B),
+              color: isSelected
+                  ? const Color(0xFF0F766E)
+                  : const Color(0xFF64748B),
             ),
           ),
         ),
@@ -579,11 +605,7 @@ class _AjukanCutiScreenState extends State<AjukanCutiScreen> {
                 ),
               ],
             ),
-            const Icon(
-              Icons.keyboard_arrow_down,
-              size: 18,
-              color: Colors.grey,
-            ),
+            const Icon(Icons.keyboard_arrow_down, size: 18, color: Colors.grey),
           ],
         ),
       ),
@@ -617,10 +639,12 @@ class DashedRectPainter extends CustomPainter {
       ..style = PaintingStyle.stroke;
 
     final Path path = Path()
-      ..addRRect(RRect.fromRectAndRadius(
-        Rect.fromLTWH(0, 0, size.width, size.height),
-        const Radius.circular(12),
-      ));
+      ..addRRect(
+        RRect.fromRectAndRadius(
+          Rect.fromLTWH(0, 0, size.width, size.height),
+          const Radius.circular(12),
+        ),
+      );
 
     final Path dashPath = Path();
     double distance = 0.0;

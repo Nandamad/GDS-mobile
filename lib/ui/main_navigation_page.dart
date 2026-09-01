@@ -146,7 +146,10 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
                 onTap: () => setState(() => _currentIndex = _presensiIndex),
                 behavior: HitTestBehavior.opaque,
                 child: Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 2),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 10,
+                    vertical: 2,
+                  ),
                   child: Column(
                     mainAxisSize: MainAxisSize.min,
                     mainAxisAlignment: MainAxisAlignment.center,
@@ -159,7 +162,8 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
                           alignment: Alignment.bottomCenter,
                           children: [
                             Positioned(
-                              bottom: 6, // Posisi ini akan mendorong lingkaran naik jauh ke atas
+                              bottom:
+                                  6, // Posisi ini akan mendorong lingkaran naik jauh ke atas
                               child: Container(
                                 width: 56,
                                 height: 56,
@@ -168,7 +172,9 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
                                   shape: BoxShape.circle,
                                   boxShadow: [
                                     BoxShadow(
-                                      color: const Color(0xFF009688).withValues(alpha: 0.3),
+                                      color: const Color(
+                                        0xFF009688,
+                                      ).withValues(alpha: 0.3),
                                       blurRadius: 6,
                                       offset: const Offset(0, 3),
                                     ),
@@ -177,7 +183,8 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
                                 child: const Icon(
                                   Icons.access_time_rounded,
                                   color: Colors.white,
-                                  size: 28, // Icon juga dibesarkan agar proporsional
+                                  size:
+                                      28, // Icon juga dibesarkan agar proporsional
                                 ),
                               ),
                             ),
@@ -189,8 +196,12 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
                         'Kehadiran',
                         style: TextStyle(
                           fontSize: 10,
-                          fontWeight: _currentIndex == _presensiIndex ? FontWeight.bold : FontWeight.normal,
-                          color: _currentIndex == _presensiIndex ? const Color(0xFF009688) : const Color(0xFF94A3B8),
+                          fontWeight: _currentIndex == _presensiIndex
+                              ? FontWeight.bold
+                              : FontWeight.normal,
+                          color: _currentIndex == _presensiIndex
+                              ? const Color(0xFF009688)
+                              : const Color(0xFF94A3B8),
                         ),
                       ),
                     ],

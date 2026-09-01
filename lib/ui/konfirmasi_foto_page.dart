@@ -39,7 +39,7 @@ class _KonfirmasiFotoScreenState extends State<KonfirmasiFotoScreen> {
     final hour = date.hour.toString().padLeft(2, '0');
     final minute = date.minute.toString().padLeft(2, '0');
     final second = date.second.toString().padLeft(2, '0');
-    return '$hour:$minute:$second WIB';
+    return '$hour:$minute:$second ${date.timeZoneName}';
   }
 
   String _formatDate(DateTime date) {
@@ -296,12 +296,6 @@ class _KonfirmasiFotoScreenState extends State<KonfirmasiFotoScreen> {
               valueColor: widget.gpsAccuracy! <= 20 ? const Color(0xFF0F172A) : Colors.orange,
             ),
           ],
-          const Divider(height: 14),
-          _buildVerifikasiRow(
-            label: 'Deteksi Wajah',
-            value: 'Terverifikasi',
-            isVerified: true,
-          ),
           const Divider(height: 14),
           _buildVerifikasiRow(
             label: 'Status',

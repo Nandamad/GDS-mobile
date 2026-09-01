@@ -27,6 +27,12 @@ class _KoreksiPresensiScreenState extends State<KoreksiPresensiScreen> {
   bool _isSubmitting = false;
 
   @override
+  void dispose() {
+    _alasanController.dispose();
+    super.dispose();
+  }
+
+  @override
   void initState() {
     super.initState();
     _fetchShiftData();

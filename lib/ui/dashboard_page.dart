@@ -12,7 +12,6 @@ import '../services/api_service.dart';
 import '../services/image_url_service.dart';
 import 'kamera_page.dart';
 import 'konfirmasi_foto_page.dart';
-import 'kinerja_presensi_page.dart';
 
 class DashboardScreen extends StatefulWidget {
   final VoidCallback? onNotificationTap;
@@ -76,28 +75,29 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
         if (_serverTime != null) {
           _serverTime = _serverTime!.add(const Duration(seconds: 1));
-          
+
           if (_lemburData != null) {
             final mulaiStr = _lemburData!['jam_mulai'];
             final selesaiStr = _lemburData!['jam_selesai'];
             if (mulaiStr != null && selesaiStr != null) {
-               final mulai = DateTime.parse(mulaiStr);
-               final selesai = DateTime.parse(selesaiStr);
+              final mulai = DateTime.parse(mulaiStr);
+              final selesai = DateTime.parse(selesaiStr);
 
-               if (_serverTime!.isAfter(mulai) && _serverTime!.isBefore(selesai)) {
-                 _lemburStatus = 'Sedang Lembur';
-                 final diff = selesai.difference(_serverTime!);
-                 final h = diff.inHours.toString().padLeft(2, '0');
-                 final m = (diff.inMinutes % 60).toString().padLeft(2, '0');
-                 final s = (diff.inSeconds % 60).toString().padLeft(2, '0');
-                 _lemburCountdown = '$h:$m:$s';
-               } else if (_serverTime!.isAfter(selesai)) {
-                 _lemburStatus = 'Selesai';
-                 _lemburCountdown = 'Lembur Selesai';
-               } else {
-                 _lemburStatus = 'Menunggu';
-                 _lemburCountdown = '';
-               }
+              if (_serverTime!.isAfter(mulai) &&
+                  _serverTime!.isBefore(selesai)) {
+                _lemburStatus = 'Sedang Lembur';
+                final diff = selesai.difference(_serverTime!);
+                final h = diff.inHours.toString().padLeft(2, '0');
+                final m = (diff.inMinutes % 60).toString().padLeft(2, '0');
+                final s = (diff.inSeconds % 60).toString().padLeft(2, '0');
+                _lemburCountdown = '$h:$m:$s';
+              } else if (_serverTime!.isAfter(selesai)) {
+                _lemburStatus = 'Selesai';
+                _lemburCountdown = 'Lembur Selesai';
+              } else {
+                _lemburStatus = 'Menunggu';
+                _lemburCountdown = '';
+              }
             }
           }
         }
@@ -112,6 +112,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
     });
     await Future.wait([
       _fetchDashboardAndToday(),
+      _fetchRecentHistory(),
       _fetchUserProfileFoto(),
       _fetchUnreadNotificationCount(),
     ]);
@@ -130,7 +131,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
       }
 
       final dio = ApiService().dio;
-      
+
       // 1. Fetch Today (Absensi Status)
       final todayRes = await dio.get('/absensi/today');
       if (todayRes.statusCode == 200) {
@@ -141,7 +142,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
         if (kantor != null) {
           final lat = double.tryParse(kantor['latitude'].toString());
           final lng = double.tryParse(kantor['longitude'].toString());
-          final rad = double.tryParse(kantor['radius_toleransi_meter'].toString());
+          final rad = double.tryParse(
+            kantor['radius_toleransi_meter'].toString(),
+          );
           if (lat != null && lng != null) _officeLocation = LatLng(lat, lng);
           if (rad != null) _maxRadiusMeters = rad;
           _namaKantor = kantor['nama_kantor']?.toString() ?? 'Kantor';
@@ -154,8 +157,12 @@ class _DashboardScreenState extends State<DashboardScreen> {
         _lemburData = resData['lembur'];
 
         if (data != null && data is Map) {
-          _isSudahAbsenMasuk = data['jam_masuk'] != null && data['jam_masuk'].toString().isNotEmpty;
-          _isSudahAbsenKeluar = data['jam_keluar'] != null && data['jam_keluar'].toString().isNotEmpty;
+          _isSudahAbsenMasuk =
+              data['jam_masuk'] != null &&
+              data['jam_masuk'].toString().isNotEmpty;
+          _isSudahAbsenKeluar =
+              data['jam_keluar'] != null &&
+              data['jam_keluar'].toString().isNotEmpty;
         } else {
           _isSudahAbsenMasuk = false;
           _isSudahAbsenKeluar = false;
@@ -168,40 +175,21 @@ class _DashboardScreenState extends State<DashboardScreen> {
         final payload = dashRes.data;
         Map<String, dynamic>? data;
         if (payload is Map) {
-          data = payload['data'] is Map ? Map<String, dynamic>.from(payload['data']) : Map<String, dynamic>.from(payload);
+          data = payload['data'] is Map
+              ? Map<String, dynamic>.from(payload['data'])
+              : Map<String, dynamic>.from(payload);
         }
         if (data != null) {
           _dashboardData = data;
-          
-          // Set log keterlambatan dari data dashboard jika ada, atau set mock jika kosong/null untuk preview
-          if (data['late_logs'] != null && data['late_logs'] is List && (data['late_logs'] as List).isNotEmpty) {
-            _logKeterlambatan = data['late_logs'];
-          } else {
-             // Mock data if API doesn't have it yet, based on the design request
-            _logKeterlambatan = [
-              {
-                 'tanggal': '2026-08-04',
-                 'tipe': 'Terlambat',
-                 'menit': 15,
-                 'status_atasan': 'Pending',
-                 'status_hrd': 'Waiting'
-              },
-              {
-                 'tanggal': '2026-08-01',
-                 'tipe': 'Pulang Awal',
-                 'menit': 30,
-                 'status_atasan': 'OK',
-                 'status_hrd': 'Pending'
-              }
-            ];
-          }
+          // keterlambatan akan di-fetch dari history endpoint
         }
       }
 
       _calculateOfficeDistance();
-
     } on DioException catch (e) {
-      debugPrint('DASHBOARD ERROR: ${e.response?.statusCode} ${e.response?.data}');
+      debugPrint(
+        'DASHBOARD ERROR: ${e.response?.statusCode} ${e.response?.data}',
+      );
       _errorMessage = 'Gagal memuat dashboard: ${e.message}';
     } catch (e) {
       debugPrint('DASHBOARD PARSE ERROR: $e');
@@ -213,6 +201,59 @@ class _DashboardScreenState extends State<DashboardScreen> {
     }
   }
 
+  Future<void> _fetchRecentHistory() async {
+    try {
+      final dio = ApiService().dio;
+      final now = DateTime.now();
+      final response = await dio.get(
+        '/history',
+        queryParameters: {'month': now.month, 'year': now.year},
+      );
+
+      if (response.statusCode == 200) {
+        final List<dynamic> data = response.data['data'] ?? [];
+        final keterlambatanData = <Map<String, dynamic>>[];
+
+        for (var item in data) {
+          final rawStatus = (item['status'] ?? 'hadir')
+              .toString()
+              .toLowerCase();
+
+          // Filter hanya keterlambatan dan pulang awal
+          if (rawStatus.contains('terlambat') ||
+              rawStatus.contains('late') ||
+              rawStatus.contains('pulang_awal') ||
+              rawStatus.contains('pulang awal')) {
+            final isTerlambat =
+                rawStatus.contains('terlambat') || rawStatus.contains('late');
+
+            keterlambatanData.add({
+              'tanggal': item['tanggal'] ?? item['jam_masuk'],
+              'tipe': isTerlambat ? 'Terlambat' : 'Pulang Awal',
+              'menit': item['menit_keterlambatan'] ?? 0,
+              'status_atasan': item['approval_atasan'] ?? 'Pending',
+              'status_hrd': item['approval_hrd'] ?? 'Pending',
+            });
+          }
+        }
+
+        if (mounted) {
+          setState(() {
+            _logKeterlambatan = keterlambatanData;
+          });
+        }
+      }
+    } catch (e) {
+      debugPrint('FETCH RECENT HISTORY ERROR: $e');
+      // Jika error, biarkan kosong (tidak ada mock data)
+      if (mounted) {
+        setState(() {
+          _logKeterlambatan = [];
+        });
+      }
+    }
+  }
+
   Future<void> _fetchUserProfileFoto() async {
     try {
       final response = await ApiService().dio.get('/profile');
@@ -220,8 +261,11 @@ class _DashboardScreenState extends State<DashboardScreen> {
         final payload = response.data;
         if (payload is Map) {
           final profile = payload['data'] is Map ? payload['data'] : payload;
-          final karyawan = profile['karyawan'] is Map ? profile['karyawan'] : profile;
-          final rawFoto = karyawan['foto_url'] ?? karyawan['foto'] ?? profile['foto'];
+          final karyawan = profile['karyawan'] is Map
+              ? profile['karyawan']
+              : profile;
+          final rawFoto =
+              karyawan['foto_url'] ?? karyawan['foto'] ?? profile['foto'];
           final resolved = ImageUrlService.resolve(rawFoto?.toString());
           if (mounted && resolved != null) {
             setState(() => _userFotoUrl = resolved);
@@ -237,9 +281,13 @@ class _DashboardScreenState extends State<DashboardScreen> {
     var unreadCount = 0;
     try {
       final response = await ApiService().dio.get('/notifikasi');
-      dynamic list = response.data is Map ? (response.data['data'] ?? response.data['items'] ?? []) : response.data;
+      dynamic list = response.data is Map
+          ? (response.data['data'] ?? response.data['items'] ?? [])
+          : response.data;
       if (list is List) {
-        unreadCount += list.where((item) => item is Map && item['read_at'] == null).length;
+        unreadCount += list
+            .where((item) => item is Map && item['read_at'] == null)
+            .length;
       }
     } catch (e) {
       debugPrint('GET /notifikasi COUNT ERROR: $e');
@@ -247,7 +295,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
     try {
       final response = await ApiService().dio.get('/approval/pending');
-      dynamic list = response.data is Map ? (response.data['data'] ?? response.data['items'] ?? []) : response.data;
+      dynamic list = response.data is Map
+          ? (response.data['data'] ?? response.data['items'] ?? [])
+          : response.data;
       if (list is List) unreadCount += list.length;
     } catch (e) {
       debugPrint('GET /approval/pending COUNT ERROR: $e');
@@ -274,22 +324,21 @@ class _DashboardScreenState extends State<DashboardScreen> {
   }
 
   void _startLocationStream() {
-    _positionStream = Geolocator.getPositionStream(
-      locationSettings: const LocationSettings(
-        accuracy: LocationAccuracy.high,
-        distanceFilter: 5,
-      ),
-    ).listen(
-      (position) {
-        if (!mounted) return;
-        setState(() {
-          _currentLocation = LatLng(position.latitude, position.longitude);
-          _gpsAccuracy = position.accuracy;
-          _isMocked = position.isMocked;
+    _positionStream =
+        Geolocator.getPositionStream(
+          locationSettings: const LocationSettings(
+            accuracy: LocationAccuracy.high,
+            distanceFilter: 5,
+          ),
+        ).listen((position) {
+          if (!mounted) return;
+          setState(() {
+            _currentLocation = LatLng(position.latitude, position.longitude);
+            _gpsAccuracy = position.accuracy;
+            _isMocked = position.isMocked;
+          });
+          _calculateOfficeDistance();
         });
-        _calculateOfficeDistance();
-      },
-    );
   }
 
   void _calculateOfficeDistance() {
@@ -307,16 +356,24 @@ class _DashboardScreenState extends State<DashboardScreen> {
     });
   }
 
-  Future<String?> _submitAbsensi({required String tipe, required String fotoBase64}) async {
+  Future<String?> _submitAbsensi({
+    required String tipe,
+    required String fotoBase64,
+  }) async {
     try {
       final dio = ApiService().dio;
       String base64String = fotoBase64;
-      if (base64String.contains(',')) base64String = base64String.split(',').last;
+      if (base64String.contains(','))
+        base64String = base64String.split(',').last;
       base64String = base64String.replaceAll(RegExp(r'\s+'), '');
       Uint8List imageBytes = base64Decode(base64String);
 
       final formData = FormData.fromMap({
-        'foto': MultipartFile.fromBytes(imageBytes, filename: 'selfie.jpg', contentType: MediaType('image', 'jpeg')),
+        'foto': MultipartFile.fromBytes(
+          imageBytes,
+          filename: 'selfie.jpg',
+          contentType: MediaType('image', 'jpeg'),
+        ),
         'latitude': _currentLocation.latitude.toString(),
         'longitude': _currentLocation.longitude.toString(),
         'tipe': tipe,
@@ -329,7 +386,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
       return 'Server menolak penyimpanan presensi.';
     } on DioException catch (e) {
       final data = e.response?.data;
-      if (data is Map && data['message'] != null) return data['message'].toString();
+      if (data is Map && data['message'] != null)
+        return data['message'].toString();
       return 'Presensi gagal dikirim. Periksa koneksi dan lokasi Anda.';
     } catch (e) {
       return 'Presensi gagal diproses.';
@@ -343,7 +401,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
     while (true) {
       final resultImage = await Navigator.push<String>(
         context,
-        MaterialPageRoute(builder: (context) => KameraScreen(namaKantor: _namaKantor)),
+        MaterialPageRoute(
+          builder: (context) => KameraScreen(namaKantor: _namaKantor),
+        ),
       );
 
       if (resultImage == null || !mounted) return;
@@ -369,19 +429,26 @@ class _DashboardScreenState extends State<DashboardScreen> {
       }
     }
 
-    if (!mounted || finalImage == null) return;
+    if (!mounted) return;
 
-    final errorMessage = await _submitAbsensi(tipe: tipe, fotoBase64: finalImage);
+    final errorMessage = await _submitAbsensi(
+      tipe: tipe,
+      fotoBase64: finalImage,
+    );
 
     if (!mounted) return;
     if (errorMessage != null) {
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(errorMessage)));
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(errorMessage)));
       return;
     }
 
     await _fetchDashboardAndToday();
     if (!mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Absen $tipe berhasil disimpan.')));
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(SnackBar(content: Text('Absen $tipe berhasil disimpan.')));
   }
 
   @override
@@ -394,7 +461,20 @@ class _DashboardScreenState extends State<DashboardScreen> {
   String _formatDateString(String dateStr) {
     try {
       final date = DateTime.parse(dateStr);
-      final months = ['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Agt', 'Sep', 'Okt', 'Nov', 'Des'];
+      final months = [
+        'Jan',
+        'Feb',
+        'Mar',
+        'Apr',
+        'Mei',
+        'Jun',
+        'Jul',
+        'Agt',
+        'Sep',
+        'Okt',
+        'Nov',
+        'Des',
+      ];
       return '${date.day.toString().padLeft(2, '0')} ${months[date.month - 1]}';
     } catch (_) {
       return dateStr;
@@ -409,36 +489,41 @@ class _DashboardScreenState extends State<DashboardScreen> {
       backgroundColor: const Color(0xFFF8FAFC),
       body: SafeArea(
         child: _isLoading
-            ? const Center(child: CircularProgressIndicator(color: Color(0xFF009688)))
+            ? const Center(
+                child: CircularProgressIndicator(color: Color(0xFF009688)),
+              )
             : _errorMessage.isNotEmpty
-                ? _buildErrorState()
-                : RefreshIndicator(
-                    onRefresh: _fetchAllData,
-                    color: const Color(0xFF009688),
-                    child: SingleChildScrollView(
-                      physics: const AlwaysScrollableScrollPhysics(),
-                      padding: const EdgeInsets.symmetric(horizontal: 20.0, vertical: 16.0),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.center,
-                        children: [
-                          _buildHeader(),
-                          const SizedBox(height: 24),
-                          _buildSkorKehadiranCard(),
-                          const SizedBox(height: 32),
-                          _buildDigitalClock(),
-                          const SizedBox(height: 24),
-                          _buildAbsenButton(),
-                          const SizedBox(height: 16),
-                          _buildRadiusBadge(),
-                          const SizedBox(height: 24),
-                          _buildStatusHariIniCard(),
-                          const SizedBox(height: 24),
-                          _buildLogKeterlambatanList(),
-                          const SizedBox(height: 32),
-                        ],
-                      ),
-                    ),
+            ? _buildErrorState()
+            : RefreshIndicator(
+                onRefresh: _fetchAllData,
+                color: const Color(0xFF009688),
+                child: SingleChildScrollView(
+                  physics: const AlwaysScrollableScrollPhysics(),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 20.0,
+                    vertical: 16.0,
                   ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.center,
+                    children: [
+                      _buildHeader(),
+                      const SizedBox(height: 24),
+                      _buildSkorKehadiranCard(),
+                      const SizedBox(height: 32),
+                      _buildDigitalClock(),
+                      const SizedBox(height: 24),
+                      _buildAbsenButton(),
+                      const SizedBox(height: 16),
+                      _buildRadiusBadge(),
+                      const SizedBox(height: 24),
+                      _buildStatusHariIniCard(),
+                      const SizedBox(height: 24),
+                      _buildLogKeterlambatanList(),
+                      const SizedBox(height: 32),
+                    ],
+                  ),
+                ),
+              ),
       ),
     );
   }
@@ -458,8 +543,13 @@ class _DashboardScreenState extends State<DashboardScreen> {
             const SizedBox(height: 16),
             ElevatedButton(
               onPressed: _fetchAllData,
-              style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF009688)),
-              child: const Text('Coba Lagi', style: TextStyle(color: Colors.white)),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFF009688),
+              ),
+              child: const Text(
+                'Coba Lagi',
+                style: TextStyle(color: Colors.white),
+              ),
             ),
           ],
         ),
@@ -468,14 +558,27 @@ class _DashboardScreenState extends State<DashboardScreen> {
   }
 
   Widget _buildHeader() {
-    final rawUser = _dashboardData?['user'] ?? _dashboardData?['data']?['user'] ?? _dashboardData;
-    final Map<String, dynamic> user = rawUser is Map ? Map<String, dynamic>.from(rawUser) : {};
+    final rawUser =
+        _dashboardData?['user'] ??
+        _dashboardData?['data']?['user'] ??
+        _dashboardData;
+    final Map<String, dynamic> user = rawUser is Map
+        ? Map<String, dynamic>.from(rawUser)
+        : {};
     final rawKaryawan = user['karyawan'] ?? _dashboardData?['karyawan'];
-    final Map<String, dynamic> karyawan = rawKaryawan is Map ? Map<String, dynamic>.from(rawKaryawan) : user;
-    final nama = (karyawan['nama_lengkap'] ?? user['nama'] ?? user['name'] ?? 'Pengguna').toString().split(' ').first;
-    
-    final rawFotoDashboard = karyawan['foto_url'] ?? karyawan['foto'] ?? user['foto'];
-    final fotoUrl = _userFotoUrl ?? ImageUrlService.resolve(rawFotoDashboard?.toString());
+    final Map<String, dynamic> karyawan = rawKaryawan is Map
+        ? Map<String, dynamic>.from(rawKaryawan)
+        : user;
+    final nama =
+        (karyawan['nama_lengkap'] ?? user['nama'] ?? user['name'] ?? 'Pengguna')
+            .toString()
+            .split(' ')
+            .first;
+
+    final rawFotoDashboard =
+        karyawan['foto_url'] ?? karyawan['foto'] ?? user['foto'];
+    final fotoUrl =
+        _userFotoUrl ?? ImageUrlService.resolve(rawFotoDashboard?.toString());
 
     return Row(
       children: [
@@ -483,7 +586,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
           radius: 22,
           backgroundColor: const Color(0xFFCCFBF1),
           backgroundImage: fotoUrl != null ? NetworkImage(fotoUrl) : null,
-          child: fotoUrl == null ? const Icon(Icons.person, color: Color(0xFF009688)) : null,
+          child: fotoUrl == null
+              ? const Icon(Icons.person, color: Color(0xFF009688))
+              : null,
         ),
         const SizedBox(width: 12),
         Expanded(
@@ -492,12 +597,16 @@ class _DashboardScreenState extends State<DashboardScreen> {
             children: [
               Row(
                 children: [
-                   Text(
+                  Text(
                     'Selamat pagi, $nama! ',
-                    style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: Color(0xFF0F172A)),
+                    style: const TextStyle(
+                      fontWeight: FontWeight.bold,
+                      fontSize: 16,
+                      color: Color(0xFF0F172A),
+                    ),
                   ),
                   const Text('👋', style: TextStyle(fontSize: 16)),
-                ]
+                ],
               ),
               const SizedBox(height: 2),
               const Text(
@@ -518,7 +627,11 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   shape: BoxShape.circle,
                   border: Border.all(color: Colors.grey.shade300),
                 ),
-                child: const Icon(Icons.notifications_none, size: 20, color: Color(0xFF64748B)),
+                child: const Icon(
+                  Icons.notifications_none,
+                  size: 20,
+                  color: Color(0xFF64748B),
+                ),
               ),
               if (_unreadNotificationCount > 0)
                 Positioned(
@@ -526,10 +639,19 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   top: 2,
                   child: Container(
                     padding: const EdgeInsets.all(4),
-                    decoration: const BoxDecoration(color: Colors.red, shape: BoxShape.circle),
+                    decoration: const BoxDecoration(
+                      color: Colors.red,
+                      shape: BoxShape.circle,
+                    ),
                     child: Text(
-                      _unreadNotificationCount > 9 ? '9+' : '$_unreadNotificationCount',
-                      style: const TextStyle(color: Colors.white, fontSize: 8, fontWeight: FontWeight.bold),
+                      _unreadNotificationCount > 9
+                          ? '9+'
+                          : '$_unreadNotificationCount',
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 8,
+                        fontWeight: FontWeight.bold,
+                      ),
                     ),
                   ),
                 ),
@@ -542,7 +664,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
   Widget _buildSkorKehadiranCard() {
     final attn = _dashboardData?['attendance_month'] ?? {};
-    final total = int.tryParse(attn['total_hari_kerja']?.toString() ?? '25') ?? 25;
+    final total =
+        int.tryParse(attn['total_hari_kerja']?.toString() ?? '25') ?? 25;
     final hadir = int.tryParse(attn['hadir']?.toString() ?? '18') ?? 18;
     final pct = total > 0 ? ((hadir / total) * 100).round() : 0;
 
@@ -552,11 +675,11 @@ class _DashboardScreenState extends State<DashboardScreen> {
         color: Colors.white,
         borderRadius: BorderRadius.circular(16),
         boxShadow: [
-           BoxShadow(
-             color: Colors.black.withOpacity(0.03),
-             blurRadius: 10,
-             offset: const Offset(0, 4),
-           )
+          BoxShadow(
+            color: Colors.black.withOpacity(0.03),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
+          ),
         ],
       ),
       child: Column(
@@ -567,17 +690,28 @@ class _DashboardScreenState extends State<DashboardScreen> {
             children: [
               const Text(
                 'Skor Kehadiran',
-                style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: Color(0xFF0F172A)),
+                style: TextStyle(
+                  fontWeight: FontWeight.bold,
+                  fontSize: 13,
+                  color: Color(0xFF0F172A),
+                ),
               ),
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 10,
+                  vertical: 4,
+                ),
                 decoration: BoxDecoration(
                   color: const Color(0xFFE0F2F1),
                   borderRadius: BorderRadius.circular(12),
                 ),
                 child: Text(
                   '$pct%',
-                  style: const TextStyle(color: Color(0xFF009688), fontWeight: FontWeight.bold, fontSize: 11),
+                  style: const TextStyle(
+                    color: Color(0xFF009688),
+                    fontWeight: FontWeight.bold,
+                    fontSize: 11,
+                  ),
                 ),
               ),
             ],
@@ -599,7 +733,11 @@ class _DashboardScreenState extends State<DashboardScreen> {
                     ),
                     Text(
                       '$pct%',
-                      style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: Color(0xFF0F172A)),
+                      style: const TextStyle(
+                        fontWeight: FontWeight.bold,
+                        fontSize: 16,
+                        color: Color(0xFF0F172A),
+                      ),
                     ),
                   ],
                 ),
@@ -615,7 +753,11 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   const SizedBox(height: 4),
                   Text(
                     '$hadir hari dari $total hari kerja',
-                    style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: Color(0xFF0F172A)),
+                    style: const TextStyle(
+                      fontWeight: FontWeight.bold,
+                      fontSize: 13,
+                      color: Color(0xFF0F172A),
+                    ),
                   ),
                 ],
               ),
@@ -631,12 +773,21 @@ class _DashboardScreenState extends State<DashboardScreen> {
       children: [
         Text(
           _currentTime,
-          style: const TextStyle(fontSize: 40, fontWeight: FontWeight.bold, color: Color(0xFF0F172A), letterSpacing: 1),
+          style: const TextStyle(
+            fontSize: 40,
+            fontWeight: FontWeight.bold,
+            color: Color(0xFF0F172A),
+            letterSpacing: 1,
+          ),
         ),
         const SizedBox(height: 4),
         const Text(
           'WIB • Hari ini',
-          style: TextStyle(fontSize: 12, color: Color(0xFF64748B), fontWeight: FontWeight.w500),
+          style: TextStyle(
+            fontSize: 12,
+            color: Color(0xFF64748B),
+            fontWeight: FontWeight.w500,
+          ),
         ),
       ],
     );
@@ -667,7 +818,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
     }
 
     return GestureDetector(
-      onTap: ((_isSudahAbsenMasuk && _isSudahAbsenKeluar) || !_isInRadius) ? null : _handleAbsenProcess,
+      onTap: ((_isSudahAbsenMasuk && _isSudahAbsenKeluar) || !_isInRadius)
+          ? null
+          : _handleAbsenProcess,
       child: Container(
         width: 180,
         height: 180,
@@ -686,17 +839,27 @@ class _DashboardScreenState extends State<DashboardScreen> {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-             Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Icon(_isSudahAbsenMasuk && !_isSudahAbsenKeluar ? Icons.logout_rounded : Icons.login_rounded, color: Colors.white, size: 22),
-                  const SizedBox(width: 8),
-                  Text(
-                    btnText,
-                    style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 16),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(
+                  _isSudahAbsenMasuk && !_isSudahAbsenKeluar
+                      ? Icons.logout_rounded
+                      : Icons.login_rounded,
+                  color: Colors.white,
+                  size: 22,
+                ),
+                const SizedBox(width: 8),
+                Text(
+                  btnText,
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontWeight: FontWeight.bold,
+                    fontSize: 16,
                   ),
-                ]
-            )
+                ),
+              ],
+            ),
           ],
         ),
       ),
@@ -722,11 +885,28 @@ class _DashboardScreenState extends State<DashboardScreen> {
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          const Text('SISA WAKTU LEMBUR', style: TextStyle(color: Colors.white70, fontSize: 10, fontWeight: FontWeight.bold)),
+          const Text(
+            'SISA WAKTU LEMBUR',
+            style: TextStyle(
+              color: Colors.white70,
+              fontSize: 10,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
           const SizedBox(height: 8),
-          Text(_lemburCountdown, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 28)),
+          Text(
+            _lemburCountdown,
+            style: const TextStyle(
+              color: Colors.white,
+              fontWeight: FontWeight.bold,
+              fontSize: 28,
+            ),
+          ),
           const SizedBox(height: 4),
-          const Text('Sedang Lembur', style: TextStyle(color: Colors.white, fontSize: 13)),
+          const Text(
+            'Sedang Lembur',
+            style: TextStyle(color: Colors.white, fontSize: 13),
+          ),
         ],
       ),
     );
@@ -742,7 +922,11 @@ class _DashboardScreenState extends State<DashboardScreen> {
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(Icons.location_on, size: 16, color: _isInRadius ? const Color(0xFF009688) : Colors.red),
+          Icon(
+            Icons.location_on,
+            size: 16,
+            color: _isInRadius ? const Color(0xFF009688) : Colors.red,
+          ),
           const SizedBox(width: 6),
           Text(
             _isInRadius ? 'Dalam radius kantor' : 'Di luar radius kantor',
@@ -759,13 +943,15 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
   Widget _buildStatusHariIniCard() {
     String statusText = 'Belum Absen Masuk';
-    String descText = 'Silakan tekan tombol Absen Masuk untuk memulai shift hari ini.';
+    String descText =
+        'Silakan tekan tombol Absen Masuk untuk memulai shift hari ini.';
     Color badgeBg = const Color(0xFFFFF3E0);
     Color badgeTxt = const Color(0xFFE65100);
 
     if (_isSudahAbsenMasuk && !_isSudahAbsenKeluar) {
       statusText = 'Sudah Absen Masuk';
-      descText = 'Jangan lupa tekan tombol Absen Keluar saat selesai jam kerja.';
+      descText =
+          'Jangan lupa tekan tombol Absen Keluar saat selesai jam kerja.';
       badgeBg = const Color(0xFFE8F5E9);
       badgeTxt = const Color(0xFF2E7D32);
     } else if (_isSudahAbsenMasuk && _isSudahAbsenKeluar) {
@@ -782,11 +968,11 @@ class _DashboardScreenState extends State<DashboardScreen> {
         color: Colors.white,
         borderRadius: BorderRadius.circular(16),
         boxShadow: [
-           BoxShadow(
-             color: Colors.black.withOpacity(0.03),
-             blurRadius: 10,
-             offset: const Offset(0, 4),
-           )
+          BoxShadow(
+            color: Colors.black.withOpacity(0.03),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
+          ),
         ],
       ),
       child: Column(
@@ -797,20 +983,41 @@ class _DashboardScreenState extends State<DashboardScreen> {
             children: [
               const Text(
                 'Status hari ini',
-                style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: Color(0xFF0F172A)),
+                style: TextStyle(
+                  fontWeight: FontWeight.bold,
+                  fontSize: 13,
+                  color: Color(0xFF0F172A),
+                ),
               ),
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 10,
+                  vertical: 4,
+                ),
                 decoration: BoxDecoration(
                   color: badgeBg,
                   borderRadius: BorderRadius.circular(12),
-                  border: Border.all(color: badgeBg.withOpacity(0.5))
+                  border: Border.all(color: badgeBg.withOpacity(0.5)),
                 ),
                 child: Row(
                   children: [
-                    Container(width: 6, height: 6, decoration: BoxDecoration(color: badgeTxt, shape: BoxShape.circle)),
+                    Container(
+                      width: 6,
+                      height: 6,
+                      decoration: BoxDecoration(
+                        color: badgeTxt,
+                        shape: BoxShape.circle,
+                      ),
+                    ),
                     const SizedBox(width: 6),
-                    Text(statusText, style: TextStyle(color: badgeTxt, fontWeight: FontWeight.bold, fontSize: 10)),
+                    Text(
+                      statusText,
+                      style: TextStyle(
+                        color: badgeTxt,
+                        fontWeight: FontWeight.bold,
+                        fontSize: 10,
+                      ),
+                    ),
                   ],
                 ),
               ),
@@ -836,12 +1043,19 @@ class _DashboardScreenState extends State<DashboardScreen> {
           padding: EdgeInsets.only(bottom: 12, left: 4),
           child: Text(
             'Log Keterlambatan & Pulang Awal',
-            style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: Color(0xFF0F172A)),
+            style: TextStyle(
+              fontWeight: FontWeight.bold,
+              fontSize: 13,
+              color: Color(0xFF0F172A),
+            ),
           ),
         ),
         ..._logKeterlambatan.map((log) {
-          final isTerlambat = (log['tipe'] ?? '').toString().toLowerCase() == 'terlambat';
-          final tgl = log['tanggal'] != null ? _formatDateString(log['tanggal'].toString()) : '-';
+          final isTerlambat =
+              (log['tipe'] ?? '').toString().toLowerCase() == 'terlambat';
+          final tgl = log['tanggal'] != null
+              ? _formatDateString(log['tanggal'].toString())
+              : '-';
           final title = isTerlambat ? 'Terlambat' : 'Pulang Awal';
           final menit = log['menit'] ?? '0';
           final valText = isTerlambat ? '+$menit\m' : '-$menit\m';
@@ -855,12 +1069,12 @@ class _DashboardScreenState extends State<DashboardScreen> {
             decoration: BoxDecoration(
               color: Colors.white,
               borderRadius: BorderRadius.circular(12),
-               boxShadow: [
-                 BoxShadow(
-                   color: Colors.black.withOpacity(0.02),
-                   blurRadius: 5,
-                   offset: const Offset(0, 2),
-                 )
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withOpacity(0.02),
+                  blurRadius: 5,
+                  offset: const Offset(0, 2),
+                ),
               ],
             ),
             child: Column(
@@ -872,38 +1086,76 @@ class _DashboardScreenState extends State<DashboardScreen> {
                       children: [
                         Text(
                           tgl,
-                          style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: Color(0xFF0F172A)),
+                          style: const TextStyle(
+                            fontWeight: FontWeight.bold,
+                            fontSize: 13,
+                            color: Color(0xFF0F172A),
+                          ),
                         ),
                         const SizedBox(width: 8),
                         Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 8,
+                            vertical: 3,
+                          ),
                           decoration: BoxDecoration(
                             color: colorBg,
                             borderRadius: BorderRadius.circular(8),
                           ),
                           child: Text(
                             title,
-                            style: TextStyle(color: colorTxt, fontSize: 10, fontWeight: FontWeight.bold),
+                            style: TextStyle(
+                              color: colorTxt,
+                              fontSize: 10,
+                              fontWeight: FontWeight.bold,
+                            ),
                           ),
-                        )
+                        ),
                       ],
                     ),
                     Text(
                       valText,
-                      style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: colorVal),
-                    )
+                      style: TextStyle(
+                        fontWeight: FontWeight.bold,
+                        fontSize: 13,
+                        color: colorVal,
+                      ),
+                    ),
                   ],
                 ),
                 const SizedBox(height: 12),
                 Row(
-                   children: [
-                     const Text('Persetujuan: ', style: TextStyle(fontSize: 11, color: Color(0xFF64748B))),
-                     const Text('Atasan: ', style: TextStyle(fontSize: 11, color: Color(0xFF64748B))),
-                     Text('${log['status_atasan'] ?? 'Pending'}  ', style: const TextStyle(fontSize: 11, color: Color(0xFF0F172A), fontWeight: FontWeight.w600)),
-                     const Text('HRD: ', style: TextStyle(fontSize: 11, color: Color(0xFF64748B))),
-                     Text('${log['status_hrd'] ?? 'Pending'}', style: const TextStyle(fontSize: 11, color: Color(0xFF0F172A), fontWeight: FontWeight.w600)),
-                   ]
-                )
+                  children: [
+                    const Text(
+                      'Persetujuan: ',
+                      style: TextStyle(fontSize: 11, color: Color(0xFF64748B)),
+                    ),
+                    const Text(
+                      'Atasan: ',
+                      style: TextStyle(fontSize: 11, color: Color(0xFF64748B)),
+                    ),
+                    Text(
+                      '${log['status_atasan'] ?? 'Pending'}  ',
+                      style: const TextStyle(
+                        fontSize: 11,
+                        color: Color(0xFF0F172A),
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                    const Text(
+                      'HRD: ',
+                      style: TextStyle(fontSize: 11, color: Color(0xFF64748B)),
+                    ),
+                    Text(
+                      '${log['status_hrd'] ?? 'Pending'}',
+                      style: const TextStyle(
+                        fontSize: 11,
+                        color: Color(0xFF0F172A),
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ],
+                ),
               ],
             ),
           );

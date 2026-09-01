@@ -41,8 +41,10 @@ class _RiwayatPresensiScreenState extends State<RiwayatPresensiScreen> {
     'Desember',
   ];
 
-  String _formatMonth(DateTime date) =>
-      '${_monthNames[date.month - 1]} ${date.year}';
+  String _formatMonth(DateTime date) {
+    final localDate = date.toLocal();
+    return '${_monthNames[localDate.month - 1]} ${localDate.year}';
+  }
 
   List<DateTime> get _periodOptions =>
       List.generate(12, (index) => DateTime(_now.year, _now.month - index));
@@ -131,7 +133,7 @@ class _RiwayatPresensiScreenState extends State<RiwayatPresensiScreen> {
                 ? _formatMonth(_selectedPeriod)
                 : _formatMonth(absensiObj.tanggal!),
             'date': absensiObj.tanggal != null
-                ? '${absensiObj.tanggal!.day.toString().padLeft(2, '0')}-${absensiObj.tanggal!.month.toString().padLeft(2, '0')}-${absensiObj.tanggal!.year}'
+                ? '${absensiObj.tanggal!.toLocal().day.toString().padLeft(2, '0')}-${absensiObj.tanggal!.toLocal().month.toString().padLeft(2, '0')}-${absensiObj.tanggal!.toLocal().year}'
                 : (item['tanggal'] ?? '-'),
             'statusText': statusTxt,
             'statusCategory': statusCat,

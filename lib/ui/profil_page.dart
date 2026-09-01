@@ -9,6 +9,7 @@ import 'ubah_password_page.dart';
 import 'riwayat_kontrak_page.dart';
 import 'bantuan_faq_page.dart';
 import 'tentang_aplikasi_page.dart';
+import 'riwayat_presensi_page.dart';
 
 class ProfilPage extends StatefulWidget {
   const ProfilPage({super.key});
@@ -103,6 +104,29 @@ class _ProfilPageState extends State<ProfilPage> {
 
   // Aksi Logout
   Future<void> _logout() async {
+    final bool? confirm = await showDialog<bool>(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: const Text('Konfirmasi Logout'),
+          content: const Text('Apakah Anda yakin ingin keluar dari akun ini?'),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(false),
+              child: const Text('Batal', style: TextStyle(color: Colors.grey)),
+            ),
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(true),
+              child: const Text('Keluar', style: TextStyle(color: Colors.red)),
+            ),
+          ],
+        );
+      },
+    );
+
+    if (confirm != true) return;
+
     await ApiService().deleteToken();
 
     if (mounted) {
@@ -236,6 +260,19 @@ class _ProfilPageState extends State<ProfilPage> {
                         ),
                         _buildDivider(),
                         _buildMenuItem(
+                          icon: Icons.format_list_bulleted_rounded,
+                          title: 'Riwayat Presensi',
+                          onTap: () {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (context) => const RiwayatPresensiScreen(),
+                              ),
+                            );
+                          },
+                        ),
+                        _buildDivider(),
+                        _buildMenuItem(
                           icon: Icons.help_outline_rounded,
                           title: 'Bantuan & FAQ',
                           onTap: () {
@@ -297,7 +334,7 @@ class _ProfilPageState extends State<ProfilPage> {
         (rawDivisi is Map ? rawDivisi['nama_divisi'] : rawDivisi ?? 'Umum')
             .toString();
             
-    final nip = (karyawan['nip'] ?? '19940301').toString();
+    final nip = (karyawan['nip'] ?? '-').toString();
 
     // Cek semua kemungkinan key nama foto dari API Laravel
     final rawFoto =
@@ -387,12 +424,14 @@ class _ProfilPageState extends State<ProfilPage> {
                   borderRadius: BorderRadius.circular(20),
                 ),
                 child: Row(
-                  children: const [
-                    Icon(Icons.business_rounded, size: 12, color: Color(0xFF64748B)),
-                    SizedBox(width: 4),
+                  children: [
+                    const Icon(Icons.business_rounded, size: 12, color: Color(0xFF64748B)),
+                    const SizedBox(width: 4),
                     Text(
-                      'Kantor Pusat',
-                      style: TextStyle(
+                      karyawan['kantor'] != null && karyawan['kantor'] is Map 
+                          ? (karyawan['kantor']['nama_kantor']?.toString() ?? 'Kantor Pusat')
+                          : 'Kantor Pusat',
+                      style: const TextStyle(
                         fontSize: 10,
                         fontWeight: FontWeight.w600,
                         color: Color(0xFF64748B),

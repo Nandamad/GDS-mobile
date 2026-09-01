@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 class BantuanFaqScreen extends StatelessWidget {
   const BantuanFaqScreen({super.key});
@@ -60,15 +61,15 @@ class BantuanFaqScreen extends StatelessWidget {
             ),
             const SizedBox(height: 12),
             
-            _buildFaqItem('Bagaimana cara absen masuk?'),
+            _buildFaqItem('Bagaimana cara absen masuk?', 'Anda dapat menekan tombol "Absen Masuk" di halaman utama (Dashboard) ketika Anda sudah berada di dalam radius lokasi kantor yang ditentukan.'),
             const SizedBox(height: 12),
-            _buildFaqItem('Bagaimana cara mengajukan cuti?'),
+            _buildFaqItem('Bagaimana cara mengajukan cuti?', 'Buka menu Pengajuan, pilih opsi "Cuti", isi formulir pengajuan cuti beserta alasan, lalu tekan tombol "Ajukan".'),
             const SizedBox(height: 12),
-            _buildFaqItem('Apa yang harus dilakukan jika lupa absen?'),
+            _buildFaqItem('Apa yang harus dilakukan jika lupa absen?', 'Anda dapat mengajukan koreksi presensi melalui menu Pengajuan -> "Koreksi Presensi", dan memberikan alasan lupa absen untuk disetujui atasan.'),
             const SizedBox(height: 12),
-            _buildFaqItem('Bagaimana cara melihat sisa cuti?'),
+            _buildFaqItem('Bagaimana cara melihat sisa cuti?', 'Informasi sisa cuti dapat Anda lihat di bagian profil Anda, atau di halaman Ringkasan Kehadiran.'),
             const SizedBox(height: 12),
-            _buildFaqItem('Bagaimana cara mengajukan lembur?'),
+            _buildFaqItem('Bagaimana cara mengajukan lembur?', 'Buka menu Pengajuan, lalu pilih opsi "Lembur". Isi durasi dan alasan lembur untuk dikonfirmasi oleh atasan Anda.'),
             const SizedBox(height: 32),
             
             // Bantuan Lain Box
@@ -105,7 +106,7 @@ class BantuanFaqScreen extends StatelessWidget {
                       const Icon(Icons.email_outlined, size: 16, color: Color(0xFF009688)),
                       const SizedBox(width: 8),
                       const Text(
-                        'hrd@example.com',
+                        'hrd@gds.com',
                         style: TextStyle(
                           fontSize: 12,
                           fontWeight: FontWeight.w600,
@@ -134,7 +135,7 @@ class BantuanFaqScreen extends StatelessWidget {
                     width: double.infinity,
                     height: 40,
                     child: ElevatedButton(
-                      onPressed: () {},
+                      onPressed: () => _launchEmail(),
                       style: ElevatedButton.styleFrom(
                         backgroundColor: const Color(0xFF009688),
                         elevation: 0,
@@ -162,34 +163,42 @@ class BantuanFaqScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildFaqItem(String title) {
+  Widget _buildFaqItem(String title, String answer) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(12),
         border: Border.all(color: Colors.grey.shade200),
       ),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      child: ExpansionTile(
+        title: Text(
+          title,
+          style: const TextStyle(
+            fontSize: 13,
+            fontWeight: FontWeight.w600,
+            color: Color(0xFF0F172A),
+          ),
+        ),
+        iconColor: const Color(0xFF94A3B8),
+        collapsedIconColor: const Color(0xFF94A3B8),
+        shape: const Border(),
         children: [
-          Expanded(
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
             child: Text(
-              title,
-              style: const TextStyle(
-                fontSize: 13,
-                fontWeight: FontWeight.w600,
-                color: Color(0xFF0F172A),
-              ),
+              answer,
+              style: const TextStyle(fontSize: 12, color: Color(0xFF64748B), height: 1.5),
             ),
-          ),
-          const Icon(
-            Icons.chevron_right_rounded,
-            color: Color(0xFF94A3B8),
-            size: 20,
-          ),
+          )
         ],
       ),
     );
+  }
+
+  Future<void> _launchEmail() async {
+    final Uri url = Uri.parse('mailto:hrd@gds.com');
+    if (!await launchUrl(url)) {
+      debugPrint('Could not launch $url');
+    }
   }
 }

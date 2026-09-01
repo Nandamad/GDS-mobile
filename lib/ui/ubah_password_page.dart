@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:dio/dio.dart';
 import '../services/api_service.dart';
+import 'lupa_password_page.dart';
 
 class UbahPasswordScreen extends StatefulWidget {
   const UbahPasswordScreen({super.key});
@@ -57,10 +58,7 @@ class _UbahPasswordScreenState extends State<UbahPasswordScreen> {
     try {
       await ApiService().dio.post(
         '/change-password',
-        data: {
-          'old_password': oldPassword,
-          'new_password': newPassword,
-        },
+        data: {'old_password': oldPassword, 'new_password': newPassword},
       );
       if (mounted) {
         setState(() => _isSubmitting = false);
@@ -79,9 +77,9 @@ class _UbahPasswordScreenState extends State<UbahPasswordScreen> {
       final message = data is Map
           ? data['message']?.toString() ?? 'Gagal mengubah password.'
           : 'Gagal mengubah password.';
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(message)),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(message)));
     }
   }
 
@@ -93,7 +91,11 @@ class _UbahPasswordScreenState extends State<UbahPasswordScreen> {
         backgroundColor: Colors.white,
         elevation: 0,
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back_ios_new_rounded, color: Color(0xFF0F172A), size: 18),
+          icon: const Icon(
+            Icons.arrow_back_ios_new_rounded,
+            color: Color(0xFF0F172A),
+            size: 18,
+          ),
           onPressed: () => Navigator.pop(context),
         ),
         title: const Text(
@@ -117,7 +119,11 @@ class _UbahPasswordScreenState extends State<UbahPasswordScreen> {
                 color: Color(0xFFE0F2F1),
                 shape: BoxShape.circle,
               ),
-              child: const Icon(Icons.lock_outline_rounded, color: Color(0xFF009688), size: 32),
+              child: const Icon(
+                Icons.lock_outline_rounded,
+                color: Color(0xFF009688),
+                size: 32,
+              ),
             ),
             const SizedBox(height: 16),
             const Text(
@@ -130,7 +136,7 @@ class _UbahPasswordScreenState extends State<UbahPasswordScreen> {
               ),
             ),
             const SizedBox(height: 32),
-            
+
             // Password Fields
             _buildPasswordField(
               label: 'Password Lama',
@@ -164,13 +170,20 @@ class _UbahPasswordScreenState extends State<UbahPasswordScreen> {
                 });
               },
             ),
-            
+
             // Lupa Password
             const SizedBox(height: 12),
             Align(
               alignment: Alignment.centerRight,
               child: GestureDetector(
-                onTap: () {},
+                onTap: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => const LupaPasswordScreen(),
+                    ),
+                  );
+                },
                 child: const Text(
                   'Lupa Password?',
                   style: TextStyle(
@@ -183,7 +196,7 @@ class _UbahPasswordScreenState extends State<UbahPasswordScreen> {
               ),
             ),
             const SizedBox(height: 24),
-            
+
             // Ketentuan Kata Sandi Box
             Container(
               width: double.infinity,
@@ -191,7 +204,9 @@ class _UbahPasswordScreenState extends State<UbahPasswordScreen> {
               decoration: BoxDecoration(
                 color: const Color(0xFFF1FDF8), // Very light mint
                 borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: const Color(0xFF009688).withValues(alpha: 0.1)),
+                border: Border.all(
+                  color: const Color(0xFF009688).withValues(alpha: 0.1),
+                ),
               ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -207,14 +222,16 @@ class _UbahPasswordScreenState extends State<UbahPasswordScreen> {
                   const SizedBox(height: 8),
                   _buildKetentuanBullet('Minimal 8 karakter'),
                   const SizedBox(height: 4),
-                  _buildKetentuanBullet('Menggunakan huruf besar & kecil (A-Z, a-z)'),
+                  _buildKetentuanBullet(
+                    'Menggunakan huruf besar & kecil (A-Z, a-z)',
+                  ),
                   const SizedBox(height: 4),
                   _buildKetentuanBullet('Mengandung angka atau simbol khusus'),
                 ],
               ),
             ),
             const SizedBox(height: 32),
-            
+
             // Simpan Button
             SizedBox(
               width: double.infinity,
@@ -232,7 +249,10 @@ class _UbahPasswordScreenState extends State<UbahPasswordScreen> {
                     ? const SizedBox(
                         height: 20,
                         width: 20,
-                        child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
+                        child: CircularProgressIndicator(
+                          color: Colors.white,
+                          strokeWidth: 2,
+                        ),
                       )
                     : const Text(
                         'Simpan Password',
@@ -278,14 +298,19 @@ class _UbahPasswordScreenState extends State<UbahPasswordScreen> {
             color: Color(0xFF0F172A),
           ),
           decoration: InputDecoration(
-            contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+            contentPadding: const EdgeInsets.symmetric(
+              horizontal: 16,
+              vertical: 14,
+            ),
             fillColor: const Color(0xFFF8FAFC),
             filled: true,
             hintText: '••••••••••••',
             hintStyle: const TextStyle(color: Color(0xFF94A3B8)),
             suffixIcon: IconButton(
               icon: Icon(
-                isObscured ? Icons.visibility_off_outlined : Icons.visibility_outlined,
+                isObscured
+                    ? Icons.visibility_off_outlined
+                    : Icons.visibility_outlined,
                 color: const Color(0xFF64748B),
                 size: 20,
               ),
@@ -301,7 +326,10 @@ class _UbahPasswordScreenState extends State<UbahPasswordScreen> {
             ),
             focusedBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(12),
-              borderSide: const BorderSide(color: Color(0xFF009688), width: 1.5),
+              borderSide: const BorderSide(
+                color: Color(0xFF009688),
+                width: 1.5,
+              ),
             ),
           ),
         ),

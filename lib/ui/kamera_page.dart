@@ -53,7 +53,7 @@ class _KameraScreenState extends State<KameraScreen> {
 
     if (mounted) {
       setState(() {
-        _currentTime = '$hour:$minute:$second WIB';
+        _currentTime = '$hour:$minute:$second ${now.timeZoneName}';
       });
     }
   }
@@ -173,8 +173,6 @@ class _KameraScreenState extends State<KameraScreen> {
       );
 
       // Kembalikan foto ke halaman sebelumnya
-      await Future.delayed(const Duration(seconds: 1));
-
       if (mounted) {
         Navigator.pop(context, imageDataUrl);
       }

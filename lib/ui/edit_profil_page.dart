@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../services/image_url_service.dart';
+import '../services/api_service.dart';
 
 class EditProfilScreen extends StatefulWidget {
   final Map<String, dynamic> userProfile;
@@ -33,7 +34,7 @@ class _EditProfilScreenState extends State<EditProfilScreen> {
         .toString();
     final email = (widget.userProfile['email'] ?? karyawan['email'] ?? '').toString();
     final noHp = (karyawan['no_hp'] ?? '').toString();
-    final alamat = (karyawan['alamat'] ?? 'JL. Sudirman No. 123 Jakarta Selatan').toString(); // Dummy fallback for empty
+    final alamat = (karyawan['alamat'] ?? '').toString(); 
 
     _namaController = TextEditingController(text: nama);
     _emailController = TextEditingController(text: email);
@@ -50,26 +51,57 @@ class _EditProfilScreenState extends State<EditProfilScreen> {
     super.dispose();
   }
 
-  void _simpanPerubahan() {
-    // Simulasi pengiriman data
+  Future<void> _simpanPerubahan() async {
     setState(() {
       _isSubmitting = true;
     });
 
-    Future.delayed(const Duration(seconds: 1), () {
+    try {
+      final response = await ApiService().dio.post(
+        '/profile/update',
+        data: {
+          'nama_lengkap': _namaController.text,
+          'email': _emailController.text,
+          'no_hp': _noHpController.text,
+          'alamat': _alamatController.text,
+        },
+      );
+
+      if (mounted) {
+        setState(() {
+          _isSubmitting = false;
+        });
+        
+        if (response.statusCode == 200) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Profil berhasil diperbarui'),
+              backgroundColor: Color(0xFF009688),
+            ),
+          );
+          Navigator.pop(context, true); // kembalikan true agar halaman sblmnya tau ada update
+        } else {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Gagal memperbarui profil'),
+              backgroundColor: Colors.red,
+            ),
+          );
+        }
+      }
+    } catch (e) {
       if (mounted) {
         setState(() {
           _isSubmitting = false;
         });
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
-            content: Text('Profil berhasil diperbarui (Simulasi)'),
-            backgroundColor: Color(0xFF009688),
+            content: Text('Terjadi kesalahan koneksi'),
+            backgroundColor: Colors.red,
           ),
         );
-        Navigator.pop(context);
       }
-    });
+    }
   }
 
   @override
