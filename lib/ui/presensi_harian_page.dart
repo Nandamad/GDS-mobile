@@ -111,7 +111,7 @@ class _PresensiHarianScreenState extends State<PresensiHarianScreen> {
     
     // Fetch current location to update LocationCubit state
     if (mounted) {
-      context.read<LocationCubit>().getCurrentLocation();
+      await context.read<LocationCubit>().getCurrentLocation();
     }
     
     await Future.wait([_fetchDashboardAndToday(), _fetchRecentHistory()]);
@@ -121,8 +121,12 @@ class _PresensiHarianScreenState extends State<PresensiHarianScreen> {
     try {
       final dio = ApiService().dio;
 
-      // Fetch Today (Location config & status)
-      final todayRes = await dio.get('/absensi/today');
+      final currentLoc = context.read<LocationCubit>().state.currentLocation;
+      String queryParams = '';
+      if (currentLoc != null) {
+        queryParams = '?lat=${currentLoc.latitude}&lng=${currentLoc.longitude}';
+      }
+      final todayRes = await dio.get('/absensi/today$queryParams');
       if (todayRes.statusCode == 200) {
         final resData = todayRes.data;
         final data = resData['data'];
