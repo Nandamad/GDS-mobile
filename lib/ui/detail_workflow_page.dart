@@ -238,38 +238,40 @@ class DetailWorkflowScreen extends StatelessWidget {
         children: [
           Row(
             children: [
-              Expanded(
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                decoration: BoxDecoration(
+                  color: isCuti ? const Color(0xFFE0F2FE) : const Color(0xFFFEF3C7),
+                  borderRadius: BorderRadius.circular(20),
+                ),
                 child: Text(
-                  jenis.toUpperCase(),
-                  style: const TextStyle(
+                  jenis,
+                  style: TextStyle(
+                    color: isCuti ? const Color(0xFF0284C7) : const Color(0xFFD97706),
                     fontWeight: FontWeight.bold,
-                    fontSize: 13,
-                    color: Color(0xFF0F172A),
+                    fontSize: 10,
                   ),
                 ),
               ),
+              const Spacer(),
               _statusBadge(status),
             ],
           ),
 
           const SizedBox(height: 12),
 
-          _summaryRow('Jenis', jenis),
-
-          const SizedBox(height: 5),
-
           _summaryRow(isCuti ? 'Periode' : 'Tanggal', periode),
 
-          const SizedBox(height: 5),
+          const SizedBox(height: 8),
 
           _summaryRow('Diajukan', _formatDate(data['created_at'])),
 
-          const SizedBox(height: 5),
-
-          _summaryRow('Alasan', alasan),
+          const SizedBox(height: 8),
+          
+          _summaryRow('Jenis Cuti', jenis),
 
           if (!isCuti) ...[
-            const SizedBox(height: 5),
+            const SizedBox(height: 8),
             _summaryRow('Durasi', _durasiLembur()),
           ],
 
@@ -357,14 +359,14 @@ class DetailWorkflowScreen extends StatelessWidget {
     }
 
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
       decoration: BoxDecoration(
         color: bg,
-        borderRadius: BorderRadius.circular(5),
+        borderRadius: BorderRadius.circular(4),
       ),
       child: Text(
         status,
-        style: TextStyle(color: text, fontWeight: FontWeight.bold, fontSize: 8),
+        style: TextStyle(color: text, fontWeight: FontWeight.bold, fontSize: 10),
       ),
     );
   }
@@ -674,8 +676,6 @@ class DetailWorkflowScreen extends StatelessWidget {
                   shape: BoxShape.circle,
                   color: done
                       ? const Color(0xFF009688)
-                      : current
-                      ? Colors.orange
                       : Colors.white,
                   border: Border.all(
                     color: done
@@ -689,12 +689,14 @@ class DetailWorkflowScreen extends StatelessWidget {
                 child: done
                     ? const Icon(Icons.check, size: 12, color: Colors.white)
                     : current
-                    ? Container(
-                        width: 6,
-                        height: 6,
-                        decoration: const BoxDecoration(
-                          shape: BoxShape.circle,
-                          color: Colors.white,
+                    ? Center(
+                        child: Container(
+                          width: 8,
+                          height: 8,
+                          decoration: const BoxDecoration(
+                            shape: BoxShape.circle,
+                            color: Colors.orange,
+                          ),
                         ),
                       )
                     : null,
@@ -757,9 +759,9 @@ class DetailWorkflowScreen extends StatelessWidget {
                 Text(
                   subtitle,
                   style: const TextStyle(
-                    fontSize: 9,
-                    color: Colors.grey,
-                    height: 1.3,
+                    fontSize: 10,
+                    color: Color(0xFF475569),
+                    height: 1.4,
                   ),
                 ),
 
@@ -768,9 +770,9 @@ class DetailWorkflowScreen extends StatelessWidget {
                   Text(
                     note,
                     style: const TextStyle(
-                      fontSize: 9,
-                      fontStyle: FontStyle.italic,
-                      color: Color(0xFF334155),
+                      fontSize: 10,
+                      color: Color(0xFF1E293B),
+                      height: 1.4,
                     ),
                   ),
                 ],

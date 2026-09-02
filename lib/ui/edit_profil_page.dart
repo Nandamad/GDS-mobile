@@ -276,6 +276,7 @@ class _EditProfilScreenState extends State<EditProfilScreen> {
               controller: _emailController,
               icon: Icons.email_outlined,
               keyboardType: TextInputType.emailAddress,
+              readOnly: true,
             ),
             const SizedBox(height: 16),
             _buildEditField(
@@ -335,6 +336,7 @@ class _EditProfilScreenState extends State<EditProfilScreen> {
     required IconData icon,
     TextInputType keyboardType = TextInputType.text,
     int maxLines = 1,
+    bool readOnly = false,
   }) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -352,15 +354,16 @@ class _EditProfilScreenState extends State<EditProfilScreen> {
           controller: controller,
           keyboardType: keyboardType,
           maxLines: maxLines,
-          style: const TextStyle(
+          readOnly: readOnly,
+          style: TextStyle(
             fontSize: 13,
             fontWeight: FontWeight.w600,
-            color: Color(0xFF0F172A),
+            color: readOnly ? Colors.grey.shade600 : const Color(0xFF0F172A),
           ),
           decoration: InputDecoration(
             prefixIcon: Icon(icon, color: const Color(0xFF64748B), size: 18),
             contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
-            fillColor: Colors.white,
+            fillColor: readOnly ? const Color(0xFFF1F5F9) : Colors.white,
             filled: true,
             border: OutlineInputBorder(
               borderRadius: BorderRadius.circular(12),
@@ -372,7 +375,10 @@ class _EditProfilScreenState extends State<EditProfilScreen> {
             ),
             focusedBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(12),
-              borderSide: const BorderSide(color: Color(0xFF009688), width: 1.5),
+              borderSide: BorderSide(
+                color: readOnly ? Colors.grey.shade300 : const Color(0xFF009688), 
+                width: 1.5,
+              ),
             ),
           ),
         ),

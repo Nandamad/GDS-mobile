@@ -25,8 +25,6 @@ class _AjukanCutiScreenState extends State<AjukanCutiScreen> {
   bool _isSubmitting = false;
   int _sisaCuti = 8; // Default value, bisa diambil dari API
 
-  final TextEditingController _alasanController = TextEditingController();
-
   int get _durasiHari {
     int days = 0;
     DateTime current = _tanggalMulai;
@@ -66,12 +64,6 @@ class _AjukanCutiScreenState extends State<AjukanCutiScreen> {
   }
 
   Future<void> _submitCuti() async {
-    if (_alasanController.text.trim().isEmpty) {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(const SnackBar(content: Text('Alasan wajib diisi!')));
-      return;
-    }
 
     if (_tipePengajuan.toLowerCase() == 'cuti' && _durasiHari > _sisaCuti) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -102,7 +94,7 @@ class _AjukanCutiScreenState extends State<AjukanCutiScreen> {
         'jenis': jenisIzinVal,
         'tanggal_mulai': startFormatted,
         'tanggal_selesai': endFormatted,
-        'alasan': _alasanController.text.trim(),
+        'alasan': 'Pengajuan $_tipePengajuan',
       });
 
       if (_selectedFile != null) {
@@ -325,33 +317,6 @@ class _AjukanCutiScreenState extends State<AjukanCutiScreen> {
             ),
             const SizedBox(height: 16),
 
-            // TIPE PENGAJUAN
-            const Text(
-              'Tipe',
-              style: TextStyle(
-                fontSize: 11,
-                color: Color(0xFF64748B),
-                fontWeight: FontWeight.w600,
-              ),
-            ),
-            const SizedBox(height: 6),
-            Container(
-              padding: const EdgeInsets.all(4),
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: Colors.grey.shade200),
-              ),
-              child: Row(
-                children: [
-                  _buildSegmentedTab('Cuti'),
-                  _buildSegmentedTab('Izin'),
-                  _buildSegmentedTab('Sakit'),
-                ],
-              ),
-            ),
-            const SizedBox(height: 14),
-
             // TANGGAL MULAI
             const Text(
               'Tanggal Mulai',
@@ -425,9 +390,9 @@ class _AjukanCutiScreenState extends State<AjukanCutiScreen> {
             ),
             const SizedBox(height: 14),
 
-            // ALASAN
+            // JENIS CUTI (DROPDOWN)
             const Text(
-              'Alasan',
+              'Jenis cuti',
               style: TextStyle(
                 fontSize: 11,
                 color: Color(0xFF64748B),
@@ -435,23 +400,36 @@ class _AjukanCutiScreenState extends State<AjukanCutiScreen> {
               ),
             ),
             const SizedBox(height: 6),
-            TextField(
-              controller: _alasanController,
-              maxLines: 4,
-              style: const TextStyle(fontSize: 11, color: Color(0xFF0F172A)),
-              decoration: InputDecoration(
-                hintText: 'Tuliskan alasan cuti Anda...',
-                hintStyle: const TextStyle(fontSize: 11, color: Colors.grey),
-                fillColor: Colors.white,
-                filled: true,
-                contentPadding: const EdgeInsets.all(12),
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
-                  borderSide: BorderSide(color: Colors.grey.shade200),
-                ),
-                enabledBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
-                  borderSide: BorderSide(color: Colors.grey.shade200),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 12),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: Colors.grey.shade200),
+              ),
+              child: DropdownButtonHideUnderline(
+                child: DropdownButton<String>(
+                  isExpanded: true,
+                  value: _tipePengajuan,
+                  icon: const Icon(Icons.keyboard_arrow_down, size: 18, color: Colors.grey),
+                  style: const TextStyle(
+                    fontSize: 11,
+                    color: Color(0xFF0F172A),
+                  ),
+                  onChanged: (String? newValue) {
+                    if (newValue != null) {
+                      setState(() {
+                        _tipePengajuan = newValue;
+                      });
+                    }
+                  },
+                  items: <String>['Cuti', 'Izin', 'Sakit']
+                      .map<DropdownMenuItem<String>>((String value) {
+                    return DropdownMenuItem<String>(
+                      value: value,
+                      child: Text(value),
+                    );
+                  }).toList(),
                 ),
               ),
             ),
@@ -540,38 +518,6 @@ class _AjukanCutiScreenState extends State<AjukanCutiScreen> {
     );
   }
 
-  // WIDGET SEGMENTED TAB
-  Widget _buildSegmentedTab(String type) {
-    final isSelected = _tipePengajuan == type;
-    return Expanded(
-      child: GestureDetector(
-        onTap: () {
-          setState(() {
-            _tipePengajuan = type;
-          });
-        },
-        child: Container(
-          padding: const EdgeInsets.symmetric(vertical: 8),
-          decoration: BoxDecoration(
-            color: isSelected ? const Color(0xFFCCFBF1) : Colors.transparent,
-            borderRadius: BorderRadius.circular(8),
-          ),
-          child: Text(
-            type,
-            textAlign: TextAlign.center,
-            style: TextStyle(
-              fontSize: 11,
-              fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
-              color: isSelected
-                  ? const Color(0xFF0F766E)
-                  : const Color(0xFF64748B),
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-
   // WIDGET DATE PICKER FIELD
   Widget _buildDatePickerField(String dateText, VoidCallback onTap) {
     return InkWell(
@@ -614,7 +560,6 @@ class _AjukanCutiScreenState extends State<AjukanCutiScreen> {
 
   @override
   void dispose() {
-    _alasanController.dispose();
     super.dispose();
   }
 }

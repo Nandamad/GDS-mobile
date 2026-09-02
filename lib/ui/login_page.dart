@@ -210,135 +210,110 @@ class _LoginScreenState extends State<LoginScreen> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      const SizedBox(height: 40),
+                      const SizedBox(height: 60),
                       Center(
                         child: Column(
                           children: [
                             Container(
-                              width: 54,
-                              height: 54,
-                              decoration: BoxDecoration(
-                                color: const Color(0xFFCCFBF1),
-                                borderRadius: BorderRadius.circular(16),
+                              width: 64,
+                              height: 64,
+                              decoration: const BoxDecoration(
+                                color: Color(0xFF009688),
+                                shape: BoxShape.circle,
                               ),
                               child: const Icon(
                                 Icons.access_time_filled_rounded,
-                                size: 30,
-                                color: Color(0xFF009688),
+                                size: 32,
+                                color: Colors.white,
                               ),
                             ),
-                            const SizedBox(height: 12),
+                            const SizedBox(height: 24),
                             const Text(
-                              'PresensiPlus+',
+                              'Selamat Datang',
                               style: TextStyle(
-                                fontSize: 20,
+                                fontSize: 24,
                                 fontWeight: FontWeight.bold,
                                 color: Color(0xFF0F172A),
                               ),
                             ),
-                            const SizedBox(height: 2),
+                            const SizedBox(height: 8),
                             const Text(
-                              'Sistem Presensi Karyawan',
+                              'Masuk ke akun PresensiKu Anda',
                               style: TextStyle(
-                                fontSize: 11,
+                                fontSize: 13,
                                 color: Colors.grey,
                               ),
                             ),
                           ],
                         ),
                       ),
-                      const SizedBox(height: 40),
+                      const SizedBox(height: 48),
 
                       const Text(
-                        'Masuk',
+                        'NIP / Email',
                         style: TextStyle(
-                          fontSize: 18,
+                          fontSize: 12,
                           fontWeight: FontWeight.bold,
                           color: Color(0xFF0F172A),
                         ),
                       ),
-                      const SizedBox(height: 4),
-                      const Text(
-                        'Masukkan kredensial Anda untuk melanjutkan',
-                        style: TextStyle(fontSize: 11, color: Colors.grey),
-                      ),
-                      const SizedBox(height: 24),
-
-                      const Text(
-                        'Email atau NIP',
-                        style: TextStyle(
-                          fontSize: 11,
-                          fontWeight: FontWeight.w600,
-                          color: Color(0xFF0F172A),
-                        ),
-                      ),
-                      const SizedBox(height: 6),
+                      const SizedBox(height: 8),
                       TextField(
                         controller: _nipController,
                         style: const TextStyle(
-                          fontSize: 12,
+                          fontSize: 13,
                           color: Color(0xFF0F172A),
                         ),
                         decoration: InputDecoration(
-                          hintText: 'Contoh: 199403101...',
+                          hintText: 'Masukkan NIP Anda',
                           hintStyle: TextStyle(
-                            fontSize: 12,
+                            fontSize: 13,
                             color: Colors.grey.shade400,
                           ),
                           prefixIcon: Icon(
                             Icons.person_outline_rounded,
-                            size: 18,
+                            size: 20,
                             color: Colors.grey.shade400,
                           ),
                           filled: true,
                           fillColor: const Color(0xFFF8FAFC),
                           contentPadding: const EdgeInsets.symmetric(
-                            vertical: 12,
-                            horizontal: 12,
+                            vertical: 14,
+                            horizontal: 16,
                           ),
                           border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(20),
-                            borderSide: BorderSide(color: Colors.grey.shade200),
-                          ),
-                          enabledBorder: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(20),
-                            borderSide: BorderSide(color: Colors.grey.shade200),
-                          ),
-                          focusedBorder: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(20),
-                            borderSide: const BorderSide(
-                              color: Color(0xFF009688),
-                            ),
+                            borderRadius: BorderRadius.circular(12),
+                            borderSide: BorderSide.none,
                           ),
                         ),
                       ),
-                      const SizedBox(height: 16),
+                      const SizedBox(height: 20),
 
                       const Text(
                         'Password',
                         style: TextStyle(
-                          fontSize: 11,
-                          fontWeight: FontWeight.w600,
+                          fontSize: 12,
+                          fontWeight: FontWeight.bold,
                           color: Color(0xFF0F172A),
                         ),
                       ),
-                      const SizedBox(height: 6),
+                      const SizedBox(height: 8),
                       TextField(
                         controller: _passwordController,
                         obscureText: _obscurePassword,
                         style: const TextStyle(
-                          fontSize: 12,
+                          fontSize: 13,
                           color: Color(0xFF0F172A),
                         ),
                         decoration: InputDecoration(
-                          hintText: '••••••••••••',
+                          hintText: 'Masukkan password',
                           hintStyle: TextStyle(
-                            fontSize: 12,
+                            fontSize: 13,
                             color: Colors.grey.shade400,
                           ),
                           prefixIcon: Icon(
                             Icons.lock_outline_rounded,
-                            size: 18,
+                            size: 20,
                             color: Colors.grey.shade400,
                           ),
                           suffixIcon: IconButton(
@@ -346,7 +321,7 @@ class _LoginScreenState extends State<LoginScreen> {
                               _obscurePassword
                                   ? Icons.visibility_off_outlined
                                   : Icons.visibility_outlined,
-                              size: 18,
+                              size: 20,
                               color: Colors.grey.shade400,
                             ),
                             onPressed: () {
@@ -358,22 +333,12 @@ class _LoginScreenState extends State<LoginScreen> {
                           filled: true,
                           fillColor: const Color(0xFFF8FAFC),
                           contentPadding: const EdgeInsets.symmetric(
-                            vertical: 12,
-                            horizontal: 12,
+                            vertical: 14,
+                            horizontal: 16,
                           ),
                           border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(20),
-                            borderSide: BorderSide(color: Colors.grey.shade200),
-                          ),
-                          enabledBorder: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(20),
-                            borderSide: BorderSide(color: Colors.grey.shade200),
-                          ),
-                          focusedBorder: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(20),
-                            borderSide: const BorderSide(
-                              color: Color(0xFF009688),
-                            ),
+                            borderRadius: BorderRadius.circular(12),
+                            borderSide: BorderSide.none,
                           ),
                         ),
                       ),
@@ -399,7 +364,7 @@ class _LoginScreenState extends State<LoginScreen> {
                           child: const Text(
                             'Lupa Password?',
                             style: TextStyle(
-                              fontSize: 11,
+                              fontSize: 12,
                               fontWeight: FontWeight.bold,
                               color: Color(0xFF009688),
                             ),
@@ -410,20 +375,20 @@ class _LoginScreenState extends State<LoginScreen> {
 
                       SizedBox(
                         width: double.infinity,
-                        height: 44,
+                        height: 48,
                         child: ElevatedButton(
                           onPressed: _isLoading ? null : _handleLogin,
                           style: ElevatedButton.styleFrom(
                             backgroundColor: const Color(0xFF009688),
                             elevation: 0,
                             shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(22),
+                              borderRadius: BorderRadius.circular(12),
                             ),
                           ),
                           child: _isLoading
                               ? const SizedBox(
-                                  width: 18,
-                                  height: 18,
+                                  width: 20,
+                                  height: 20,
                                   child: CircularProgressIndicator(
                                     color: Colors.white,
                                     strokeWidth: 2,
@@ -433,7 +398,7 @@ class _LoginScreenState extends State<LoginScreen> {
                                   'Masuk',
                                   style: TextStyle(
                                     color: Colors.white,
-                                    fontSize: 13,
+                                    fontSize: 14,
                                     fontWeight: FontWeight.bold,
                                   ),
                                 ),

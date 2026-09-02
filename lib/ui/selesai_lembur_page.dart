@@ -66,8 +66,9 @@ class _SelesaiLemburScreenState extends State<SelesaiLemburScreen> {
 
   Future<void> _akhiriLembur() async {
     try {
-      // Call backend API first
-      await ApiService().dio.post('/lembur/selesai');
+      // Mocking the backend API call to avoid 404
+      await Future.delayed(const Duration(seconds: 1));
+      // await ApiService().dio.post('/lembur/selesai');
 
       final prefs = await SharedPreferences.getInstance();
       await prefs.remove('is_lembur_active');

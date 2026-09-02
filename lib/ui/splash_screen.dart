@@ -43,38 +43,40 @@ class _SplashScreenState extends State<SplashScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFF009688), // Primary Teal
+      backgroundColor: Colors.white,
       body: Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
-          children: const [
-            Icon(
-              Icons.fingerprint_rounded,
-              size: 80,
-              color: Colors.white,
+          children: [
+            Container(
+              width: 80,
+              height: 80,
+              decoration: const BoxDecoration(
+                color: Color(0xFF009688),
+                shape: BoxShape.circle,
+              ),
+              child: const Icon(
+                Icons.access_time_filled_rounded,
+                size: 40,
+                color: Colors.white,
+              ),
             ),
-            SizedBox(height: 16),
-            Text(
+            const SizedBox(height: 24),
+            const Text(
               'PresensiKu',
               style: TextStyle(
-                color: Colors.white,
+                color: Color(0xFF0F172A),
                 fontSize: 32,
                 fontWeight: FontWeight.bold,
-                letterSpacing: 2,
               ),
             ),
-            SizedBox(height: 8),
-            Text(
-              'GDS Mobile',
-              style: TextStyle(
-                color: Colors.white70,
-                fontSize: 16,
-              ),
+            const SizedBox(height: 4),
+            const Text(
+              'Sistem Kehadiran Digital',
+              style: TextStyle(color: Colors.grey, fontSize: 14),
             ),
-            SizedBox(height: 48),
-            CircularProgressIndicator(
-              color: Colors.white,
-            ),
+            const SizedBox(height: 64),
+            const CircularProgressIndicator(color: Color(0xFF009688)),
           ],
         ),
       ),

@@ -12,6 +12,7 @@ import '../services/api_service.dart';
 import '../services/image_url_service.dart';
 import 'kamera_page.dart';
 import 'konfirmasi_foto_page.dart';
+import 'selesai_lembur_page.dart';
 
 class DashboardScreen extends StatefulWidget {
   final VoidCallback? onNotificationTap;
@@ -181,7 +182,45 @@ class _DashboardScreenState extends State<DashboardScreen> {
         }
         if (data != null) {
           _dashboardData = data;
-          // keterlambatan akan di-fetch dari history endpoint
+
+          // Parse log_keterlambatan directly from dashboard API
+          if (data['log_keterlambatan'] is List) {
+            final logList = List<dynamic>.from(data['log_keterlambatan']);
+            final keterlambatanData = <Map<String, dynamic>>[];
+            for (var item in logList) {
+              if (item is Map) {
+                final menitTerlambat = item['menit_terlambat'] ?? 0;
+                final menitPulangAwal = item['menit_pulang_awal'] ?? 0;
+
+                if (menitTerlambat > 0) {
+                  keterlambatanData.add({
+                    'tanggal': item['tanggal'],
+                    'tipe': 'Terlambat',
+                    'menit': menitTerlambat,
+                    'status_atasan':
+                        item['status_verifikasi_atasan'] ?? 'Pending',
+                    'status_hrd': item['status_verifikasi_hrd'] ?? 'Pending',
+                  });
+                }
+
+                if (menitPulangAwal > 0) {
+                  keterlambatanData.add({
+                    'tanggal': item['tanggal'],
+                    'tipe': 'Pulang Awal',
+                    'menit': menitPulangAwal,
+                    'status_atasan':
+                        item['status_verifikasi_atasan'] ?? 'Pending',
+                    'status_hrd': item['status_verifikasi_hrd'] ?? 'Pending',
+                  });
+                }
+              }
+            }
+            if (mounted) {
+              setState(() {
+                _logKeterlambatan = keterlambatanData;
+              });
+            }
+          }
         }
       }
 
@@ -202,56 +241,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
   }
 
   Future<void> _fetchRecentHistory() async {
-    try {
-      final dio = ApiService().dio;
-      final now = DateTime.now();
-      final response = await dio.get(
-        '/history',
-        queryParameters: {'month': now.month, 'year': now.year},
-      );
-
-      if (response.statusCode == 200) {
-        final List<dynamic> data = response.data['data'] ?? [];
-        final keterlambatanData = <Map<String, dynamic>>[];
-
-        for (var item in data) {
-          final rawStatus = (item['status'] ?? 'hadir')
-              .toString()
-              .toLowerCase();
-
-          // Filter hanya keterlambatan dan pulang awal
-          if (rawStatus.contains('terlambat') ||
-              rawStatus.contains('late') ||
-              rawStatus.contains('pulang_awal') ||
-              rawStatus.contains('pulang awal')) {
-            final isTerlambat =
-                rawStatus.contains('terlambat') || rawStatus.contains('late');
-
-            keterlambatanData.add({
-              'tanggal': item['tanggal'] ?? item['jam_masuk'],
-              'tipe': isTerlambat ? 'Terlambat' : 'Pulang Awal',
-              'menit': item['menit_keterlambatan'] ?? 0,
-              'status_atasan': item['approval_atasan'] ?? 'Pending',
-              'status_hrd': item['approval_hrd'] ?? 'Pending',
-            });
-          }
-        }
-
-        if (mounted) {
-          setState(() {
-            _logKeterlambatan = keterlambatanData;
-          });
-        }
-      }
-    } catch (e) {
-      debugPrint('FETCH RECENT HISTORY ERROR: $e');
-      // Jika error, biarkan kosong (tidak ada mock data)
-      if (mounted) {
-        setState(() {
-          _logKeterlambatan = [];
-        });
-      }
-    }
+    // History log keterlambatan now parsed directly in _fetchDashboardAndToday
   }
 
   Future<void> _fetchUserProfileFoto() async {
@@ -515,8 +505,11 @@ class _DashboardScreenState extends State<DashboardScreen> {
                       _buildAbsenButton(),
                       const SizedBox(height: 16),
                       _buildRadiusBadge(),
-                      const SizedBox(height: 24),
                       _buildStatusHariIniCard(),
+                      if (_lemburStatus == 'Sedang Lembur') ...[
+                        const SizedBox(height: 24),
+                        _buildRiwayatHariIni(),
+                      ],
                       const SizedBox(height: 24),
                       _buildLogKeterlambatanList(),
                       const SizedBox(height: 32),
@@ -789,6 +782,17 @@ class _DashboardScreenState extends State<DashboardScreen> {
             fontWeight: FontWeight.w500,
           ),
         ),
+        if (_lemburStatus == 'Sedang Lembur') ...[
+          const SizedBox(height: 16),
+          const Text(
+            'WAKTU LEMBUR',
+            style: TextStyle(
+              fontSize: 12,
+              fontWeight: FontWeight.bold,
+              color: Color(0xFF009688),
+            ),
+          ),
+        ],
       ],
     );
   }
@@ -867,47 +871,130 @@ class _DashboardScreenState extends State<DashboardScreen> {
   }
 
   Widget _buildLemburButton() {
-    return Container(
-      width: 180,
-      height: 180,
-      decoration: BoxDecoration(
-        color: const Color(0xFFF59E0B),
-        shape: BoxShape.circle,
-        boxShadow: [
-          BoxShadow(
-            color: const Color(0xFFF59E0B).withOpacity(0.3),
-            blurRadius: 24,
-            spreadRadius: 6,
-            offset: const Offset(0, 10),
+    // Calculate progress for lembur timer
+    double progress = 1.0;
+    if (_lemburData != null && _serverTime != null) {
+      final mulaiStr = _lemburData!['jam_mulai'];
+      final selesaiStr = _lemburData!['jam_selesai'];
+      if (mulaiStr != null && selesaiStr != null) {
+        final mulai = DateTime.parse(mulaiStr);
+        final selesai = DateTime.parse(selesaiStr);
+        final totalDuration = selesai.difference(mulai).inSeconds;
+        final elapsed = _serverTime!.difference(mulai).inSeconds;
+        if (totalDuration > 0) {
+          progress = 1.0 - (elapsed / totalDuration);
+          if (progress < 0) progress = 0;
+          if (progress > 1) progress = 1;
+        }
+      }
+    }
+
+    return Column(
+      children: [
+        Container(
+          width: 180,
+          height: 180,
+          decoration: BoxDecoration(
+            color: Colors.white,
+            shape: BoxShape.circle,
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withOpacity(0.05),
+                blurRadius: 24,
+                spreadRadius: 2,
+                offset: const Offset(0, 10),
+              ),
+            ],
           ),
-        ],
-      ),
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          const Text(
-            'SISA WAKTU LEMBUR',
-            style: TextStyle(
-              color: Colors.white70,
-              fontSize: 10,
-              fontWeight: FontWeight.bold,
+          child: Stack(
+            alignment: Alignment.center,
+            children: [
+              SizedBox(
+                width: 180,
+                height: 180,
+                child: CircularProgressIndicator(
+                  value: progress,
+                  strokeWidth: 12,
+                  backgroundColor: Colors.grey.shade100,
+                  color: const Color(0xFFC0CA33), // Lime green
+                ),
+              ),
+              Container(
+                width: 156,
+                height: 156,
+                decoration: const BoxDecoration(
+                  color: Color(0xFFC0CA33),
+                  shape: BoxShape.circle,
+                ),
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Text(
+                      _lemburCountdown,
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontWeight: FontWeight.bold,
+                        fontSize: 28,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(height: 24),
+        SizedBox(
+          width: double.infinity,
+          height: 48,
+          child: ElevatedButton(
+            onPressed: _handleSelesaiLembur,
+            style: ElevatedButton.styleFrom(
+              backgroundColor: const Color(0xFF009688),
+              elevation: 0,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
+            ),
+            child: const Text(
+              'Selesai Lembur',
+              style: TextStyle(
+                color: Colors.white,
+                fontSize: 14,
+                fontWeight: FontWeight.bold,
+              ),
             ),
           ),
-          const SizedBox(height: 8),
-          Text(
-            _lemburCountdown,
-            style: const TextStyle(
-              color: Colors.white,
-              fontWeight: FontWeight.bold,
-              fontSize: 28,
-            ),
-          ),
-          const SizedBox(height: 4),
-          const Text(
-            'Sedang Lembur',
-            style: TextStyle(color: Colors.white, fontSize: 13),
-          ),
-        ],
+        ),
+      ],
+    );
+  }
+
+  void _handleSelesaiLembur() {
+    String alasan = 'Lembur';
+    String catatan = '';
+    int estimasiJam = 0;
+    DateTime startTime = DateTime.now();
+
+    if (_lemburData != null) {
+      alasan = _lemburData!['alasan']?.toString() ?? 'Lembur';
+      catatan = _lemburData!['catatan']?.toString() ?? '';
+      estimasiJam =
+          int.tryParse(_lemburData!['estimasi_jam']?.toString() ?? '0') ?? 0;
+      if (_lemburData!['jam_mulai'] != null) {
+        startTime = DateTime.parse(_lemburData!['jam_mulai'].toString());
+      }
+    }
+
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => SelesaiLemburScreen(
+          alasan: alasan,
+          catatan: catatan,
+          estimasiJam: estimasiJam,
+          startTime: startTime,
+        ),
       ),
     );
   }
@@ -948,7 +1035,27 @@ class _DashboardScreenState extends State<DashboardScreen> {
     Color badgeBg = const Color(0xFFFFF3E0);
     Color badgeTxt = const Color(0xFFE65100);
 
-    if (_isSudahAbsenMasuk && !_isSudahAbsenKeluar) {
+    if (_lemburStatus == 'Sedang Lembur') {
+      statusText = 'Sedang Lembur';
+      final mulaiStr = _lemburData?['jam_mulai'];
+      final selesaiStr = _lemburData?['jam_selesai'];
+      String targetJamStr = '0';
+      String jamMulai = '-';
+
+      if (mulaiStr != null && selesaiStr != null) {
+        final mulai = DateTime.parse(mulaiStr);
+        final selesai = DateTime.parse(selesaiStr);
+        jamMulai =
+            '${mulai.hour.toString().padLeft(2, '0')}:${mulai.minute.toString().padLeft(2, '0')}';
+        final diffHrs = selesai.difference(mulai).inHours;
+        targetJamStr = diffHrs.toString();
+      }
+
+      descText =
+          'Sesi lembur dimulai pukul $jamMulai, Target: $targetJamStr jam.';
+      badgeBg = const Color(0xFFFFF3E0); // Orange bg
+      badgeTxt = const Color(0xFFE65100); // Orange text
+    } else if (_isSudahAbsenMasuk && !_isSudahAbsenKeluar) {
       statusText = 'Sudah Absen Masuk';
       descText =
           'Jangan lupa tekan tombol Absen Keluar saat selesai jam kerja.';
@@ -1033,6 +1140,229 @@ class _DashboardScreenState extends State<DashboardScreen> {
     );
   }
 
+  Widget _buildRiwayatHariIni() {
+    // Get check-in time
+    String jamMasuk = '-';
+    String statusMasukBadge = 'Hadir';
+    Color masukBadgeColor = const Color(0xFF009688);
+    Color masukBadgeBg = const Color(0xFFE0F2F1);
+
+    if (_dashboardData != null) {
+      final dataAbsen = _dashboardData!['data'];
+      if (dataAbsen != null && dataAbsen is Map) {
+        if (dataAbsen['jam_masuk'] != null) {
+          final time = dataAbsen['jam_masuk'].toString();
+          if (time.length >= 5) jamMasuk = '${time.substring(0, 5)} WIB';
+        }
+        final rawStatus = (dataAbsen['status'] ?? '').toString().toLowerCase();
+        if (rawStatus.contains('terlambat') || rawStatus.contains('late')) {
+          statusMasukBadge = 'Terlambat';
+          masukBadgeColor = Colors.red;
+          masukBadgeBg = const Color(0xFFFFEBEE);
+        } else {
+          statusMasukBadge = 'Tepat Waktu';
+        }
+      }
+    }
+
+    // Get check-out time
+    String jamKeluar = '-';
+    String statusKeluarBadge = 'Pulang';
+    Color keluarBadgeColor = const Color(0xFF009688);
+    Color keluarBadgeBg = const Color(0xFFE0F2F1);
+
+    if (_dashboardData != null) {
+      final dataAbsen = _dashboardData!['data'];
+      if (dataAbsen != null && dataAbsen is Map) {
+        if (dataAbsen['jam_keluar'] != null) {
+          final time = dataAbsen['jam_keluar'].toString();
+          if (time.length >= 5) jamKeluar = '${time.substring(0, 5)} WIB';
+        }
+        final rawStatus = (dataAbsen['status'] ?? '').toString().toLowerCase();
+        if (rawStatus.contains('pulang_awal')) {
+          statusKeluarBadge = 'Pulang Awal';
+          keluarBadgeColor = Colors.orange;
+          keluarBadgeBg = const Color(0xFFFFF3E0);
+        } else {
+          statusKeluarBadge = 'Sesuai Jadwal';
+        }
+      }
+    }
+
+    // Get lembur time
+    String jamMulaiLembur = '-';
+    if (_lemburData != null) {
+      final mulaiStr = _lemburData!['jam_mulai'];
+      if (mulaiStr != null) {
+        final mulai = DateTime.parse(mulaiStr);
+        jamMulaiLembur =
+            '${mulai.hour.toString().padLeft(2, '0')}:${mulai.minute.toString().padLeft(2, '0')} WIB';
+      }
+    }
+
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.03),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text(
+            'Riwayat Hari Ini',
+            style: TextStyle(
+              fontWeight: FontWeight.bold,
+              fontSize: 13,
+              color: Color(0xFF0F172A),
+            ),
+          ),
+          const SizedBox(height: 24),
+          // Masuk
+          _buildTimelineItem(
+            title: 'Absen Masuk',
+            time: jamMasuk,
+            badgeText: statusMasukBadge,
+            badgeColor: masukBadgeColor,
+            badgeBg: masukBadgeBg,
+            isFirst: true,
+            isLast: false,
+            dotColor: const Color(0xFF009688),
+          ),
+          // Keluar
+          _buildTimelineItem(
+            title: 'Absen Pulang',
+            time: jamKeluar,
+            badgeText: statusKeluarBadge,
+            badgeColor: keluarBadgeColor,
+            badgeBg: keluarBadgeBg,
+            isFirst: false,
+            isLast: false,
+            dotColor: const Color(0xFF009688),
+          ),
+          // Lembur
+          _buildTimelineItem(
+            title: 'Mulai Lembur',
+            time: jamMulaiLembur,
+            badgeText: 'Sedang Berlangsung',
+            badgeColor: const Color(0xFFE65100), // Orange text
+            badgeBg: const Color(0xFFFFF3E0), // Orange bg
+            isFirst: false,
+            isLast: true,
+            dotColor: const Color(0xFFF57C00), // Orange dot
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildTimelineItem({
+    required String title,
+    required String time,
+    required String badgeText,
+    required Color badgeColor,
+    required Color badgeBg,
+    required bool isFirst,
+    required bool isLast,
+    required Color dotColor,
+  }) {
+    return IntrinsicHeight(
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          SizedBox(
+            width: 24,
+            child: Column(
+              children: [
+                Expanded(
+                  flex: 1,
+                  child: Container(
+                    width: 2,
+                    color: isFirst ? Colors.transparent : Colors.grey.shade300,
+                  ),
+                ),
+                Container(
+                  width: 8,
+                  height: 8,
+                  decoration: BoxDecoration(
+                    color: dotColor,
+                    shape: BoxShape.circle,
+                  ),
+                ),
+                Expanded(
+                  flex: 3,
+                  child: Container(
+                    width: 2,
+                    color: isLast ? Colors.transparent : Colors.grey.shade300,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Padding(
+              padding: const EdgeInsets.only(bottom: 24.0),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        title,
+                        style: const TextStyle(
+                          fontWeight: FontWeight.bold,
+                          fontSize: 13,
+                          color: Color(0xFF0F172A),
+                        ),
+                      ),
+                      const SizedBox(height: 6),
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 8,
+                          vertical: 4,
+                        ),
+                        decoration: BoxDecoration(
+                          color: badgeBg,
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: Text(
+                          badgeText,
+                          style: TextStyle(
+                            color: badgeColor,
+                            fontSize: 9,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                  Text(
+                    time,
+                    style: const TextStyle(
+                      fontSize: 11,
+                      color: Color(0xFF64748B),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   Widget _buildLogKeterlambatanList() {
     if (_logKeterlambatan.isEmpty) return const SizedBox.shrink();
 
@@ -1058,7 +1388,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
               : '-';
           final title = isTerlambat ? 'Terlambat' : 'Pulang Awal';
           final menit = log['menit'] ?? '0';
-          final valText = isTerlambat ? '+$menit\m' : '-$menit\m';
+          final valText = isTerlambat ? '+$menit m' : '-$menit m';
           final colorVal = Colors.red;
           final colorBg = const Color(0xFFFFEBEE);
           final colorTxt = const Color(0xFFC62828);

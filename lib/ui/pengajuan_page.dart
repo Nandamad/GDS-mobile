@@ -517,12 +517,7 @@ class _PengajuanScreenState extends State<PengajuanScreen> {
           padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
 
           children: [
-            _buildActionCard(
-              icon: Icons.assignment_outlined,
-              iconBgColor: const Color(0xFFE0F2FE),
-              iconColor: const Color(0xFF0284C7),
-              title: 'Ajukan Cuti / Izin',
-              subtitle: 'Permohonan cuti, izin, atau sakit',
+            InkWell(
               onTap: () async {
                 final result = await Navigator.push(
                   context,
@@ -535,34 +530,47 @@ class _PengajuanScreenState extends State<PengajuanScreen> {
                   _fetchHistory();
                 }
               },
+              borderRadius: BorderRadius.circular(12),
+              child: Container(
+                width: double.infinity,
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 20),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: Colors.grey.shade200),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withOpacity(0.02),
+                      blurRadius: 10,
+                      offset: const Offset(0, 4),
+                    ),
+                  ],
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text(
+                      'Ajukan Cuti',
+                      style: TextStyle(
+                        fontWeight: FontWeight.bold,
+                        fontSize: 14,
+                        color: Color(0xFF0F172A),
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      'Sakit, cuti tahunan, atau izin pribadi',
+                      style: TextStyle(color: Colors.grey.shade600, fontSize: 11),
+                    ),
+                  ],
+                ),
+              ),
             ),
 
-            const SizedBox(height: 10),
-
-            _buildActionCard(
-              icon: Icons.access_time_rounded,
-              iconBgColor: const Color(0xFFFEF3C7),
-              iconColor: const Color(0xFFD97706),
-              title: 'Ajukan Lembur',
-              subtitle: 'Permohonan jam kerja tambahan',
-              onTap: () async {
-                final result = await Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (context) => const AjukanLemburScreen(),
-                  ),
-                );
-
-                if (mounted && result == true) {
-                  _fetchHistory();
-                }
-              },
-            ),
-
-            const SizedBox(height: 18),
+            const SizedBox(height: 24),
 
             const Text(
-              'Riwayat Pengajuan Terbaru',
+              'Riwayat Pengajuan',
               style: TextStyle(
                 fontWeight: FontWeight.bold,
                 fontSize: 13,
@@ -570,11 +578,8 @@ class _PengajuanScreenState extends State<PengajuanScreen> {
               ),
             ),
 
-            const SizedBox(height: 10),
-
-            _buildFilterTabs(),
-
             const SizedBox(height: 12),
+
 
             if (_isLoading)
               const Padding(
@@ -593,149 +598,13 @@ class _PengajuanScreenState extends State<PengajuanScreen> {
     );
   }
 
-  // ============================================================
-  // ACTION CARD
-  // ============================================================
-
-  Widget _buildActionCard({
-    required IconData icon,
-    required Color iconBgColor,
-    required Color iconColor,
-    required String title,
-    required String subtitle,
-    required VoidCallback onTap,
-  }) {
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(12),
-
-      child: Container(
-        padding: const EdgeInsets.all(12),
-
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: Colors.grey.shade200),
-        ),
-
-        child: Row(
-          children: [
-            Container(
-              padding: const EdgeInsets.all(10),
-
-              decoration: BoxDecoration(
-                color: iconBgColor,
-                borderRadius: BorderRadius.circular(10),
-              ),
-
-              child: Icon(icon, color: iconColor, size: 20),
-            ),
-
-            const SizedBox(width: 12),
-
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    title,
-                    style: const TextStyle(
-                      fontWeight: FontWeight.bold,
-                      fontSize: 13,
-                      color: Color(0xFF0F172A),
-                    ),
-                  ),
-
-                  const SizedBox(height: 2),
-
-                  Text(
-                    subtitle,
-                    style: const TextStyle(color: Colors.grey, fontSize: 10),
-                  ),
-                ],
-              ),
-            ),
-
-            const Icon(Icons.chevron_right, color: Colors.grey, size: 18),
-          ],
-        ),
-      ),
-    );
-  }
-
-  // ============================================================
-  // FILTER
-  // ============================================================
-
-  Widget _buildFilterTabs() {
-    const labels = ['Semua', 'Cuti/Izin', 'Lembur'];
-
-    return Row(
-      children: List.generate(labels.length, (index) {
-        final selected = _selectedFilter == index;
-
-        return Expanded(
-          child: Padding(
-            padding: EdgeInsets.only(right: index == 2 ? 0 : 8),
-
-            child: InkWell(
-              onTap: () {
-                setState(() {
-                  _selectedFilter = index;
-                });
-              },
-
-              borderRadius: BorderRadius.circular(8),
-
-              child: Container(
-                padding: const EdgeInsets.symmetric(vertical: 8),
-
-                alignment: Alignment.center,
-
-                decoration: BoxDecoration(
-                  color: selected ? const Color(0xFF009688) : Colors.white,
-
-                  borderRadius: BorderRadius.circular(8),
-
-                  border: Border.all(
-                    color: selected
-                        ? const Color(0xFF009688)
-                        : Colors.grey.shade300,
-                  ),
-                ),
-
-                child: Text(
-                  labels[index],
-                  style: TextStyle(
-                    color: selected ? Colors.white : Colors.grey.shade700,
-                    fontWeight: selected ? FontWeight.bold : FontWeight.normal,
-                    fontSize: 11,
-                  ),
-                ),
-              ),
-            ),
-          ),
-        );
-      }),
-    );
-  }
 
   // ============================================================
   // HISTORY
   // ============================================================
 
   Widget _buildHistoryList() {
-    final filtered = _history.where((item) {
-      if (_selectedFilter == 1) {
-        return item['type'] == 'Cuti/Izin';
-      }
-
-      if (_selectedFilter == 2) {
-        return item['type'] == 'Lembur';
-      }
-
-      return true;
-    }).toList();
+    final filtered = _history; // Show all since filter is removed
 
     if (filtered.isEmpty) {
       return const Padding(
@@ -781,119 +650,97 @@ class _PengajuanScreenState extends State<PengajuanScreen> {
     }
 
     return Container(
-      padding: const EdgeInsets.all(12),
-
+      padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(12),
         border: Border.all(color: Colors.grey.shade200),
       ),
-
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
-
         children: [
           Row(
             children: [
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                 decoration: BoxDecoration(
                   color: item['badgeBgColor'] as Color,
-                  borderRadius: BorderRadius.circular(4),
+                  borderRadius: BorderRadius.circular(20),
                 ),
-
                 child: Text(
                   item['badgeText']?.toString() ?? '',
                   style: TextStyle(
                     color: item['badgeTextColor'] as Color,
                     fontWeight: FontWeight.bold,
-                    fontSize: 9,
+                    fontSize: 10,
                   ),
                 ),
               ),
-
-              const SizedBox(width: 6),
-
+              const SizedBox(width: 8),
               Expanded(
                 child: Text(
                   item['title']?.toString() ?? '',
                   style: const TextStyle(
                     fontWeight: FontWeight.bold,
-                    fontSize: 12,
+                    fontSize: 14,
                     color: Color(0xFF0F172A),
                   ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
                 ),
               ),
-
-              const SizedBox(width: 6),
-
-              Flexible(
-                child: Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 6,
-                    vertical: 2,
-                  ),
-
-                  decoration: BoxDecoration(
-                    color: statusBg,
-                    borderRadius: BorderRadius.circular(4),
-                  ),
-
-                  child: Text(
-                    status,
-                    overflow: TextOverflow.ellipsis,
-                    style: TextStyle(
-                      color: statusColor,
-                      fontWeight: FontWeight.bold,
-                      fontSize: 8,
-                    ),
+              const SizedBox(width: 8),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                decoration: BoxDecoration(
+                  color: statusBg,
+                  borderRadius: BorderRadius.circular(4),
+                ),
+                child: Text(
+                  status,
+                  style: TextStyle(
+                    color: statusColor,
+                    fontWeight: FontWeight.bold,
+                    fontSize: 10,
                   ),
                 ),
               ),
             ],
           ),
-
-          const SizedBox(height: 10),
-
+          const SizedBox(height: 16),
+          const Divider(height: 1, color: Color(0xFFE2E8F0)),
+          const SizedBox(height: 16),
           Row(
             crossAxisAlignment: CrossAxisAlignment.end,
-
             children: [
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
-
                   children: [
                     Text(
                       item['dateRange']?.toString() ?? '-',
                       style: const TextStyle(
-                        fontSize: 10,
+                        fontSize: 12,
                         color: Color(0xFF475569),
                       ),
                     ),
-
-                    const SizedBox(height: 2),
-
+                    const SizedBox(height: 4),
                     Text(
                       item['submittedDate']?.toString() ?? '-',
-                      style: const TextStyle(fontSize: 9, color: Colors.grey),
+                      style: const TextStyle(fontSize: 10, color: Colors.grey),
                     ),
                   ],
                 ),
               ),
-
               const SizedBox(width: 8),
-
               InkWell(
                 onTap: () {
                   _openDetailWorkflow(item);
                 },
-
                 child: const Text(
                   'Detail Workflow >',
                   style: TextStyle(
-                    fontSize: 10,
+                    fontSize: 12,
                     fontWeight: FontWeight.bold,
                     color: Color(0xFF009688),
                   ),

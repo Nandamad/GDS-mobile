@@ -130,55 +130,73 @@ class _LupaPasswordScreenState extends State<LupaPasswordScreen> {
         backgroundColor: Colors.white,
         elevation: 0,
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back, color: Color(0xFF0F172A)),
+          icon: const Icon(Icons.arrow_back, color: Color(0xFF0F172A), size: 20),
           onPressed: () => Navigator.pop(context),
         ),
-        title: const Text(
-          'Lupa Password',
-          style: TextStyle(
+        title: Text(
+          _step == 1 ? 'Masukkan Email' : 'Buat Password Baru',
+          style: const TextStyle(
             color: Color(0xFF0F172A),
             fontWeight: FontWeight.bold,
-            fontSize: 16,
+            fontSize: 14,
           ),
         ),
+        titleSpacing: 0,
       ),
       body: SingleChildScrollView(
-        padding: const EdgeInsets.all(20.0),
+        padding: const EdgeInsets.all(24.0),
         child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
+          crossAxisAlignment: CrossAxisAlignment.center,
           children: [
-            const SizedBox(height: 10),
-            Text(
-              _step == 1 ? 'Masukkan Email Anda' : 'Buat Password Baru',
-              style: const TextStyle(
-                fontSize: 20,
-                fontWeight: FontWeight.bold,
-                color: Color(0xFF0F172A),
-              ),
-            ),
-            const SizedBox(height: 6),
+            const SizedBox(height: 24),
             Text(
               _step == 1
-                  ? 'Kami akan mengirimkan token verifikasi ke email terdaftar Anda.'
-                  : 'Masukkan token yang diterima beserta password baru Anda.',
-              style: const TextStyle(fontSize: 12, color: Colors.grey),
+                  ? 'Masukkan email yang terdaftar untuk reset\npassword'
+                  : 'Masukkan token yang diterima beserta\npassword baru Anda.',
+              textAlign: TextAlign.center,
+              style: const TextStyle(fontSize: 12, color: Colors.grey, height: 1.5),
             ),
-            const SizedBox(height: 24),
+            const SizedBox(height: 32),
 
             if (_step == 1) ...[
-              TextField(
-                controller: _emailController,
-                keyboardType: TextInputType.emailAddress,
-                decoration: InputDecoration(
-                  labelText: 'Email Terdaftar',
-                  hintText: 'nama@email.com',
-                  prefixIcon: const Icon(Icons.email_outlined),
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
+              const Align(
+                alignment: Alignment.centerLeft,
+                child: Text(
+                  'Email',
+                  style: TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.bold,
+                    color: Color(0xFF0F172A),
                   ),
                 ),
               ),
-              const SizedBox(height: 20),
+              const SizedBox(height: 8),
+              TextField(
+                controller: _emailController,
+                keyboardType: TextInputType.emailAddress,
+                style: const TextStyle(
+                  fontSize: 13,
+                  color: Color(0xFF0F172A),
+                ),
+                decoration: InputDecoration(
+                  hintText: 'Masukkan alamat email',
+                  hintStyle: TextStyle(
+                    fontSize: 13,
+                    color: Colors.grey.shade400,
+                  ),
+                  filled: true,
+                  fillColor: const Color(0xFFF8FAFC),
+                  contentPadding: const EdgeInsets.symmetric(
+                    vertical: 14,
+                    horizontal: 16,
+                  ),
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    borderSide: BorderSide.none,
+                  ),
+                ),
+              ),
+              const SizedBox(height: 24),
               SizedBox(
                 width: double.infinity,
                 height: 48,
@@ -202,7 +220,7 @@ class _LupaPasswordScreenState extends State<LupaPasswordScreen> {
                           ),
                         )
                       : const Text(
-                          'Kirim Token',
+                          'Kirim',
                           style: TextStyle(
                             fontWeight: FontWeight.bold,
                             fontSize: 14,

@@ -338,7 +338,9 @@ class _ProfilPageState extends State<ProfilPage> {
         (rawDivisi is Map ? rawDivisi['nama_divisi'] : rawDivisi ?? 'Umum')
             .toString();
             
-    final nip = (karyawan['nip'] ?? '-').toString();
+    final int? kId = karyawan['id'];
+    final String generatedNip = kId != null ? 'EMP-${kId.toString().padLeft(3, '0')}' : '-';
+    final nip = (karyawan['nip'] ?? generatedNip).toString();
 
     // Cek semua kemungkinan key nama foto dari API Laravel
     final rawFoto =
@@ -351,10 +353,9 @@ class _ProfilPageState extends State<ProfilPage> {
     final fotoUrl = ImageUrlService.resolve(rawFoto?.toString());
     
     // Parse year joined for badge
-    String yearJoined = '2020';
+    String yearJoined = '-';
     if (karyawan['tanggal_mulai_kerja'] != null) {
        try {
-          // just take first 4 chars assuming YYYY-MM-DD
           yearJoined = karyawan['tanggal_mulai_kerja'].toString().substring(0, 4);
        } catch (_) {}
     }

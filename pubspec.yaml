@@ -1,5 +1,5 @@
-name: mobile
-description: "A new Flutter project."
+name: presensi_plus
+description: "PresensiPlus+"
 publish_to: 'none'
 version: 0.1.0+1
 
@@ -28,9 +28,16 @@ dev_dependencies:
   flutter_test:
     sdk: flutter
   flutter_lints: ^6.0.0
+  flutter_launcher_icons: "^0.13.1"
 
 flutter:
   uses-material-design: true
 
   assets:
     - assets/.env
+
+flutter_launcher_icons:
+  android: true
+  ios: true
+  image_path: "assets/logo.png"
+  adaptive_icon_foreground: "assets/logo.png"
