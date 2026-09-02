@@ -108,6 +108,12 @@ class _PresensiHarianScreenState extends State<PresensiHarianScreen> {
     setState(() {
       _isLoading = true;
     });
+    
+    // Fetch current location to update LocationCubit state
+    if (mounted) {
+      context.read<LocationCubit>().getCurrentLocation();
+    }
+    
     await Future.wait([_fetchDashboardAndToday(), _fetchRecentHistory()]);
   }
 
