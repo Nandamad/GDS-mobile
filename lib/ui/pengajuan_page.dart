@@ -204,10 +204,6 @@ class _PengajuanScreenState extends State<PengajuanScreen> {
           ..addAll(result);
 
         _isLoading = false;
-
-        if (result.isEmpty) {
-          _errorMessage = 'Belum ada data pengajuan.';
-        }
       });
     } on DioException catch (e) {
       debugPrint('PENGAJUAN ERROR: ${e.response?.data}');

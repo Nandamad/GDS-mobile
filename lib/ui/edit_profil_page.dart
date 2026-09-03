@@ -5,6 +5,7 @@ import 'package:dio/dio.dart';
 import '../services/image_url_service.dart';
 import '../services/api_service.dart';
 import 'kamera_page.dart';
+
 class EditProfilScreen extends StatefulWidget {
   final Map<String, dynamic> userProfile;
 
@@ -19,7 +20,7 @@ class _EditProfilScreenState extends State<EditProfilScreen> {
   late TextEditingController _emailController;
   late TextEditingController _noHpController;
   late TextEditingController _alamatController;
-  
+
   bool _isSubmitting = false;
   String? _base64Image;
   final ImagePicker _picker = ImagePicker();
@@ -32,14 +33,16 @@ class _EditProfilScreenState extends State<EditProfilScreen> {
         ? Map<String, dynamic>.from(rawKaryawan)
         : (widget.userProfile);
 
-    final nama = (karyawan['nama_lengkap'] ??
-            widget.userProfile['name'] ??
-            widget.userProfile['nama'] ??
-            '')
+    final nama =
+        (karyawan['nama_lengkap'] ??
+                widget.userProfile['name'] ??
+                widget.userProfile['nama'] ??
+                '')
+            .toString();
+    final email = (widget.userProfile['email'] ?? karyawan['email'] ?? '')
         .toString();
-    final email = (widget.userProfile['email'] ?? karyawan['email'] ?? '').toString();
     final noHp = (karyawan['no_hp'] ?? '').toString();
-    final alamat = (karyawan['alamat'] ?? '').toString(); 
+    final alamat = (karyawan['alamat'] ?? '').toString();
 
     _namaController = TextEditingController(text: nama);
     _emailController = TextEditingController(text: email);
@@ -71,10 +74,12 @@ class _EditProfilScreenState extends State<EditProfilScreen> {
 
       if (_base64Image != null) {
         final bytes = base64Decode(_base64Image!.split(',').last);
-        formData.files.add(MapEntry(
-          'foto',
-          MultipartFile.fromBytes(bytes, filename: 'profile.jpg'),
-        ));
+        formData.files.add(
+          MapEntry(
+            'foto',
+            MultipartFile.fromBytes(bytes, filename: 'profile.jpg'),
+          ),
+        );
       }
 
       final response = await ApiService().dio.post(
@@ -86,7 +91,7 @@ class _EditProfilScreenState extends State<EditProfilScreen> {
         setState(() {
           _isSubmitting = false;
         });
-        
+
         if (response.statusCode == 200) {
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(
@@ -94,7 +99,10 @@ class _EditProfilScreenState extends State<EditProfilScreen> {
               backgroundColor: Color(0xFF009688),
             ),
           );
-          Navigator.pop(context, true); // kembalikan true agar halaman sblmnya tau ada update
+          Navigator.pop(
+            context,
+            true,
+          ); // kembalikan true agar halaman sblmnya tau ada update
         } else {
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(
@@ -104,15 +112,39 @@ class _EditProfilScreenState extends State<EditProfilScreen> {
           );
         }
       }
+    } on DioException catch (e) {
+      if (mounted) {
+        setState(() {
+          _isSubmitting = false;
+        });
+        String errMsg = 'Terjadi kesalahan koneksi';
+        if (e.response != null && e.response?.data != null) {
+          final data = e.response?.data;
+          if (data is Map && data['message'] != null) {
+            errMsg = data['message'].toString();
+          } else {
+            errMsg =
+                'Error ${e.response?.statusCode}: ${e.response?.statusMessage}';
+          }
+        }
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(errMsg),
+            backgroundColor: Colors.red,
+            duration: const Duration(seconds: 4),
+          ),
+        );
+      }
     } catch (e) {
       if (mounted) {
         setState(() {
           _isSubmitting = false;
         });
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Terjadi kesalahan koneksi'),
+          SnackBar(
+            content: Text('Terjadi kesalahan: $e'),
             backgroundColor: Colors.red,
+            duration: const Duration(seconds: 4),
           ),
         );
       }
@@ -138,7 +170,8 @@ class _EditProfilScreenState extends State<EditProfilScreen> {
                   final result = await Navigator.push(
                     context,
                     MaterialPageRoute(
-                      builder: (context) => const KameraScreen(namaKantor: 'Foto Profil'),
+                      builder: (context) =>
+                          const KameraScreen(namaKantor: 'Foto Profil'),
                     ),
                   );
                   if (result != null && result is String) {
@@ -153,7 +186,10 @@ class _EditProfilScreenState extends State<EditProfilScreen> {
                 title: const Text('Pilih dari Galeri'),
                 onTap: () async {
                   Navigator.pop(context);
-                  final XFile? image = await _picker.pickImage(source: ImageSource.gallery, imageQuality: 70);
+                  final XFile? image = await _picker.pickImage(
+                    source: ImageSource.gallery,
+                    imageQuality: 70,
+                  );
                   if (image != null) {
                     final bytes = await image.readAsBytes();
                     final base64String = base64Encode(bytes);
@@ -177,7 +213,8 @@ class _EditProfilScreenState extends State<EditProfilScreen> {
         ? Map<String, dynamic>.from(rawKaryawan)
         : (widget.userProfile);
 
-    final rawFoto = karyawan['foto_url'] ??
+    final rawFoto =
+        karyawan['foto_url'] ??
         karyawan['foto'] ??
         karyawan['foto_karyawan'] ??
         widget.userProfile['foto'] ??
@@ -190,7 +227,11 @@ class _EditProfilScreenState extends State<EditProfilScreen> {
         backgroundColor: const Color(0xFFF8FAFC),
         elevation: 0,
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back_ios_new_rounded, color: Color(0xFF0F172A), size: 18),
+          icon: const Icon(
+            Icons.arrow_back_ios_new_rounded,
+            color: Color(0xFF0F172A),
+            size: 18,
+          ),
           onPressed: () => Navigator.pop(context),
         ),
         title: const Text(
@@ -220,16 +261,30 @@ class _EditProfilScreenState extends State<EditProfilScreen> {
                           padding: const EdgeInsets.all(4),
                           decoration: BoxDecoration(
                             shape: BoxShape.circle,
-                            border: Border.all(color: const Color(0xFF009688), width: 2.5),
+                            border: Border.all(
+                              color: const Color(0xFF009688),
+                              width: 2.5,
+                            ),
                           ),
                           child: CircleAvatar(
                             radius: 40,
                             backgroundColor: const Color(0xFFE0F2F1),
                             backgroundImage: _base64Image != null
-                                ? MemoryImage(base64Decode(_base64Image!.split(',').last)) as ImageProvider
-                                : (fotoUrl != null ? NetworkImage(fotoUrl) : null),
+                                ? MemoryImage(
+                                        base64Decode(
+                                          _base64Image!.split(',').last,
+                                        ),
+                                      )
+                                      as ImageProvider
+                                : (fotoUrl != null
+                                      ? NetworkImage(fotoUrl)
+                                      : null),
                             child: (_base64Image == null && fotoUrl == null)
-                                ? const Icon(Icons.person, size: 40, color: Color(0xFF009688))
+                                ? const Icon(
+                                    Icons.person,
+                                    size: 40,
+                                    color: Color(0xFF009688),
+                                  )
                                 : null,
                           ),
                         ),
@@ -263,7 +318,7 @@ class _EditProfilScreenState extends State<EditProfilScreen> {
               ),
             ),
             const SizedBox(height: 32),
-            
+
             // Editable Forms
             _buildEditField(
               label: 'Nama Lengkap',
@@ -293,7 +348,7 @@ class _EditProfilScreenState extends State<EditProfilScreen> {
               maxLines: 2,
             ),
             const SizedBox(height: 40),
-            
+
             // Button Simpan
             SizedBox(
               width: double.infinity,
@@ -311,7 +366,10 @@ class _EditProfilScreenState extends State<EditProfilScreen> {
                     ? const SizedBox(
                         height: 20,
                         width: 20,
-                        child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
+                        child: CircularProgressIndicator(
+                          color: Colors.white,
+                          strokeWidth: 2,
+                        ),
                       )
                     : const Text(
                         'Simpan Perubahan',
@@ -362,7 +420,10 @@ class _EditProfilScreenState extends State<EditProfilScreen> {
           ),
           decoration: InputDecoration(
             prefixIcon: Icon(icon, color: const Color(0xFF64748B), size: 18),
-            contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
+            contentPadding: const EdgeInsets.symmetric(
+              horizontal: 14,
+              vertical: 14,
+            ),
             fillColor: readOnly ? const Color(0xFFF1F5F9) : Colors.white,
             filled: true,
             border: OutlineInputBorder(
@@ -376,7 +437,9 @@ class _EditProfilScreenState extends State<EditProfilScreen> {
             focusedBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(12),
               borderSide: BorderSide(
-                color: readOnly ? Colors.grey.shade300 : const Color(0xFF009688), 
+                color: readOnly
+                    ? Colors.grey.shade300
+                    : const Color(0xFF009688),
                 width: 1.5,
               ),
             ),

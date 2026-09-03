@@ -196,7 +196,14 @@ class _RiwayatPresensiScreenState extends State<RiwayatPresensiScreen> {
       appBar: AppBar(
         backgroundColor: Colors.white,
         elevation: 0,
-        automaticallyImplyLeading: false,
+        leading: IconButton(
+          icon: const Icon(
+            Icons.arrow_back_ios_new_rounded,
+            color: Color(0xFF0F172A),
+            size: 18,
+          ),
+          onPressed: () => Navigator.pop(context),
+        ),
         title: const Text(
           'Riwayat Presensi',
           style: TextStyle(color: Color(0xFF0F172A), fontWeight: FontWeight.bold, fontSize: 16),
