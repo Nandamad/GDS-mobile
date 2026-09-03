@@ -23,8 +23,8 @@
             applicationId = "com.example.mobile"
             minSdk = flutter.minSdkVersion
             targetSdk = 36
-            versionCode = 1
-            versionName = "1.0"
+            versionCode = flutter.versionCode
+            versionName = flutter.versionName
         }
 
         buildTypes {
@@ -35,7 +35,7 @@
 
         applicationVariants.all {
             outputs.all {
-                (this as com.android.build.gradle.internal.api.BaseVariantOutputImpl).outputFileName = "PresensiPlus.apk"
+                (this as com.android.build.gradle.internal.api.BaseVariantOutputImpl).outputFileName = "PresensiPlus_v${versionName}.apk"
             }
         }
         // ----------------------------------
