@@ -1,6 +1,9 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import '../services/api_service.dart';
+import 'pengajuan_page.dart';
+import 'approval_page.dart';
+import 'riwayat_presensi_page.dart';
 
 class NotifikasiScreen extends StatefulWidget {
   const NotifikasiScreen({super.key});
@@ -366,7 +369,20 @@ class _NotifikasiScreenState extends State<NotifikasiScreen> {
     return Padding(
       padding: const EdgeInsets.only(bottom: 12.0),
       child: InkWell(
-        onTap: () => _markAsRead(item),
+        onTap: () async {
+          await _markAsRead(item);
+          if (!mounted) return;
+          
+          final title = item['title'].toString().toLowerCase();
+          
+          if (title.contains('persetujuan')) {
+             Navigator.push(context, MaterialPageRoute(builder: (context) => const ApprovalScreen()));
+          } else if (title.contains('pengajuan') || title.contains('cuti') || title.contains('lembur') || title.contains('izin')) {
+             Navigator.push(context, MaterialPageRoute(builder: (context) => const PengajuanScreen()));
+          } else if (title.contains('absen') || title.contains('terlambat')) {
+             Navigator.push(context, MaterialPageRoute(builder: (context) => const RiwayatPresensiScreen(showBackButton: true)));
+          }
+        },
         borderRadius: BorderRadius.circular(12),
         child: Container(
           padding: const EdgeInsets.all(16),

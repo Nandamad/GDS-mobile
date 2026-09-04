@@ -4,7 +4,8 @@ import '../model/absensi.dart';
 import 'detail_log_page.dart';
 
 class RiwayatPresensiScreen extends StatefulWidget {
-  const RiwayatPresensiScreen({super.key});
+  final bool showBackButton;
+  const RiwayatPresensiScreen({super.key, this.showBackButton = false});
 
   @override
   State<RiwayatPresensiScreen> createState() => _RiwayatPresensiScreenState();
@@ -196,14 +197,17 @@ class _RiwayatPresensiScreenState extends State<RiwayatPresensiScreen> {
       appBar: AppBar(
         backgroundColor: Colors.white,
         elevation: 0,
-        leading: IconButton(
-          icon: const Icon(
-            Icons.arrow_back_ios_new_rounded,
-            color: Color(0xFF0F172A),
-            size: 18,
-          ),
-          onPressed: () => Navigator.pop(context),
-        ),
+        automaticallyImplyLeading: false,
+        leading: widget.showBackButton
+            ? IconButton(
+                icon: const Icon(
+                  Icons.arrow_back_ios_new_rounded,
+                  color: Color(0xFF0F172A),
+                  size: 18,
+                ),
+                onPressed: () => Navigator.pop(context),
+              )
+            : null,
         title: const Text(
           'Riwayat Presensi',
           style: TextStyle(color: Color(0xFF0F172A), fontWeight: FontWeight.bold, fontSize: 16),

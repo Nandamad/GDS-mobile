@@ -2,7 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:dio/dio.dart';
 import '../services/api_service.dart';
 import 'main_navigation_page.dart';
-import 'lupa_password_page.dart'; // <-- Pastikan file ini sudah di-import
+import 'lupa_password_page.dart';
+import 'package:package_info_plus/package_info_plus.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -14,8 +15,24 @@ class LoginScreen extends StatefulWidget {
 class _LoginScreenState extends State<LoginScreen> {
   bool _obscurePassword = true;
   bool _isLoading = false;
+  String _version = '';
   final TextEditingController _nipController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
+
+  @override
+  void initState() {
+    super.initState();
+    _loadVersion();
+  }
+
+  Future<void> _loadVersion() async {
+    final packageInfo = await PackageInfo.fromPlatform();
+    if (mounted) {
+      setState(() {
+        _version = 'v${packageInfo.version}';
+      });
+    }
+  }
 
   Future<void> _handleLogin() async {
     FocusScope.of(context).unfocus();
@@ -26,7 +43,7 @@ class _LoginScreenState extends State<LoginScreen> {
     if (input.isEmpty || password.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text('Email/NIP dan Password wajib diisi!'),
+          content: Text('Email/No. HP dan Password wajib diisi!'),
           backgroundColor: Colors.redAccent,
         ),
       );
@@ -170,7 +187,7 @@ class _LoginScreenState extends State<LoginScreen> {
           if (data is Map && data.containsKey('message')) {
             errorMsg = data['message'];
           } else {
-            errorMsg = 'NIP/Email atau Password salah atau format tidak valid.';
+            errorMsg = 'Email/No. HP atau Password salah atau format tidak valid.';
           }
         } else if (e.response!.statusCode == 401) {
           final data = e.response!.data;
@@ -214,18 +231,10 @@ class _LoginScreenState extends State<LoginScreen> {
                       Center(
                         child: Column(
                           children: [
-                            Container(
+                            Image.asset(
+                              'assets/logo.png',
                               width: 64,
                               height: 64,
-                              decoration: const BoxDecoration(
-                                color: Color(0xFF009688),
-                                shape: BoxShape.circle,
-                              ),
-                              child: const Icon(
-                                Icons.access_time_filled_rounded,
-                                size: 32,
-                                color: Colors.white,
-                              ),
                             ),
                             const SizedBox(height: 24),
                             const Text(
@@ -250,7 +259,7 @@ class _LoginScreenState extends State<LoginScreen> {
                       const SizedBox(height: 48),
 
                       const Text(
-                        'NIP / Email',
+                        'Email / No. Hp',
                         style: TextStyle(
                           fontSize: 12,
                           fontWeight: FontWeight.bold,
@@ -265,7 +274,7 @@ class _LoginScreenState extends State<LoginScreen> {
                           color: Color(0xFF0F172A),
                         ),
                         decoration: InputDecoration(
-                          hintText: 'Masukkan NIP Anda',
+                          hintText: 'Masukkan Email atau No. HP Anda',
                           hintStyle: TextStyle(
                             fontSize: 13,
                             color: Colors.grey.shade400,
@@ -408,11 +417,11 @@ class _LoginScreenState extends State<LoginScreen> {
                   ),
                 ),
               ),
-              const Padding(
-                padding: EdgeInsets.only(bottom: 12.0),
+              Padding(
+                padding: const EdgeInsets.only(bottom: 12.0),
                 child: Text(
-                  'v1.0.0',
-                  style: TextStyle(fontSize: 10, color: Colors.grey),
+                  _version,
+                  style: const TextStyle(fontSize: 10, color: Colors.grey),
                 ),
               ),
             ],

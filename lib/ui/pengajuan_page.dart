@@ -513,6 +513,59 @@ class _PengajuanScreenState extends State<PengajuanScreen> {
           padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
 
           children: [
+            // Card Ajukan Lembur
+            InkWell(
+              onTap: () async {
+                final result = await Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => const AjukanLemburScreen(),
+                  ),
+                );
+                if (mounted && result == true) {
+                  _fetchHistory();
+                }
+              },
+              borderRadius: BorderRadius.circular(12),
+              child: Container(
+                width: double.infinity,
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 20),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: Colors.grey.shade200),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withOpacity(0.02),
+                      blurRadius: 10,
+                      offset: const Offset(0, 4),
+                    ),
+                  ],
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text(
+                      'Ajukan Lembur',
+                      style: TextStyle(
+                        fontWeight: FontWeight.bold,
+                        fontSize: 14,
+                        color: Color(0xFF0F172A),
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      'Pengajuan lembur kerja',
+                      style: TextStyle(color: Colors.grey.shade600, fontSize: 11),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+            
+            const SizedBox(height: 16),
+
+            // Card Ajukan Cuti
             InkWell(
               onTap: () async {
                 final result = await Navigator.push(

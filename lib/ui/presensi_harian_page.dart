@@ -16,7 +16,8 @@ import 'kamera_page.dart';
 import 'konfirmasi_foto_page.dart';
 import 'riwayat_presensi_page.dart';
 import 'ajukan_lembur_page.dart';
-
+import 'mulai_lembur_page.dart';
+import 'selesai_lembur_page.dart';
 class PresensiHarianScreen extends StatefulWidget {
   const PresensiHarianScreen({super.key});
 
@@ -870,28 +871,14 @@ class _PresensiHarianScreenState extends State<PresensiHarianScreen> {
                 icon: Icons.access_time_filled,
                 iconColor: const Color(0xFFF97316),
                 title: 'Mulai Lembur',
-                onTap: () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (context) => const AjukanLemburScreen(),
-                    ),
-                  );
-                },
+                onTap: () => _handleMenuLembur(true),
               ),
               _buildMenuDivider(),
               _buildMenuItem(
                 icon: Icons.access_time_filled,
                 iconColor: const Color(0xFFF97316),
                 title: 'Selesai Lembur',
-                onTap: () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (context) => const AjukanLemburScreen(),
-                    ),
-                  );
-                },
+                onTap: () => _handleMenuLembur(false),
               ),
               _buildMenuDivider(),
               _buildMenuItem(
@@ -941,7 +928,7 @@ class _PresensiHarianScreenState extends State<PresensiHarianScreen> {
                   Navigator.push(
                     context,
                     MaterialPageRoute(
-                      builder: (context) => const RiwayatPresensiScreen(),
+                      builder: (context) => const RiwayatPresensiScreen(showBackButton: true),
                     ),
                   );
                 },
@@ -990,6 +977,72 @@ class _PresensiHarianScreenState extends State<PresensiHarianScreen> {
         ),
       ),
     );
+  }
+
+  Future<void> _handleMenuLembur(bool isMulai) async {
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (_) => const Center(child: CircularProgressIndicator()),
+    );
+    try {
+      final res = await ApiService().dio.get('/absensi/today');
+      if (!mounted) return;
+      Navigator.pop(context); // Close loading
+
+      final payload = res.data;
+      final lembur = payload['lembur'];
+      
+      String status = 'Belum ada';
+      Map<String, dynamic>? dataForScreen;
+
+      if (lembur != null) {
+        status = lembur['status'] ?? 'Menunggu';
+        dataForScreen = lembur;
+
+        if (status == 'Disetujui' && payload['server_time'] != null) {
+           final serverTime = DateTime.parse(payload['server_time']);
+           final mulai = DateTime.parse(lembur['jam_mulai']);
+           final selesai = DateTime.parse(lembur['jam_selesai']);
+
+           if (serverTime.isAfter(mulai) && serverTime.isBefore(selesai)) {
+              status = 'Sedang Lembur';
+           } else if (serverTime.isAfter(selesai)) {
+              status = 'Selesai';
+           }
+        }
+      }
+
+      if (isMulai) {
+        if (lembur == null || status == 'Belum ada') {
+          Navigator.push(context, MaterialPageRoute(builder: (_) => MulaiLemburScreen(lemburData: null, lemburStatus: status)));
+        } else if (status == 'Disetujui' || status == 'Menunggu') {
+          Navigator.push(context, MaterialPageRoute(builder: (_) => MulaiLemburScreen(lemburData: dataForScreen, lemburStatus: status)));
+        } else if (status == 'Sedang Lembur' || status == 'Selesai') {
+          ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Anda sudah memulai lembur hari ini. Silakan gunakan menu Selesai Lembur.')));
+        } else {
+          ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Status lembur tidak diketahui: $status')));
+        }
+      } else {
+        if (lembur == null || status == 'Belum ada' || status == 'Menunggu' || status == 'Disetujui') {
+          ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Anda belum memulai lembur!')));
+        } else if (status == 'Sedang Lembur' || status == 'Selesai') {
+          final lemburDataForScreen = {
+            'jam_mulai_lembur': dataForScreen?['jam_mulai'] ?? DateTime.now().toIso8601String(),
+            'jam_selesai_lembur': dataForScreen?['jam_selesai'] ?? DateTime.now().add(const Duration(hours: 2)).toIso8601String(),
+            'alasan': dataForScreen?['alasan'] ?? 'Lembur',
+            'durasi_lembur_menit': dataForScreen?['durasi'] != null ? int.tryParse(dataForScreen!['durasi'].toString()) ?? 120 : 120,
+          };
+          Navigator.push(context, MaterialPageRoute(builder: (_) => SelesaiLemburScreen(lemburData: lemburDataForScreen)));
+        } else {
+          ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Status lembur tidak diketahui: $status')));
+        }
+      }
+    } catch (e) {
+      if (!mounted) return;
+      Navigator.pop(context);
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Gagal memuat data lembur.')));
+    }
   }
 
   Widget _buildMenuDivider() {

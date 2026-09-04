@@ -1,9 +1,6 @@
-import 'dart:convert';
-import 'dart:ui';
 import 'package:flutter/material.dart';
-import 'package:shared_preferences/shared_preferences.dart';
-import 'kamera_page.dart';
-import 'selesai_lembur_page.dart';
+import 'package:intl/intl.dart';
+import '../services/api_service.dart';
 
 class AjukanLemburScreen extends StatefulWidget {
   const AjukanLemburScreen({super.key});
@@ -15,40 +12,8 @@ class AjukanLemburScreen extends StatefulWidget {
 class _AjukanLemburScreenState extends State<AjukanLemburScreen> {
   final TextEditingController _alasanController = TextEditingController();
   final TextEditingController _catatanController = TextEditingController();
-  int _estimasiJam = 2; // Default 2 hours based on image
-  String? _fotoSelfieBase64;
+  int _estimasiJam = 2;
   bool _isSubmitting = false;
-
-  @override
-  void initState() {
-    super.initState();
-    _checkActiveLembur();
-  }
-
-  Future<void> _checkActiveLembur() async {
-    final prefs = await SharedPreferences.getInstance();
-    final isActive = prefs.getBool('is_lembur_active') ?? false;
-    if (isActive) {
-      final alasan = prefs.getString('lembur_alasan') ?? '';
-      final estimasiJam = prefs.getInt('lembur_estimasi') ?? 2;
-      final catatan = prefs.getString('lembur_catatan') ?? '';
-      final startTimeStr = prefs.getString('lembur_start_time');
-      if (startTimeStr != null) {
-        if (!mounted) return;
-        Navigator.pushReplacement(
-          context,
-          MaterialPageRoute(
-            builder: (context) => SelesaiLemburScreen(
-              alasan: alasan,
-              estimasiJam: estimasiJam,
-              catatan: catatan,
-              startTime: DateTime.parse(startTimeStr),
-            ),
-          ),
-        );
-      }
-    }
-  }
 
   @override
   void dispose() {
@@ -57,71 +22,46 @@ class _AjukanLemburScreenState extends State<AjukanLemburScreen> {
     super.dispose();
   }
 
-  Future<void> _ambilFoto() async {
-    final result = await Navigator.push(
-      context,
-      MaterialPageRoute(builder: (context) => const KameraScreen(namaKantor: 'Verifikasi Lembur')),
-    );
-
-    if (result != null && result is String) {
-      setState(() {
-        _fotoSelfieBase64 = result;
-      });
-    }
-  }
-
-  void _mulaiLembur() {
+  Future<void> _mulaiLembur() async {
     if (_alasanController.text.trim().isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Alasan lembur wajib diisi!')),
       );
       return;
     }
-    
-    // In a real app we'd validate foto selfie as well.
-    // For now we allow without it or mock it.
-    /*
-    if (_fotoSelfieBase64 == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Foto verifikasi wajib diambil!')),
-      );
-      return;
-    }
-    */
 
     setState(() {
       _isSubmitting = true;
     });
 
-    // Mocking an API call by storing to SharedPreferences
-    Future.delayed(const Duration(seconds: 1), () async {
-      if (!mounted) return;
-
+    try {
       final now = DateTime.now();
-      final prefs = await SharedPreferences.getInstance();
-      await prefs.setBool('is_lembur_active', true);
-      await prefs.setString('lembur_alasan', _alasanController.text.trim());
-      await prefs.setInt('lembur_estimasi', _estimasiJam);
-      await prefs.setString('lembur_catatan', _catatanController.text.trim());
-      await prefs.setString('lembur_start_time', now.toIso8601String());
+      final jamMulai = DateFormat('HH:mm').format(now);
+      final jamSelesai = DateFormat('HH:mm').format(now.add(Duration(hours: _estimasiJam)));
+      final tanggal = DateFormat('yyyy-MM-dd').format(now);
 
+      final payload = {
+        'tanggal': tanggal,
+        'jam_mulai_lembur': jamMulai,
+        'jam_selesai_lembur': jamSelesai,
+        'alasan': _alasanController.text.trim() + (_catatanController.text.isNotEmpty ? ' - ' + _catatanController.text : ''),
+      };
+
+      final response = await ApiService().dio.post('/lembur', data: payload);
+      if (response.statusCode == 201) {
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Pengajuan lembur berhasil dikirim'), backgroundColor: Colors.green),
+        );
+        Navigator.pop(context, true); // Return true to refresh history
+      }
+    } catch (e) {
       if (!mounted) return;
-      setState(() {
-        _isSubmitting = false;
-      });
-
-      Navigator.pushReplacement(
-        context,
-        MaterialPageRoute(
-          builder: (context) => SelesaiLemburScreen(
-            alasan: _alasanController.text.trim(),
-            estimasiJam: _estimasiJam,
-            catatan: _catatanController.text.trim(),
-            startTime: now,
-          ),
-        ),
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Gagal mengajukan lembur: $e'), backgroundColor: Colors.red),
       );
-    });
+      setState(() => _isSubmitting = false);
+    }
   }
 
   @override
@@ -143,7 +83,7 @@ class _AjukanLemburScreenState extends State<AjukanLemburScreen> {
           ),
         ),
         title: const Text(
-          'Mulai Lembur',
+          'Ajukan Lembur',
           style: TextStyle(color: Color(0xFF0F172A), fontWeight: FontWeight.bold, fontSize: 16),
         ),
         centerTitle: true,
@@ -158,7 +98,7 @@ class _AjukanLemburScreenState extends State<AjukanLemburScreen> {
               width: double.infinity,
               padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(
-                color: const Color(0xFFFFEDD5), // Light orange background
+                color: const Color(0xFFFFEDD5),
                 borderRadius: BorderRadius.circular(12),
                 border: Border.all(color: const Color(0xFFFED7AA)),
               ),
@@ -181,7 +121,7 @@ class _AjukanLemburScreenState extends State<AjukanLemburScreen> {
                   ),
                   const SizedBox(height: 6),
                   const Text(
-                    'Kegiatan lembur hanya akan dihitung setelah waktu kerja normal Anda hari ini selesai.',
+                    'Kegiatan lembur hanya akan dihitung setelah waktu kerja normal Anda hari ini selesai dan membutuhkan persetujuan HRD.',
                     style: TextStyle(
                       color: Color(0xFFEA580C),
                       fontSize: 11,
@@ -203,7 +143,7 @@ class _AjukanLemburScreenState extends State<AjukanLemburScreen> {
               controller: _alasanController,
               style: const TextStyle(fontSize: 12),
               decoration: InputDecoration(
-                hintText: '',
+                hintText: 'Contoh: Pekerjaan tambahan',
                 fillColor: Colors.white,
                 filled: true,
                 contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
@@ -249,7 +189,7 @@ class _AjukanLemburScreenState extends State<AjukanLemburScreen> {
               maxLines: 4,
               style: const TextStyle(fontSize: 12),
               decoration: InputDecoration(
-                hintText: 'Perlu lembur tambahan untuk menyelesaikan testing security setelah deployment server selesai malam ini.',
+                hintText: 'Perlu lembur tambahan...',
                 hintStyle: const TextStyle(fontSize: 12, color: Colors.grey, height: 1.4),
                 fillColor: Colors.white,
                 filled: true,
@@ -264,59 +204,6 @@ class _AjukanLemburScreenState extends State<AjukanLemburScreen> {
                 ),
               ),
             ),
-            const SizedBox(height: 20),
-
-            // Foto Selfie
-            const Text(
-              'Foto Selfie Verifikasi',
-              style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Color(0xFF0F172A)),
-            ),
-            const SizedBox(height: 8),
-            GestureDetector(
-              onTap: _ambilFoto,
-              child: CustomPaint(
-                painter: DashedRectPainter(color: Colors.grey.shade400, strokeWidth: 1, gap: 5),
-                child: Container(
-                  width: double.infinity,
-                  height: 120,
-                  decoration: BoxDecoration(
-                    color: const Color(0xFFF8FAFC),
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  child: _fotoSelfieBase64 != null
-                      ? ClipRRect(
-                          borderRadius: BorderRadius.circular(8),
-                          child: Image.memory(
-                            base64Decode(_fotoSelfieBase64!.split(',').last),
-                            fit: BoxFit.cover,
-                          ),
-                        )
-                      : Column(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            Container(
-                              padding: const EdgeInsets.all(8),
-                              decoration: const BoxDecoration(
-                                color: Colors.white,
-                                shape: BoxShape.circle,
-                              ),
-                              child: const Icon(Icons.camera_alt_outlined, color: Color(0xFF0F766E), size: 24),
-                            ),
-                            const SizedBox(height: 8),
-                            const Text(
-                              'Ambil Foto Selfie',
-                              style: TextStyle(color: Color(0xFF0F766E), fontWeight: FontWeight.bold, fontSize: 12),
-                            ),
-                            const SizedBox(height: 4),
-                            const Text(
-                              'Foto wajah diperlukan untuk verifikasi lembur',
-                              style: TextStyle(color: Colors.grey, fontSize: 10),
-                            ),
-                          ],
-                        ),
-                ),
-              ),
-            ),
             const SizedBox(height: 32),
 
             // Submit Button
@@ -327,7 +214,7 @@ class _AjukanLemburScreenState extends State<AjukanLemburScreen> {
                 onPressed: _isSubmitting ? null : _mulaiLembur,
                 icon: _isSubmitting
                     ? const SizedBox.shrink()
-                    : const Icon(Icons.play_arrow_outlined, color: Colors.white, size: 20),
+                    : const Icon(Icons.send_rounded, color: Colors.white, size: 20),
                 label: _isSubmitting
                     ? const SizedBox(
                         width: 20,
@@ -335,7 +222,7 @@ class _AjukanLemburScreenState extends State<AjukanLemburScreen> {
                         child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
                       )
                     : const Text(
-                        'Mulai Lembur Sekarang',
+                        'Ajukan Lembur',
                         style: TextStyle(
                           color: Colors.white,
                           fontSize: 13,
@@ -390,44 +277,4 @@ class _AjukanLemburScreenState extends State<AjukanLemburScreen> {
       ),
     );
   }
-}
-
-// Painter for Dashed Border
-class DashedRectPainter extends CustomPainter {
-  final Color color;
-  final double strokeWidth;
-  final double gap;
-
-  DashedRectPainter({required this.color, required this.strokeWidth, required this.gap});
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    final Paint paint = Paint()
-      ..color = color
-      ..strokeWidth = strokeWidth
-      ..style = PaintingStyle.stroke;
-
-    final Path path = Path();
-    path.addRRect(RRect.fromRectAndRadius(Rect.fromLTWH(0, 0, size.width, size.height), const Radius.circular(8)));
-
-    final Path dashedPath = _createDashedPath(path, gap);
-    canvas.drawPath(dashedPath, paint);
-  }
-
-  Path _createDashedPath(Path source, double gap) {
-    Path dashedPath = Path();
-    for (PathMetric metric in source.computeMetrics()) {
-      double distance = 0.0;
-      while (distance < metric.length) {
-        double len = gap; // length of dash
-        if (distance + len > metric.length) len = metric.length - distance;
-        dashedPath.addPath(metric.extractPath(distance, distance + len), Offset.zero);
-        distance += len + gap; // length of gap
-      }
-    }
-    return dashedPath;
-  }
-
-  @override
-  bool shouldRepaint(CustomPainter oldDelegate) => false;
 }

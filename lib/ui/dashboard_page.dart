@@ -13,6 +13,8 @@ import '../services/image_url_service.dart';
 import 'kamera_page.dart';
 import 'konfirmasi_foto_page.dart';
 import 'selesai_lembur_page.dart';
+import 'ajukan_lembur_page.dart';
+import 'mulai_lembur_page.dart';
 
 class DashboardScreen extends StatefulWidget {
   final VoidCallback? onNotificationTap;
@@ -573,6 +575,16 @@ class _DashboardScreenState extends State<DashboardScreen> {
     final fotoUrl =
         _userFotoUrl ?? ImageUrlService.resolve(rawFotoDashboard?.toString());
 
+    final hour = DateTime.now().hour;
+    String greeting = 'Selamat pagi';
+    if (hour >= 11 && hour < 15) {
+      greeting = 'Selamat siang';
+    } else if (hour >= 15 && hour < 18) {
+      greeting = 'Selamat sore';
+    } else if (hour >= 18 || hour < 4) {
+      greeting = 'Selamat malam';
+    }
+
     return Row(
       children: [
         CircleAvatar(
@@ -591,7 +603,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
               Row(
                 children: [
                   Text(
-                    'Selamat pagi, $nama! ',
+                    '$greeting, $nama! ',
                     style: const TextStyle(
                       fontWeight: FontWeight.bold,
                       fontSize: 16,
@@ -792,13 +804,23 @@ class _DashboardScreenState extends State<DashboardScreen> {
               color: Color(0xFF009688),
             ),
           ),
+        ] else if (_lemburStatus == 'Selesai') ...[
+          const SizedBox(height: 16),
+          const Text(
+            'SELESAI LEMBUR',
+            style: TextStyle(
+              fontSize: 12,
+              fontWeight: FontWeight.bold,
+              color: Color(0xFF009688),
+            ),
+          ),
         ],
       ],
     );
   }
 
   Widget _buildAbsenButton() {
-    if (_lemburStatus == 'Sedang Lembur') {
+    if (_lemburStatus == 'Sedang Lembur' || _lemburStatus == 'Selesai') {
       return _buildLemburButton();
     }
 
@@ -812,8 +834,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
       btnColor = const Color(0xFFC62828); // Red
       btnText = 'Absen Keluar';
     } else {
-      btnColor = Colors.grey;
-      btnText = 'Sudah Absen';
+      btnColor = const Color(0xFF009688);
+      btnText = 'Mulai Lembur';
     }
 
     if (!_isInRadius && !(_isSudahAbsenMasuk && _isSudahAbsenKeluar)) {
@@ -822,9 +844,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
     }
 
     return GestureDetector(
-      onTap: ((_isSudahAbsenMasuk && _isSudahAbsenKeluar) || !_isInRadius)
+      onTap: ((_isSudahAbsenMasuk && _isSudahAbsenKeluar && btnText != 'Mulai Lembur') || (!_isInRadius && btnText != 'Mulai Lembur'))
           ? null
-          : _handleAbsenProcess,
+          : (btnText == 'Mulai Lembur' ? _handleMulaiLemburButton : _handleAbsenProcess),
       child: Container(
         width: 180,
         height: 180,
@@ -889,26 +911,31 @@ class _DashboardScreenState extends State<DashboardScreen> {
       }
     }
 
-    return Column(
-      children: [
-        Container(
-          width: 180,
-          height: 180,
-          decoration: BoxDecoration(
-            color: Colors.white,
-            shape: BoxShape.circle,
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withOpacity(0.05),
-                blurRadius: 24,
-                spreadRadius: 2,
-                offset: const Offset(0, 10),
-              ),
-            ],
-          ),
-          child: Stack(
-            alignment: Alignment.center,
-            children: [
+    final bool isDone = _lemburStatus == 'Selesai';
+    final Color ringColor = isDone ? const Color(0xFF009688) : const Color(0xFFC0CA33);
+    final Color innerColor = isDone ? const Color(0xFF009688) : const Color(0xFFC0CA33);
+
+    return GestureDetector(
+      onTap: isDone ? _handleSelesaiLembur : null,
+      child: Container(
+        width: 180,
+        height: 180,
+        decoration: BoxDecoration(
+          color: Colors.white,
+          shape: BoxShape.circle,
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.05),
+              blurRadius: 24,
+              spreadRadius: 2,
+              offset: const Offset(0, 10),
+            ),
+          ],
+        ),
+        child: Stack(
+          alignment: Alignment.center,
+          children: [
+            if (!isDone)
               SizedBox(
                 width: 180,
                 height: 180,
@@ -916,84 +943,64 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   value: progress,
                   strokeWidth: 12,
                   backgroundColor: Colors.grey.shade100,
-                  color: const Color(0xFFC0CA33), // Lime green
+                  color: ringColor,
                 ),
               ),
-              Container(
-                width: 156,
-                height: 156,
-                decoration: const BoxDecoration(
-                  color: Color(0xFFC0CA33),
-                  shape: BoxShape.circle,
-                ),
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Text(
-                      _lemburCountdown,
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontWeight: FontWeight.bold,
-                        fontSize: 28,
-                      ),
+            Container(
+              width: 156,
+              height: 156,
+              decoration: BoxDecoration(
+                color: innerColor,
+                shape: BoxShape.circle,
+              ),
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Text(
+                    _lemburCountdown,
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontWeight: FontWeight.bold,
+                      fontSize: isDone ? 18 : 28,
                     ),
-                  ],
-                ),
-              ),
-            ],
-          ),
-        ),
-        const SizedBox(height: 24),
-        SizedBox(
-          width: double.infinity,
-          height: 48,
-          child: ElevatedButton(
-            onPressed: _handleSelesaiLembur,
-            style: ElevatedButton.styleFrom(
-              backgroundColor: const Color(0xFF009688),
-              elevation: 0,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(12),
+                  ),
+                ],
               ),
             ),
-            child: const Text(
-              'Selesai Lembur',
-              style: TextStyle(
-                color: Colors.white,
-                fontSize: 14,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-          ),
+          ],
         ),
-      ],
+      ),
+    );
+  }
+
+  void _handleMulaiLemburButton() {
+    Navigator.push(
+      context, 
+      MaterialPageRoute(
+        builder: (_) => MulaiLemburScreen(
+          lemburData: _lemburData,
+          lemburStatus: _lemburStatus,
+        )
+      )
     );
   }
 
   void _handleSelesaiLembur() {
-    String alasan = 'Lembur';
-    String catatan = '';
-    int estimasiJam = 0;
-    DateTime startTime = DateTime.now();
-
-    if (_lemburData != null) {
-      alasan = _lemburData!['alasan']?.toString() ?? 'Lembur';
-      catatan = _lemburData!['catatan']?.toString() ?? '';
-      estimasiJam =
-          int.tryParse(_lemburData!['estimasi_jam']?.toString() ?? '0') ?? 0;
-      if (_lemburData!['jam_mulai'] != null) {
-        startTime = DateTime.parse(_lemburData!['jam_mulai'].toString());
-      }
-    }
+    Map<String, dynamic> data = _lemburData ?? {};
+    
+    final lemburDataForScreen = {
+      'jam_mulai_lembur': data['jam_mulai'] ?? DateTime.now().toIso8601String(),
+      'jam_selesai_lembur': data['jam_selesai'] ?? DateTime.now().add(const Duration(hours: 2)).toIso8601String(),
+      'alasan': data['alasan'] ?? 'Lembur',
+      'durasi_lembur_menit': data['estimasi_jam'] != null ? (int.tryParse(data['estimasi_jam'].toString()) ?? 0) * 60 : 120,
+    };
 
     Navigator.push(
       context,
       MaterialPageRoute(
         builder: (context) => SelesaiLemburScreen(
-          alasan: alasan,
-          catatan: catatan,
-          estimasiJam: estimasiJam,
-          startTime: startTime,
+          lemburData: lemburDataForScreen,
         ),
       ),
     );

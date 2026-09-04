@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
 
 class TentangAplikasiScreen extends StatelessWidget {
-  const TentangAplikasiScreen({super.key});
+  final String namaPerusahaan;
+  const TentangAplikasiScreen({super.key, this.namaPerusahaan = 'PT Generasi Digital Solusi'});
 
   @override
   Widget build(BuildContext context) {
@@ -29,17 +30,14 @@ class TentangAplikasiScreen extends StatelessWidget {
         child: Column(
           children: [
             // Logo / Icon
-            Container(
-              padding: const EdgeInsets.all(20),
-              decoration: const BoxDecoration(
-                color: Color(0xFFE0F2F1), // Light green
-                shape: BoxShape.circle,
-              ),
-              child: const Icon(Icons.access_time_rounded, color: Color(0xFF009688), size: 40),
+            Image.asset(
+              'assets/logo.png',
+              width: 80,
+              height: 80,
             ),
             const SizedBox(height: 16),
             const Text(
-              'PresensiKu',
+              'PresensiPlus+',
               style: TextStyle(
                 fontSize: 20,
                 fontWeight: FontWeight.bold,
@@ -48,7 +46,7 @@ class TentangAplikasiScreen extends StatelessWidget {
             ),
             const SizedBox(height: 4),
             const Text(
-              'Versi 1.0.0',
+              'Versi 1.1.8',
               style: TextStyle(
                 fontSize: 12,
                 color: Color(0xFF94A3B8),
@@ -78,7 +76,7 @@ class TentangAplikasiScreen extends StatelessWidget {
               ),
               child: Column(
                 children: [
-                  _buildInfoRow('Dibuat oleh', 'PT Global Digital Solusi'),
+                  _buildInfoRow('Dibuat oleh', namaPerusahaan),
                   const Divider(height: 24),
                   _buildInfoRow('Email', 'admin@gds.com'),
                   const Divider(height: 24),

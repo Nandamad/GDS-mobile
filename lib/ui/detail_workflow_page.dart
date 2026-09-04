@@ -268,11 +268,13 @@ class DetailWorkflowScreen extends StatelessWidget {
 
           const SizedBox(height: 8),
           
-          _summaryRow('Jenis Cuti', jenis),
+          isCuti 
+              ? _summaryRow('Jenis Cuti', jenis)
+              : _summaryRow('Alasan Lembur', alasan),
 
           if (!isCuti) ...[
             const SizedBox(height: 8),
-            _summaryRow('Durasi', _durasiLembur()),
+            _summaryRow('Estimasi Durasi', _durasiLembur()),
           ],
 
           if (data['dokumen_pendukung'] != null) ...[

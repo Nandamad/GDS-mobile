@@ -23,6 +23,7 @@ dependencies:
   flutter_bloc: ^8.1.6
   image_picker: ^1.2.3
   url_launcher: ^6.3.0
+  package_info_plus: ^9.0.1
 
 dev_dependencies:
   flutter_test:
@@ -35,6 +36,7 @@ flutter:
 
   assets:
     - assets/.env
+    - assets/logo.png
 
 flutter_launcher_icons:
   android: true

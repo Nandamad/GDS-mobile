@@ -270,7 +270,7 @@ class _ProfilPageState extends State<ProfilPage> {
                             Navigator.push(
                               context,
                               MaterialPageRoute(
-                                builder: (context) => const RiwayatPresensiScreen(),
+                                builder: (context) => const RiwayatPresensiScreen(showBackButton: true),
                               ),
                             );
                           },
@@ -293,10 +293,15 @@ class _ProfilPageState extends State<ProfilPage> {
                           icon: Icons.info_outline_rounded,
                           title: 'Tentang Aplikasi',
                           onTap: () {
+                            final rawTenant = _userProfile?['tenant'];
+                            final String perusahaan = (rawTenant is Map && rawTenant['nama_perusahaan'] != null)
+                                ? rawTenant['nama_perusahaan'].toString()
+                                : 'PT Generasi Digital Solusi';
+                                
                             Navigator.push(
                               context,
                               MaterialPageRoute(
-                                builder: (context) => const TentangAplikasiScreen(),
+                                builder: (context) => TentangAplikasiScreen(namaPerusahaan: perusahaan),
                               ),
                             );
                           },
