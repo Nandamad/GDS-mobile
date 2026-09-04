@@ -14,12 +14,41 @@ class _AjukanLemburScreenState extends State<AjukanLemburScreen> {
   final TextEditingController _catatanController = TextEditingController();
   int _estimasiJam = 2;
   bool _isSubmitting = false;
+  
+  DateTime _selectedDate = DateTime.now();
+  TimeOfDay _selectedTime = TimeOfDay.now();
 
   @override
   void dispose() {
     _alasanController.dispose();
     _catatanController.dispose();
     super.dispose();
+  }
+
+  Future<void> _selectDate(BuildContext context) async {
+    final DateTime? picked = await showDatePicker(
+      context: context,
+      initialDate: _selectedDate,
+      firstDate: DateTime.now(),
+      lastDate: DateTime.now().add(const Duration(days: 30)),
+    );
+    if (picked != null && picked != _selectedDate) {
+      setState(() {
+        _selectedDate = picked;
+      });
+    }
+  }
+
+  Future<void> _selectTime(BuildContext context) async {
+    final TimeOfDay? picked = await showTimePicker(
+      context: context,
+      initialTime: _selectedTime,
+    );
+    if (picked != null && picked != _selectedTime) {
+      setState(() {
+        _selectedTime = picked;
+      });
+    }
   }
 
   Future<void> _mulaiLembur() async {
@@ -35,15 +64,21 @@ class _AjukanLemburScreenState extends State<AjukanLemburScreen> {
     });
 
     try {
-      final now = DateTime.now();
-      final jamMulai = DateFormat('HH:mm').format(now);
-      final jamSelesai = DateFormat('HH:mm').format(now.add(Duration(hours: _estimasiJam)));
-      final tanggal = DateFormat('yyyy-MM-dd').format(now);
+      final String tanggal = DateFormat('yyyy-MM-dd').format(_selectedDate);
+      
+      final String jamMulaiStr = '${_selectedTime.hour.toString().padLeft(2, '0')}:${_selectedTime.minute.toString().padLeft(2, '0')}';
+      
+      // Hitung jam selesai berdasarkan durasi
+      int endHour = _selectedTime.hour + _estimasiJam;
+      int endMinute = _selectedTime.minute;
+      if (endHour >= 24) endHour = endHour % 24; // Handle lewat tengah malam
+      
+      final String jamSelesaiStr = '${endHour.toString().padLeft(2, '0')}:${endMinute.toString().padLeft(2, '0')}';
 
       final payload = {
         'tanggal': tanggal,
-        'jam_mulai_lembur': jamMulai,
-        'jam_selesai_lembur': jamSelesai,
+        'jam_mulai_lembur': jamMulaiStr,
+        'jam_selesai_lembur': jamSelesaiStr,
         'alasan': _alasanController.text.trim() + (_catatanController.text.isNotEmpty ? ' - ' + _catatanController.text : ''),
       };
 
@@ -129,6 +164,58 @@ class _AjukanLemburScreenState extends State<AjukanLemburScreen> {
                     ),
                   ),
                 ],
+              ),
+            ),
+            const SizedBox(height: 20),
+
+            // Pilih Tanggal
+            const Text(
+              'Tanggal Lembur *',
+              style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Color(0xFF0F172A)),
+            ),
+            const SizedBox(height: 8),
+            GestureDetector(
+              onTap: () => _selectDate(context),
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(color: Colors.grey.shade300),
+                ),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text(DateFormat('dd MMM yyyy').format(_selectedDate), style: const TextStyle(fontSize: 12)),
+                    const Icon(Icons.calendar_today, size: 16, color: Colors.grey),
+                  ],
+                ),
+              ),
+            ),
+            const SizedBox(height: 20),
+
+            // Pilih Waktu Mulai
+            const Text(
+              'Waktu Mulai Lembur *',
+              style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Color(0xFF0F172A)),
+            ),
+            const SizedBox(height: 8),
+            GestureDetector(
+              onTap: () => _selectTime(context),
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(color: Colors.grey.shade300),
+                ),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text(_selectedTime.format(context), style: const TextStyle(fontSize: 12)),
+                    const Icon(Icons.access_time, size: 16, color: Colors.grey),
+                  ],
+                ),
               ),
             ),
             const SizedBox(height: 20),

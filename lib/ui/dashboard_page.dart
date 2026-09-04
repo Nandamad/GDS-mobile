@@ -575,14 +575,15 @@ class _DashboardScreenState extends State<DashboardScreen> {
     final fotoUrl =
         _userFotoUrl ?? ImageUrlService.resolve(rawFotoDashboard?.toString());
 
-    final hour = DateTime.now().hour;
-    String greeting = 'Selamat pagi';
-    if (hour >= 11 && hour < 15) {
+    final currentDt = _serverTime ?? DateTime.now();
+    final hour = currentDt.hour;
+    String greeting = 'Selamat malam';
+    if (hour >= 5 && hour < 11) {
+      greeting = 'Selamat pagi';
+    } else if (hour >= 11 && hour < 15) {
       greeting = 'Selamat siang';
     } else if (hour >= 15 && hour < 18) {
       greeting = 'Selamat sore';
-    } else if (hour >= 18 || hour < 4) {
-      greeting = 'Selamat malam';
     }
 
     return Row(
