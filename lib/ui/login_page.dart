@@ -25,6 +25,13 @@ class _LoginScreenState extends State<LoginScreen> {
     _loadVersion();
   }
 
+  @override
+  void dispose() {
+    _nipController.dispose();
+    _passwordController.dispose();
+    super.dispose();
+  }
+
   Future<void> _loadVersion() async {
     final packageInfo = await PackageInfo.fromPlatform();
     if (mounted) {

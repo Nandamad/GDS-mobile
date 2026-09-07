@@ -22,6 +22,15 @@ class _LupaPasswordScreenState extends State<LupaPasswordScreen> {
   bool _obscurePassword = true;
   bool _obscureConfirmPassword = true;
 
+  @override
+  void dispose() {
+    _emailController.dispose();
+    _tokenController.dispose();
+    _passwordController.dispose();
+    _confirmPasswordController.dispose();
+    super.dispose();
+  }
+
   // 1. Fungsi Kirim Email (Request Token)
   Future<void> _requestToken() async {
     if (_emailController.text.isEmpty) {

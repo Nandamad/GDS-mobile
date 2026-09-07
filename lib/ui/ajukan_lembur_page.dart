@@ -83,7 +83,7 @@ class _AjukanLemburScreenState extends State<AjukanLemburScreen> {
       };
 
       final response = await ApiService().dio.post('/lembur', data: payload);
-      if (response.statusCode == 201) {
+      if (response.statusCode == 200 || response.statusCode == 201) {
         if (!mounted) return;
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('Pengajuan lembur berhasil dikirim'), backgroundColor: Colors.green),
@@ -95,7 +95,10 @@ class _AjukanLemburScreenState extends State<AjukanLemburScreen> {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Gagal mengajukan lembur: $e'), backgroundColor: Colors.red),
       );
-      setState(() => _isSubmitting = false);
+    } finally {
+      if (mounted) setState(() {
+        _isSubmitting = false;
+      });
     }
   }
 
