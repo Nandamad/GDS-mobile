@@ -376,9 +376,9 @@ class _NotifikasiScreenState extends State<NotifikasiScreen> {
           final title = item['title'].toString().toLowerCase();
           
           if (title.contains('persetujuan')) {
-             Navigator.push(context, MaterialPageRoute(builder: (context) => const ApprovalScreen()));
+             Navigator.push(context, MaterialPageRoute(builder: (context) => const ApprovalScreen(showBackButton: true)));
           } else if (title.contains('pengajuan') || title.contains('cuti') || title.contains('lembur') || title.contains('izin')) {
-             Navigator.push(context, MaterialPageRoute(builder: (context) => const PengajuanScreen()));
+             Navigator.push(context, MaterialPageRoute(builder: (context) => const PengajuanScreen(showBackButton: true)));
           } else if (title.contains('absen') || title.contains('terlambat')) {
              Navigator.push(context, MaterialPageRoute(builder: (context) => const RiwayatPresensiScreen(showBackButton: true)));
           }

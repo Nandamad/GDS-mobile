@@ -8,6 +8,7 @@ import 'package:http_parser/http_parser.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:latlong2/latlong.dart';
 
+import 'package:shared_preferences/shared_preferences.dart';
 import '../services/api_service.dart';
 import '../services/image_url_service.dart';
 import 'kamera_page.dart';
@@ -41,6 +42,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
   DateTime? _serverTime;
   String _lemburStatus = '';
   String _lemburCountdown = '';
+  bool _isLemburStartedLocal = false;
+  String? _lemburActualStart;
 
   LatLng? _officeLocation;
   double _radiusMeters = 0.0;
@@ -80,27 +83,39 @@ class _DashboardScreenState extends State<DashboardScreen> {
           _serverTime = _serverTime!.add(const Duration(seconds: 1));
 
           if (_lemburData != null) {
+            final statusLembur = _lemburData!['status'];
             final mulaiStr = _lemburData!['jam_mulai'];
             final selesaiStr = _lemburData!['jam_selesai'];
-            if (mulaiStr != null && selesaiStr != null) {
+            if (statusLembur == 'Disetujui' && mulaiStr != null && selesaiStr != null) {
               final mulai = DateTime.parse(mulaiStr);
               final selesai = DateTime.parse(selesaiStr);
 
-              if (_serverTime!.isAfter(mulai) &&
-                  _serverTime!.isBefore(selesai)) {
-                _lemburStatus = 'Sedang Lembur';
-                final diff = selesai.difference(_serverTime!);
-                final h = diff.inHours.toString().padLeft(2, '0');
-                final m = (diff.inMinutes % 60).toString().padLeft(2, '0');
-                final s = (diff.inSeconds % 60).toString().padLeft(2, '0');
-                _lemburCountdown = '$h:$m:$s';
-              } else if (_serverTime!.isAfter(selesai)) {
-                _lemburStatus = 'Selesai';
-                _lemburCountdown = 'Lembur Selesai';
+              if (_isLemburStartedLocal && _isSudahAbsenMasuk && _isSudahAbsenKeluar) {
+                final actualStart = _lemburActualStart != null ? DateTime.parse(_lemburActualStart!) : mulai;
+                if (_serverTime!.isAfter(actualStart) && _serverTime!.isBefore(selesai)) {
+                  _lemburStatus = 'Sedang Lembur';
+                  final diff = selesai.difference(_serverTime!);
+                  final h = diff.inHours.toString().padLeft(2, '0');
+                  final m = (diff.inMinutes % 60).toString().padLeft(2, '0');
+                  final s = (diff.inSeconds % 60).toString().padLeft(2, '0');
+                  _lemburCountdown = '$h:$m:$s';
+                } else if (_serverTime!.isAfter(selesai)) {
+                  _lemburStatus = 'Selesai';
+                  _lemburCountdown = 'Lembur Selesai';
+                } else {
+                  _lemburStatus = 'Disetujui';
+                  _lemburCountdown = '';
+                }
               } else {
-                _lemburStatus = 'Menunggu';
+                _lemburStatus = 'Disetujui';
                 _lemburCountdown = '';
               }
+            } else if (statusLembur == 'Menunggu') {
+              _lemburStatus = 'Menunggu';
+              _lemburCountdown = '';
+            } else {
+              _lemburStatus = statusLembur ?? '';
+              _lemburCountdown = '';
             }
           }
         }
@@ -158,6 +173,12 @@ class _DashboardScreenState extends State<DashboardScreen> {
           _serverTime = DateTime.parse(resData['server_time']);
         }
         _lemburData = resData['lembur'];
+        if (_lemburData != null) {
+          final prefs = await SharedPreferences.getInstance();
+          final lemburId = _lemburData!['id'] ?? _lemburData!['tanggal'];
+          _isLemburStartedLocal = prefs.getBool('lembur_started_$lemburId') ?? false;
+          _lemburActualStart = prefs.getString('lembur_actual_start_$lemburId');
+        }
 
         if (data != null && data is Map) {
           _isSudahAbsenMasuk =

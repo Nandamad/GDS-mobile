@@ -8,6 +8,7 @@ import 'package:http_parser/http_parser.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:latlong2/latlong.dart';
 
+import 'package:shared_preferences/shared_preferences.dart';
 import '../services/api_service.dart';
 import '../model/absensi.dart';
 import '../cubit/location_cubit.dart';
@@ -980,6 +981,11 @@ class _PresensiHarianScreenState extends State<PresensiHarianScreen> {
   }
 
   Future<void> _handleMenuLembur(bool isMulai) async {
+    if (_jamMasuk == null || _jamKeluar == null) {
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Anda harus menyelesaikan Absen Masuk dan Absen Keluar terlebih dahulu sebelum bisa melakukan aktivitas lembur.')));
+      return;
+    }
+
     showDialog(
       context: context,
       barrierDismissible: false,
@@ -1005,7 +1011,11 @@ class _PresensiHarianScreenState extends State<PresensiHarianScreen> {
            final mulai = DateTime.parse(lembur['jam_mulai']);
            final selesai = DateTime.parse(lembur['jam_selesai']);
 
-           if (serverTime.isAfter(mulai) && serverTime.isBefore(selesai)) {
+           final prefs = await SharedPreferences.getInstance();
+           final lemburId = lembur['id'] ?? lembur['tanggal'];
+           final isStartedLocal = prefs.getBool('lembur_started_$lemburId') ?? false;
+
+           if (isStartedLocal && serverTime.isBefore(selesai)) {
               status = 'Sedang Lembur';
            } else if (serverTime.isAfter(selesai)) {
               status = 'Selesai';
@@ -1027,8 +1037,12 @@ class _PresensiHarianScreenState extends State<PresensiHarianScreen> {
         if (lembur == null || status == 'Belum ada' || status == 'Menunggu' || status == 'Disetujui') {
           ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Anda belum memulai lembur!')));
         } else if (status == 'Sedang Lembur' || status == 'Selesai') {
+          final prefs = await SharedPreferences.getInstance();
+          final lemburId = dataForScreen?['id'] ?? dataForScreen?['tanggal'];
+          final actualStart = prefs.getString('lembur_actual_start_$lemburId') ?? dataForScreen?['jam_mulai'] ?? DateTime.now().toIso8601String();
+          
           final lemburDataForScreen = {
-            'jam_mulai_lembur': dataForScreen?['jam_mulai'] ?? DateTime.now().toIso8601String(),
+            'jam_mulai_lembur': actualStart,
             'jam_selesai_lembur': dataForScreen?['jam_selesai'] ?? DateTime.now().add(const Duration(hours: 2)).toIso8601String(),
             'alasan': dataForScreen?['alasan'] ?? 'Lembur',
             'durasi_lembur_menit': dataForScreen?['durasi'] != null ? int.tryParse(dataForScreen!['durasi'].toString()) ?? 120 : 120,

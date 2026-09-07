@@ -153,7 +153,7 @@ class _DetailLogScreenState extends State<DetailLogScreen> {
 
   Widget _buildHeaderCard() {
     final status = (widget.absensi?.status ?? 'hadir').toLowerCase();
-    final isLate = status.contains('terlambat') || status.contains('pulang_awal');
+    final isLate = status.contains('terlambat') || status == 'pulang_awal';
 
     String statusText = 'Tepat Waktu';
     Color bgColor = const Color(0xFFDCFCE7);
@@ -194,7 +194,7 @@ class _DetailLogScreenState extends State<DetailLogScreen> {
 
   Widget _buildRekapWaktuRow() {
     final status = (widget.absensi?.status ?? 'hadir').toLowerCase();
-    final isLate = status.contains('terlambat') || status.contains('pulang_awal');
+    final isLate = status.contains('terlambat') || status == 'pulang_awal';
 
     return Row(
       children: [

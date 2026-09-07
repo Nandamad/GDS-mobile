@@ -25,13 +25,19 @@ class _AjukanCutiScreenState extends State<AjukanCutiScreen> {
   final TextEditingController _alasanController = TextEditingController();
 
   bool _isSubmitting = false;
-  int _sisaCuti = 0; // Default value, bisa diambil dari API
-
+  int _sisaCuti = 0; 
+  bool _isLoadingSisaCuti = true;
 
   @override
   void initState() {
     super.initState();
     _fetchSisaCuti();
+  }
+
+  @override
+  void dispose() {
+    _alasanController.dispose();
+    super.dispose();
   }
 
   Future<void> _fetchSisaCuti() async {
@@ -46,14 +52,22 @@ class _AjukanCutiScreenState extends State<AjukanCutiScreen> {
         final summary = data['summary'];
         if (summary != null && summary['sisa_cuti'] != null) {
           setState(() {
-            _sisaCuti = int.tryParse(summary['sisa_cuti'].toString()) ?? 8;
+            _sisaCuti = int.tryParse(summary['sisa_cuti'].toString()) ?? 0;
           });
         }
       }
-    } catch (_) {}
+    } catch (_) {} finally {
+      if (mounted) setState(() => _isLoadingSisaCuti = false);
+    }
   }
 
   Future<void> _submitCuti() async {
+    if (_alasanController.text.trim().isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Alasan cuti tidak boleh kosong!')),
+      );
+      return;
+    }
 
     if (_tipePengajuan.toLowerCase() == 'cuti' && (_tanggalSelesai.difference(_tanggalMulai).inDays + 1) > _sisaCuti) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -111,7 +125,7 @@ class _AjukanCutiScreenState extends State<AjukanCutiScreen> {
         ),
       );
 
-      Navigator.pop(context, true); // true as indicator of success
+      Navigator.pop(context, true); 
     } on DioException catch (e) {
       String message = 'Gagal mengirim pengajuan';
       if (e.response?.data is Map) {
@@ -185,20 +199,8 @@ class _AjukanCutiScreenState extends State<AjukanCutiScreen> {
 
   String _formatDate(DateTime date) {
     final List<String> bulan = [
-      'Jan',
-      'Feb',
-      'Mar',
-      'Apr',
-      'Mei',
-      'Jun',
-      'Jul',
-      'Agt',
-      'Sep',
-      'Okt',
-      'Nov',
-      'Des',
+      'Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Agt', 'Sep', 'Okt', 'Nov', 'Des',
     ];
-    // Menggunakan format pad dua digit tanggal dan tahun
     return '${date.day.toString().padLeft(2, '0')} ${bulan[date.month - 1]} ${date.year}';
   }
 
@@ -247,7 +249,6 @@ class _AjukanCutiScreenState extends State<AjukanCutiScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // SISA CUTI BANNER
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
               decoration: BoxDecoration(
@@ -271,35 +272,35 @@ class _AjukanCutiScreenState extends State<AjukanCutiScreen> {
                     child: Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        Container(
-                          width: 6,
-                          height: 6,
-                          decoration: const BoxDecoration(
-                            color: Color(0xFF0F766E),
-                            shape: BoxShape.circle,
+                        if (_isLoadingSisaCuti)
+                          const SizedBox(
+                            width: 12,
+                            height: 12,
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2,
+                              color: Color(0xFF0F766E),
+                            ),
+                          )
+                        else ...[
+                          Container(
+                            width: 6,
+                            height: 6,
+                            decoration: const BoxDecoration(
+                              color: Color(0xFF0F766E),
+                              shape: BoxShape.circle,
+                            ),
                           ),
-                        ),
-                        const SizedBox(width: 6),
-                        Text(
-                          'Sisa Cuti: $_sisaCuti Hari',
-                          style: const TextStyle(
-                            fontSize: 10,
-                            fontWeight: FontWeight.bold,
-                            color: Color(0xFF0F766E),
+                          const SizedBox(width: 6),
+                          Text(
+                            'Sisa Cuti: $_sisaCuti Hari',
+                            style: const TextStyle(
+                              fontSize: 10,
+                              fontWeight: FontWeight.bold,
+                              color: Color(0xFF0F766E),
+                            ),
                           ),
-                        ),
+                        ]
                       ],
-                    ),
-                  ),
-                  const SizedBox(width: 10),
-                  const Expanded(
-                    child: Text(
-                      'Pastikan kamu memilih tanggal yang tepat.',
-                      style: TextStyle(
-                        fontSize: 10,
-                        color: Color(0xFF0F766E),
-                        fontWeight: FontWeight.w500,
-                      ),
                     ),
                   ),
                 ],
@@ -307,7 +308,6 @@ class _AjukanCutiScreenState extends State<AjukanCutiScreen> {
             ),
             const SizedBox(height: 16),
 
-            // TANGGAL MULAI
             const Text(
               'Tanggal Mulai',
               style: TextStyle(
@@ -323,7 +323,6 @@ class _AjukanCutiScreenState extends State<AjukanCutiScreen> {
             ),
             const SizedBox(height: 14),
 
-            // TANGGAL SELESAI
             const Text(
               'Tanggal Selesai',
               style: TextStyle(
@@ -339,48 +338,6 @@ class _AjukanCutiScreenState extends State<AjukanCutiScreen> {
             ),
             const SizedBox(height: 14),
 
-            // DURASI BANNER
-            const Text(
-              'Durasi',
-              style: TextStyle(
-                fontSize: 11,
-                color: Color(0xFF64748B),
-                fontWeight: FontWeight.w600,
-              ),
-            ),
-            const SizedBox(height: 6),
-            Container(
-              width: double.infinity,
-              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-              decoration: BoxDecoration(
-                color: const Color(0xFFCCFBF1),
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: Row(
-                children: [
-                  Container(
-                    width: 6,
-                    height: 6,
-                    decoration: const BoxDecoration(
-                      color: Color(0xFF0F766E),
-                      shape: BoxShape.circle,
-                    ),
-                  ),
-                  const SizedBox(width: 8),
-                  Text(
-                    '${_tanggalSelesai.difference(_tanggalMulai).inDays + 1} Hari (dihitung oleh server)',
-                    style: const TextStyle(
-                      color: Color(0xFF0F766E),
-                      fontWeight: FontWeight.bold,
-                      fontSize: 11,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(height: 14),
-
-            // JENIS CUTI (DROPDOWN)
             const Text(
               'Jenis cuti',
               style: TextStyle(
@@ -456,6 +413,8 @@ class _AjukanCutiScreenState extends State<AjukanCutiScreen> {
               ),
             ),
             const SizedBox(height: 14),
+
+
 
             // LAMPIRAN (DOTTED BORDER BOX)
             const Text(
@@ -580,11 +539,6 @@ class _AjukanCutiScreenState extends State<AjukanCutiScreen> {
     );
   }
 
-  @override
-  void dispose() {
-    _alasanController.dispose();
-    super.dispose();
-  }
 }
 
 // PAINTER UNTUK GARIS PUTUS-PUTUS (DASHED BORDER)

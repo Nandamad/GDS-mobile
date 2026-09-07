@@ -4,7 +4,8 @@ import '../services/api_service.dart';
 import 'detail_approval_page.dart';
 
 class ApprovalScreen extends StatefulWidget {
-  const ApprovalScreen({super.key});
+  final bool showBackButton;
+  const ApprovalScreen({super.key, this.showBackButton = false});
 
   @override
   State<ApprovalScreen> createState() => _ApprovalScreenState();
@@ -175,6 +176,16 @@ class _ApprovalScreenState extends State<ApprovalScreen>
         backgroundColor: Colors.white,
         elevation: 0,
         automaticallyImplyLeading: false,
+        leading: widget.showBackButton
+            ? IconButton(
+                icon: const Icon(
+                  Icons.arrow_back_ios_new_rounded,
+                  color: Color(0xFF0F172A),
+                  size: 18,
+                ),
+                onPressed: () => Navigator.pop(context),
+              )
+            : null,
         title: const Text(
           'Perlu Persetujuan Saya',
           style: TextStyle(

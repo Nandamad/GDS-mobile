@@ -72,7 +72,8 @@ List<Map<String, dynamic>> normalizeSubmissionList(
 }
 
 class PengajuanScreen extends StatefulWidget {
-  const PengajuanScreen({super.key});
+  final bool showBackButton;
+  const PengajuanScreen({super.key, this.showBackButton = false});
 
   @override
   State<PengajuanScreen> createState() => _PengajuanScreenState();
@@ -366,12 +367,12 @@ class _PengajuanScreenState extends State<PengajuanScreen> {
   }
 
   int _calculateDays(Map<String, dynamic> data) {
+    if (data['jumlah_hari_kerja'] != null) {
+      return int.tryParse(data['jumlah_hari_kerja'].toString()) ?? 1;
+    }
     try {
       final mulai = DateTime.parse(data['tanggal_mulai'].toString());
-
       final selesai = DateTime.parse(data['tanggal_selesai'].toString());
-
-      // Jumlah hari kerja sebenarnya dihitung oleh backend berdasarkan shift karyawan
       return selesai.difference(mulai).inDays + 1;
     } catch (_) {
       return 1;
@@ -487,6 +488,16 @@ class _PengajuanScreenState extends State<PengajuanScreen> {
         backgroundColor: Colors.white,
         elevation: 0,
         automaticallyImplyLeading: false,
+        leading: widget.showBackButton
+            ? IconButton(
+                icon: const Icon(
+                  Icons.arrow_back_ios_new_rounded,
+                  color: Color(0xFF0F172A),
+                  size: 18,
+                ),
+                onPressed: () => Navigator.pop(context),
+              )
+            : null,
 
         title: const Text(
           'Pengajuan',

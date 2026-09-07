@@ -357,13 +357,15 @@ class _DetailApprovalScreenState extends State<DetailApprovalScreen> {
     final selesai = _formatDate(data['tanggal_selesai']);
 
     int durasi = 1;
-    try {
-      final m = DateTime.parse(data['tanggal_mulai'].toString());
-      final s = DateTime.parse(data['tanggal_selesai'].toString());
-      // Jumlah hari kerja sebenarnya dihitung oleh backend berdasarkan shift karyawan
-      durasi = s.difference(m).inDays + 1;
-    } catch (_) {}
-
+    if (data['jumlah_hari_kerja'] != null) {
+      durasi = int.tryParse(data['jumlah_hari_kerja'].toString()) ?? 1;
+    } else {
+      try {
+        final m = DateTime.parse(data['tanggal_mulai'].toString());
+        final s = DateTime.parse(data['tanggal_selesai'].toString());
+        durasi = s.difference(m).inDays + 1;
+      } catch (_) {}
+    }
     return [
       _infoRow('Jenis', jenis),
       _infoRow('Tanggal Mulai', mulai),

@@ -94,7 +94,7 @@ class _RiwayatPresensiScreenState extends State<RiwayatPresensiScreen> {
 
         final parsedData = data.map((item) {
           final absensiObj = Absensi.fromJson(item);
-          final isCuti = item['tipe'] != null && item['tipe'] != 'Kehadiran';
+          final tipe = item['tipe'] as String? ?? 'Kehadiran';
           final rawStatus = (absensiObj.status ?? item['status'] ?? 'hadir').toString().toLowerCase();
 
           Color bgColor = const Color(0xFFDCFCE7);
@@ -103,7 +103,13 @@ class _RiwayatPresensiScreenState extends State<RiwayatPresensiScreen> {
           String statusCat = 'On Time';
           Color dotColor = const Color(0xFF10B981); // Green
 
-          if (isCuti) {
+          if (tipe == 'Lembur') {
+            statusCat = 'Lembur';
+            statusTxt = 'LEMBUR';
+            bgColor = const Color(0xFFFFF3E0);
+            txtColor = const Color(0xFFE65100);
+            dotColor = const Color(0xFFF59E0B);
+          } else if (tipe != 'Kehadiran') {
             statusCat = 'Izin';
             statusTxt = 'IZIN / CUTI';
             bgColor = const Color(0xFFDBEAFE);
@@ -141,7 +147,7 @@ class _RiwayatPresensiScreenState extends State<RiwayatPresensiScreen> {
             txtColor = const Color(0xFFA16207);
             dotColor = const Color(0xFFEAB308);
           } else {
-             cHadir++;
+            cHadir++;
           }
 
           final tanggal = absensiObj.tanggal?.toLocal();
@@ -161,7 +167,7 @@ class _RiwayatPresensiScreenState extends State<RiwayatPresensiScreen> {
             'checkIn': _formatTime(absensiObj.jamMasuk),
             'checkOut': _formatTime(absensiObj.jamPulang),
             'duration': _calculateDuration(absensiObj.jamMasuk, absensiObj.jamPulang),
-            'hasDetailButton': item['tipe'] == 'Kehadiran',
+            'hasDetailButton': tipe == 'Kehadiran' || tipe == 'Lembur',
           };
         }).toList();
 

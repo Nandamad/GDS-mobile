@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'ajukan_lembur_page.dart';
 import 'kamera_page.dart';
 import 'selesai_lembur_page.dart';
@@ -37,7 +38,7 @@ class _MulaiLemburScreenState extends State<MulaiLemburScreen> {
     }
   }
 
-  void _mulaiLembur() {
+  Future<void> _mulaiLembur() async {
     if (widget.lemburData == null) {
       showDialog(
         context: context,
@@ -118,20 +119,24 @@ class _MulaiLemburScreenState extends State<MulaiLemburScreen> {
       );
       return;
     }
+    // Simpan status lembur dimulai ke SharedPreferences
+    setState(() => _isStarting = true);
+    final prefs = await SharedPreferences.getInstance();
+    final lemburId = widget.lemburData!['id'] ?? widget.lemburData!['tanggal'];
+    await prefs.setBool('lembur_started_$lemburId', true);
+    
+    final actualStart = DateTime.now().toIso8601String();
+    await prefs.setString('lembur_actual_start_$lemburId', actualStart);
 
-    setState(() {
-      _isStarting = true;
-    });
-
-    // api start tidak ada di backend, lembur otomatis terhitung dari jam_mulai
     if (!mounted) return;
-    setState(() {
-      _isStarting = false;
-    });
+
+    final newLemburData = Map<String, dynamic>.from(widget.lemburData!);
+    newLemburData['jam_mulai_lembur'] = actualStart;
+
     Navigator.pushReplacement(
       context,
       MaterialPageRoute(
-        builder: (context) => SelesaiLemburScreen(lemburData: widget.lemburData!),
+        builder: (context) => SelesaiLemburScreen(lemburData: newLemburData),
       ),
     );
   }

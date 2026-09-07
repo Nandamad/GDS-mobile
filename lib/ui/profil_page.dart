@@ -6,7 +6,6 @@ import 'login_page.dart';
 import 'data_pribadi_page.dart';
 import 'pengaturan_notifikasi_page.dart';
 import 'ubah_password_page.dart';
-import 'riwayat_kontrak_page.dart';
 import 'bantuan_faq_page.dart';
 import 'tentang_aplikasi_page.dart';
 import 'riwayat_presensi_page.dart';
@@ -250,20 +249,7 @@ class _ProfilPageState extends State<ProfilPage> {
                           },
                         ),
                         _buildDivider(),
-                        // Fitur Riwayat Kontrak belum tersedia (backend belum ready)
-                        // _buildMenuItem(
-                        //   icon: Icons.article_outlined,
-                        //   title: 'Riwayat Kontrak',
-                        //   onTap: () {
-                        //     Navigator.push(
-                        //       context,
-                        //       MaterialPageRoute(
-                        //         builder: (context) => const RiwayatKontrakScreen(),
-                        //       ),
-                        //     );
-                        //   },
-                        // ),
-                        // _buildDivider(),
+
                         _buildMenuItem(
                           icon: Icons.format_list_bulleted_rounded,
                           title: 'Riwayat Presensi',
