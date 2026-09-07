@@ -19,8 +19,8 @@ class _KoreksiPresensiScreenState extends State<KoreksiPresensiScreen> {
   TimeOfDay? _jamPulangBaru;
 
   // Waktu bawaan dari shift
-  TimeOfDay _defaultShiftMasuk = const TimeOfDay(hour: 8, minute: 0);
-  TimeOfDay _defaultShiftPulang = const TimeOfDay(hour: 17, minute: 0);
+  TimeOfDay _defaultShiftMasuk = const TimeOfDay(hour: 8, minute: 0); // Default, akan dioverride oleh data API
+  TimeOfDay _defaultShiftPulang = const TimeOfDay(hour: 17, minute: 0); // Default, akan dioverride oleh data API
 
   final TextEditingController _alasanController = TextEditingController();
   final GlobalKey<FormState> _formKey = GlobalKey<FormState>();

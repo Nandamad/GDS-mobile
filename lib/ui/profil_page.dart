@@ -250,19 +250,20 @@ class _ProfilPageState extends State<ProfilPage> {
                           },
                         ),
                         _buildDivider(),
-                        _buildMenuItem(
-                          icon: Icons.article_outlined,
-                          title: 'Riwayat Kontrak',
-                          onTap: () {
-                            Navigator.push(
-                              context,
-                              MaterialPageRoute(
-                                builder: (context) => const RiwayatKontrakScreen(),
-                              ),
-                            );
-                          },
-                        ),
-                        _buildDivider(),
+                        // Fitur Riwayat Kontrak belum tersedia (backend belum ready)
+                        // _buildMenuItem(
+                        //   icon: Icons.article_outlined,
+                        //   title: 'Riwayat Kontrak',
+                        //   onTap: () {
+                        //     Navigator.push(
+                        //       context,
+                        //       MaterialPageRoute(
+                        //         builder: (context) => const RiwayatKontrakScreen(),
+                        //       ),
+                        //     );
+                        //   },
+                        // ),
+                        // _buildDivider(),
                         _buildMenuItem(
                           icon: Icons.format_list_bulleted_rounded,
                           title: 'Riwayat Presensi',

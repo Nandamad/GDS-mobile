@@ -32,9 +32,8 @@ class DataPribadiScreen extends StatelessWidget {
 
     final email = (userProfile['email'] ?? karyawan['email'] ?? '-').toString();
     final noHp = (karyawan['no_hp'] ?? '-').toString();
-    final int? kId = karyawan['id'];
-    final String generatedNip = kId != null ? 'EMP-${kId.toString().padLeft(3, '0')}' : '-';
-    final nip = (karyawan['nip'] ?? generatedNip).toString();
+    final rawNip = karyawan['nip']?.toString();
+    final nip = (rawNip != null && rawNip.isNotEmpty) ? rawNip : '-';
     final tanggalMulai = (karyawan['tanggal_mulai_kerja'] ?? '-').toString();
 
     final rawFoto = karyawan['foto_url'] ??

@@ -371,6 +371,7 @@ class _PengajuanScreenState extends State<PengajuanScreen> {
 
       final selesai = DateTime.parse(data['tanggal_selesai'].toString());
 
+      // Jumlah hari kerja sebenarnya dihitung oleh backend berdasarkan shift karyawan
       return selesai.difference(mulai).inDays + 1;
     } catch (_) {
       return 1;

@@ -123,19 +123,17 @@ class _MulaiLemburScreenState extends State<MulaiLemburScreen> {
       _isStarting = true;
     });
 
-    // Simulasi proses kamera/mulai (api start tidak ada di backend, lembur otomatis terhitung dari jam_mulai)
-    Future.delayed(const Duration(seconds: 1), () {
-      if (!mounted) return;
-      setState(() {
-        _isStarting = false;
-      });
-      Navigator.pushReplacement(
-        context,
-        MaterialPageRoute(
-          builder: (context) => SelesaiLemburScreen(lemburData: widget.lemburData!),
-        ),
-      );
+    // api start tidak ada di backend, lembur otomatis terhitung dari jam_mulai
+    if (!mounted) return;
+    setState(() {
+      _isStarting = false;
     });
+    Navigator.pushReplacement(
+      context,
+      MaterialPageRoute(
+        builder: (context) => SelesaiLemburScreen(lemburData: widget.lemburData!),
+      ),
+    );
   }
 
   @override

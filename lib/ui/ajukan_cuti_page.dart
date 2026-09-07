@@ -22,21 +22,11 @@ class _AjukanCutiScreenState extends State<AjukanCutiScreen> {
   File? _selectedFile;
   String? _fileName;
 
-  bool _isSubmitting = false;
-  int _sisaCuti = 8; // Default value, bisa diambil dari API
+  final TextEditingController _alasanController = TextEditingController();
 
-  int get _durasiHari {
-    int days = 0;
-    DateTime current = _tanggalMulai;
-    while (!current.isAfter(_tanggalSelesai)) {
-      if (current.weekday != DateTime.saturday &&
-          current.weekday != DateTime.sunday) {
-        days++;
-      }
-      current = current.add(const Duration(days: 1));
-    }
-    return days;
-  }
+  bool _isSubmitting = false;
+  int _sisaCuti = 0; // Default value, bisa diambil dari API
+
 
   @override
   void initState() {
@@ -65,7 +55,7 @@ class _AjukanCutiScreenState extends State<AjukanCutiScreen> {
 
   Future<void> _submitCuti() async {
 
-    if (_tipePengajuan.toLowerCase() == 'cuti' && _durasiHari > _sisaCuti) {
+    if (_tipePengajuan.toLowerCase() == 'cuti' && (_tanggalSelesai.difference(_tanggalMulai).inDays + 1) > _sisaCuti) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Durasi cuti melebihi sisa kuota!')),
       );
@@ -94,7 +84,7 @@ class _AjukanCutiScreenState extends State<AjukanCutiScreen> {
         'jenis': jenisIzinVal,
         'tanggal_mulai': startFormatted,
         'tanggal_selesai': endFormatted,
-        'alasan': 'Pengajuan $_tipePengajuan',
+        'alasan': _alasanController.text,
       });
 
       if (_selectedFile != null) {
@@ -378,7 +368,7 @@ class _AjukanCutiScreenState extends State<AjukanCutiScreen> {
                   ),
                   const SizedBox(width: 8),
                   Text(
-                    '$_durasiHari Hari Kerja',
+                    '${_tanggalSelesai.difference(_tanggalMulai).inDays + 1} Hari (dihitung oleh server)',
                     style: const TextStyle(
                       color: Color(0xFF0F766E),
                       fontWeight: FontWeight.bold,
@@ -430,6 +420,38 @@ class _AjukanCutiScreenState extends State<AjukanCutiScreen> {
                       child: Text(value),
                     );
                   }).toList(),
+                ),
+              ),
+            ),
+            const SizedBox(height: 14),
+
+            // ALASAN
+            const Text(
+              'Alasan',
+              style: TextStyle(
+                fontSize: 11,
+                color: Color(0xFF64748B),
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+            const SizedBox(height: 6),
+            TextFormField(
+              controller: _alasanController,
+              maxLines: 3,
+              style: const TextStyle(fontSize: 11, color: Color(0xFF0F172A)),
+              decoration: InputDecoration(
+                hintText: 'Tuliskan alasan pengajuan...',
+                hintStyle: const TextStyle(color: Colors.grey),
+                filled: true,
+                fillColor: Colors.white,
+                contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                  borderSide: BorderSide(color: Colors.grey.shade200),
+                ),
+                enabledBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                  borderSide: BorderSide(color: Colors.grey.shade200),
                 ),
               ),
             ),
@@ -560,6 +582,7 @@ class _AjukanCutiScreenState extends State<AjukanCutiScreen> {
 
   @override
   void dispose() {
+    _alasanController.dispose();
     super.dispose();
   }
 }

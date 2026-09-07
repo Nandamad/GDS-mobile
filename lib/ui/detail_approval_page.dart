@@ -360,17 +360,8 @@ class _DetailApprovalScreenState extends State<DetailApprovalScreen> {
     try {
       final m = DateTime.parse(data['tanggal_mulai'].toString());
       final s = DateTime.parse(data['tanggal_selesai'].toString());
-      // Hitung hari kerja (skip weekend)
-      DateTime current = m;
-      int days = 0;
-      while (!current.isAfter(s)) {
-        if (current.weekday != DateTime.saturday &&
-            current.weekday != DateTime.sunday) {
-          days++;
-        }
-        current = current.add(const Duration(days: 1));
-      }
-      durasi = days;
+      // Jumlah hari kerja sebenarnya dihitung oleh backend berdasarkan shift karyawan
+      durasi = s.difference(m).inDays + 1;
     } catch (_) {}
 
     return [
