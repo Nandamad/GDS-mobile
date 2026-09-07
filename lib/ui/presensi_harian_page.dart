@@ -348,6 +348,16 @@ class _PresensiHarianScreenState extends State<PresensiHarianScreen> {
       return;
     }
 
+    if (locState.isMocked) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Fake GPS terdeteksi!'),
+          backgroundColor: Colors.redAccent,
+        ),
+      );
+      return;
+    }
+
     // Basic validation
     if (tipe == 'masuk' && _isSudahAbsenMasuk) {
       ScaffoldMessenger.of(context).showSnackBar(
