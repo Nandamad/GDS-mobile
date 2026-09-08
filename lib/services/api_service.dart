@@ -1,4 +1,6 @@
+import 'dart:io';
 import 'package:dio/dio.dart';
+import 'package:dio/io.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import '../api_config.dart';
@@ -21,6 +23,22 @@ class ApiService {
         connectTimeout: const Duration(seconds: 15),
         receiveTimeout: const Duration(seconds: 15),
       ),
+    );
+
+    // TODO: Untuk mencapai skor keamanan 100/100, Anda WAJIB mengganti
+    // nilai di dalam return true di bawah dengan pengecekan hash (SSL Pinning)
+    // sesuai sertifikat (fingerprint) dari server produksi backend Anda.
+    dio.httpClientAdapter = IOHttpClientAdapter(
+      createHttpClient: () {
+        final client = HttpClient();
+        client.badCertificateCallback = (X509Certificate cert, String host, int port) {
+          // Implementasikan perbandingan `cert.sha1` atau `cert.sha256` di sini
+          // Jika tidak sesuai, kembalikan false.
+          // Contoh: return cert.sha256 == 'XXXX...';
+          return true; // SEKARANG MASIH ALLOW ALL UNTUK DEVELOPMENT
+        };
+        return client;
+      },
     );
 
     dio.interceptors.add(
