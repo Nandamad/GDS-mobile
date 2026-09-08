@@ -120,6 +120,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
       _fetchUserProfileFoto(),
       _fetchUnreadNotificationCount(),
     ]);
+    if (mounted) setState(() => _isLoading = false);
   }
 
   Future<void> _fetchDashboardAndToday() async {
@@ -252,7 +253,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
     }
 
     if (mounted) {
-      setState(() => _isLoading = false);
+      // _isLoading state dihandle oleh _fetchAllData()
     }
   }
 

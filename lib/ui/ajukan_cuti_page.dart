@@ -153,7 +153,7 @@ class _AjukanCutiScreenState extends State<AjukanCutiScreen> {
     final DateTime? picked = await showDatePicker(
       context: context,
       initialDate: isMulai ? _tanggalMulai : _tanggalSelesai,
-      firstDate: DateTime(2020),
+      firstDate: DateTime.now(),
       lastDate: DateTime(2030),
       builder: (context, child) {
         return Theme(

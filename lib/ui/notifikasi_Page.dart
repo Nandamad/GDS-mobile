@@ -336,9 +336,9 @@ class _NotifikasiScreenState extends State<NotifikasiScreen> {
   }
 
   Future<void> _markAsRead(Map<String, dynamic> item) async {
-    if (item['isUnread'] == false || item['id'] == null) return;
-
+    if (item['isUnread'] == false) return;
     setState(() => item['isUnread'] = false);
+    if (item['id'] == null) return;
     try {
       final dio = ApiService().dio;
       await dio.patch('/notifikasi/${item['id']}/read');

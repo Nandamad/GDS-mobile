@@ -143,14 +143,22 @@ class _MulaiLemburScreenState extends State<MulaiLemburScreen> {
         ? DateFormat('dd MMMM yyyy').format(DateTime.parse(data!['tanggal'])) 
         : '-';
     
-    String waktuMulai = '-';
-    String waktuSelesai = '-';
-    if (data?['jam_mulai'] != null) {
-       waktuMulai = DateFormat('HH:mm').format(DateTime.parse(data!['jam_mulai']).toLocal());
+    String _formatJam(String? jamStr) {
+      if (jamStr == null) return '-';
+      if (jamStr.contains('T') || jamStr.contains(' ')) {
+        try {
+          return DateFormat('HH:mm').format(DateTime.parse(jamStr).toLocal());
+        } catch (_) {
+          return '-';
+        }
+      }
+      final p = jamStr.split(':');
+      if (p.length >= 2) return '${p[0]}:${p[1]}';
+      return jamStr;
     }
-    if (data?['jam_selesai'] != null) {
-       waktuSelesai = DateFormat('HH:mm').format(DateTime.parse(data!['jam_selesai']).toLocal());
-    }
+
+    String waktuMulai = _formatJam(data?['jam_mulai']);
+    String waktuSelesai = _formatJam(data?['jam_selesai']);
     final waktuLembur = (waktuMulai != '-' && waktuSelesai != '-') ? '$waktuMulai - $waktuSelesai WIB' : '-';
 
     final alasan = data?['alasan'] ?? '-';
