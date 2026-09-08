@@ -198,7 +198,7 @@ class _PresensiHarianScreenState extends State<PresensiHarianScreen> {
   Future<void> _fetchRecentHistory() async {
     try {
       final dio = ApiService().dio;
-      final now = _serverTime ?? DateTime.now();
+      final now = DateTime.now();
       final response = await dio.get(
         '/history',
         queryParameters: {'month': now.month, 'year': now.year},
