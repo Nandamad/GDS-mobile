@@ -213,6 +213,12 @@ class _LoginScreenState extends State<LoginScreen> {
           SnackBar(content: Text(errorMsg), backgroundColor: Colors.redAccent),
         );
       }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Terjadi kesalahan sistem internal. Silakan coba lagi.'), backgroundColor: Colors.redAccent),
+        );
+      }
     } finally {
       if (mounted) {
         setState(() => _isLoading = false);
