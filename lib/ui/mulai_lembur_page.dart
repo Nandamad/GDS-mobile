@@ -122,16 +122,26 @@ class _MulaiLemburScreenState extends State<MulaiLemburScreen> {
     // Simpan jam mulai secara lokal
     final prefs = await SharedPreferences.getInstance();
     final lemburId = widget.lemburData?['id']?.toString() ?? widget.lemburData?['tanggal']?.toString() ?? 'today';
-    await prefs.setString('lembur_start_time_$lemburId', DateTime.now().toIso8601String());
+    final actualStartTime = DateTime.now().toIso8601String();
+    await prefs.setString('lembur_start_time_$lemburId', actualStartTime);
 
     if (!mounted) return;
     setState(() {
       _isStarting = false;
     });
+
+    final data = widget.lemburData!;
+    final lemburDataForScreen = {
+      'jam_mulai_lembur': actualStartTime,
+      'jam_selesai_lembur': data['jam_selesai'] ?? DateTime.now().add(const Duration(hours: 2)).toIso8601String(),
+      'alasan': data['alasan'] ?? data['keterangan'] ?? 'Lembur',
+      'durasi_lembur_menit': data['estimasi_jam'] != null ? (int.tryParse(data['estimasi_jam'].toString()) ?? 0) * 60 : (data['durasi_lembur_menit'] ?? 120),
+    };
+
     Navigator.pushReplacement(
       context,
       MaterialPageRoute(
-        builder: (context) => SelesaiLemburScreen(lemburData: widget.lemburData!),
+        builder: (context) => SelesaiLemburScreen(lemburData: lemburDataForScreen),
       ),
     );
   }
@@ -141,9 +151,9 @@ class _MulaiLemburScreenState extends State<MulaiLemburScreen> {
     final data = widget.lemburData;
     final tanggal = data?['tanggal'] != null 
         ? DateFormat('dd MMMM yyyy').format(DateTime.parse(data!['tanggal'])) 
-        : '-';
+        : (data?['jam_mulai'] != null ? DateFormat('dd MMMM yyyy').format(DateTime.parse(data!['jam_mulai'])) : '-');
     
-    String _formatJam(String? jamStr) {
+    String formatJam(String? jamStr) {
       if (jamStr == null) return '-';
       if (jamStr.contains('T') || jamStr.contains(' ')) {
         try {
@@ -157,14 +167,21 @@ class _MulaiLemburScreenState extends State<MulaiLemburScreen> {
       return jamStr;
     }
 
-    String waktuMulai = _formatJam(data?['jam_mulai']);
-    String waktuSelesai = _formatJam(data?['jam_selesai']);
+    String waktuMulai = formatJam(data?['jam_mulai']);
+    String waktuSelesai = formatJam(data?['jam_selesai']);
     final waktuLembur = (waktuMulai != '-' && waktuSelesai != '-') ? '$waktuMulai - $waktuSelesai WIB' : '-';
 
-    final alasan = data?['alasan'] ?? '-';
+    final alasan = data?['alasan'] ?? data?['keterangan'] ?? 'Lembur';
     final durasiMenit = data?['durasi_lembur_menit'] != null ? (data!['durasi_lembur_menit'] as int) : 0;
-    final estimasiJam = durasiMenit > 0 ? (durasiMenit / 60).toStringAsFixed(0) : '-';
-    final approvedByName = data?['approved_by_l1']?['name'] ?? data?['approved_by_l2']?['name'] ?? '-';
+    
+    String estimasiJam = '-';
+    if (data?['estimasi_jam'] != null) {
+      estimasiJam = data!['estimasi_jam'].toString();
+    } else if (durasiMenit > 0) {
+      estimasiJam = (durasiMenit / 60).toStringAsFixed(0);
+    }
+    
+    final approvedByName = data?['approved_by_l1']?['name'] ?? data?['approved_by_l2']?['name'] ?? 'HRD / Atasan';
     
     final statusApproval = data != null ? 'Disetujui' : 'Menunggu';
 

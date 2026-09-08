@@ -19,6 +19,8 @@ import 'riwayat_presensi_page.dart';
 import 'ajukan_lembur_page.dart';
 import 'mulai_lembur_page.dart';
 import 'selesai_lembur_page.dart';
+import 'ringkasan_presensi_page.dart';
+
 class PresensiHarianScreen extends StatefulWidget {
   const PresensiHarianScreen({super.key});
 
@@ -919,13 +921,10 @@ class _PresensiHarianScreenState extends State<PresensiHarianScreen> {
                 iconColor: const Color(0xFF009688),
                 title: 'Ringkasan Presensi',
                 onTap: () {
-                  showModalBottomSheet(
-                    context: context,
-                    backgroundColor: Colors.transparent,
-                    isScrollControlled: true,
-                    builder: (context) => Padding(
-                      padding: const EdgeInsets.only(top: 60.0),
-                      child: _buildRingkasanKehadiranContent(),
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => const RingkasanPresensiPage(),
                     ),
                   );
                 },
@@ -1022,20 +1021,23 @@ class _PresensiHarianScreenState extends State<PresensiHarianScreen> {
            final selesai = DateTime.parse(lembur['jam_selesai']);
 
            final prefs = await SharedPreferences.getInstance();
-           final lemburId = lembur['id'] ?? lembur['tanggal'];
-           final isStartedLocal = prefs.getBool('lembur_started_$lemburId') ?? false;
+           final lemburId = lembur['id']?.toString() ?? lembur['tanggal']?.toString() ?? 'today';
+           final actualStartStr = prefs.getString('lembur_start_time_$lemburId');
 
-           if (isStartedLocal && serverTime.isBefore(selesai)) {
-              status = 'Sedang Lembur';
-           } else if (serverTime.isAfter(selesai)) {
+           if (serverTime.isAfter(selesai)) {
               status = 'Selesai';
+           } else if (actualStartStr != null || serverTime.isAfter(mulai)) {
+              status = 'Sedang Lembur';
            }
         }
       }
 
       if (isMulai) {
         if (lembur == null || status == 'Belum ada') {
-          Navigator.push(context, MaterialPageRoute(builder: (_) => MulaiLemburScreen(lemburData: null, lemburStatus: status)));
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Anda belum mengajukan lembur. Silakan ajukan terlebih dahulu.')),
+          );
+          Navigator.push(context, MaterialPageRoute(builder: (_) => const AjukanLemburScreen()));
         } else if (status == 'Disetujui' || status == 'Menunggu') {
           Navigator.push(context, MaterialPageRoute(builder: (_) => MulaiLemburScreen(lemburData: dataForScreen, lemburStatus: status)));
         } else if (status == 'Sedang Lembur' || status == 'Selesai') {
@@ -1048,14 +1050,14 @@ class _PresensiHarianScreenState extends State<PresensiHarianScreen> {
           ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Anda belum memulai lembur!')));
         } else if (status == 'Sedang Lembur' || status == 'Selesai') {
           final prefs = await SharedPreferences.getInstance();
-          final lemburId = dataForScreen?['id'] ?? dataForScreen?['tanggal'];
-          final actualStart = prefs.getString('lembur_actual_start_$lemburId') ?? dataForScreen?['jam_mulai'] ?? DateTime.now().toIso8601String();
+          final lemburId = dataForScreen?['id']?.toString() ?? dataForScreen?['tanggal']?.toString() ?? 'today';
+          final actualStart = prefs.getString('lembur_start_time_$lemburId') ?? dataForScreen?['jam_mulai'] ?? DateTime.now().toIso8601String();
           
           final lemburDataForScreen = {
             'jam_mulai_lembur': actualStart,
             'jam_selesai_lembur': dataForScreen?['jam_selesai'] ?? DateTime.now().add(const Duration(hours: 2)).toIso8601String(),
             'alasan': dataForScreen?['alasan'] ?? 'Lembur',
-            'durasi_lembur_menit': dataForScreen?['durasi'] != null ? int.tryParse(dataForScreen!['durasi'].toString()) ?? 120 : 120,
+            'durasi_lembur_menit': dataForScreen?['estimasi_jam'] != null ? (int.tryParse(dataForScreen!['estimasi_jam'].toString()) ?? 0) * 60 : (dataForScreen?['durasi_lembur_menit'] ?? 120),
           };
           Navigator.push(context, MaterialPageRoute(builder: (_) => SelesaiLemburScreen(lemburData: lemburDataForScreen)));
         } else {

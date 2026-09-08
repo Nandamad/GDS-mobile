@@ -91,7 +91,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
               if (_serverTime!.isAfter(selesai)) {
                 _lemburStatus = 'Selesai';
                 _lemburCountdown = 'Lembur Selesai';
-              } else if (_lemburActualStartTime != null) {
+              } else if (_lemburActualStartTime != null || _serverTime!.isAfter(mulai)) {
                 _lemburStatus = 'Sedang Lembur';
                 final diff = selesai.difference(_serverTime!);
                 final h = diff.inHours.toString().padLeft(2, '0');
@@ -1008,7 +1008,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
     final lemburDataForScreen = {
       'jam_mulai_lembur': _lemburActualStartTime?.toIso8601String() ?? data['jam_mulai'] ?? DateTime.now().toIso8601String(),
       'jam_selesai_lembur': data['jam_selesai'] ?? DateTime.now().add(const Duration(hours: 2)).toIso8601String(),
-      'alasan': data['alasan'] ?? 'Lembur',
+      'alasan': data['alasan'] ?? data['keterangan'] ?? 'Lembur',
       'durasi_lembur_menit': data['estimasi_jam'] != null ? (int.tryParse(data['estimasi_jam'].toString()) ?? 0) * 60 : 120,
     };
 

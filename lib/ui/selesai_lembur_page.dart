@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:ui';
 import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../services/api_service.dart';
 
 class SelesaiLemburScreen extends StatefulWidget {
@@ -62,7 +63,17 @@ class _SelesaiLemburScreenState extends State<SelesaiLemburScreen> {
   Future<void> _akhiriLembur() async {
     setState(() => _isSubmitting = true);
     try {
-      final response = await ApiService().dio.post('/lembur/selesai');
+      final prefs = await SharedPreferences.getInstance();
+      final lemburId = widget.lemburData['id']?.toString() ?? widget.lemburData['tanggal']?.toString() ?? 'today';
+      final actualStartStr = prefs.getString('lembur_start_time_$lemburId') ?? widget.lemburData['jam_mulai_lembur'];
+      
+      final response = await ApiService().dio.post(
+        '/lembur/selesai',
+        data: {
+          'jam_mulai_aktual': actualStartStr,
+          'jam_selesai_aktual': DateTime.now().toIso8601String(),
+        }
+      );
       
       if (!mounted) return;
       if (response.statusCode == 200) {

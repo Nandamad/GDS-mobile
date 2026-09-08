@@ -8,7 +8,7 @@ import 'pengaturan_notifikasi_page.dart';
 import 'ubah_password_page.dart';
 import 'bantuan_faq_page.dart';
 import 'tentang_aplikasi_page.dart';
-import 'riwayat_presensi_page.dart';
+import 'riwayat_kontrak_page.dart';
 
 class ProfilPage extends StatefulWidget {
   const ProfilPage({super.key});
@@ -249,15 +249,14 @@ class _ProfilPageState extends State<ProfilPage> {
                           },
                         ),
                         _buildDivider(),
-
                         _buildMenuItem(
-                          icon: Icons.format_list_bulleted_rounded,
-                          title: 'Riwayat Presensi',
+                          icon: Icons.description_outlined,
+                          title: 'Riwayat Kontrak',
                           onTap: () {
                             Navigator.push(
                               context,
                               MaterialPageRoute(
-                                builder: (context) => const RiwayatPresensiScreen(showBackButton: true),
+                                builder: (context) => const RiwayatKontrakScreen(),
                               ),
                             );
                           },
