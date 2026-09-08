@@ -418,7 +418,7 @@ class _AjukanCutiScreenState extends State<AjukanCutiScreen> {
 
             // LAMPIRAN (DOTTED BORDER BOX)
             const Text(
-              'Lampiran (Opsional)',
+              'Lampiran',
               style: TextStyle(
                 fontSize: 11,
                 color: Color(0xFF64748B),

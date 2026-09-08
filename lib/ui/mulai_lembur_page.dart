@@ -108,35 +108,30 @@ class _MulaiLemburScreenState extends State<MulaiLemburScreen> {
       return;
     }
 
-    if (widget.lemburStatus == 'Menunggu') {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Pengajuan lembur Anda sedang diproses HRD')));
-      return;
-    }
-
     if (_fotoSelfieBase64 == null) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Foto verifikasi wajib diambil!')),
       );
       return;
     }
-    // Simpan status lembur dimulai ke SharedPreferences
-    setState(() => _isStarting = true);
+
+    setState(() {
+      _isStarting = true;
+    });
+
+    // Simpan jam mulai secara lokal
     final prefs = await SharedPreferences.getInstance();
-    final lemburId = widget.lemburData!['id'] ?? widget.lemburData!['tanggal'];
-    await prefs.setBool('lembur_started_$lemburId', true);
-    
-    final actualStart = DateTime.now().toIso8601String();
-    await prefs.setString('lembur_actual_start_$lemburId', actualStart);
+    final lemburId = widget.lemburData?['id']?.toString() ?? widget.lemburData?['tanggal']?.toString() ?? 'today';
+    await prefs.setString('lembur_start_time_$lemburId', DateTime.now().toIso8601String());
 
     if (!mounted) return;
-
-    final newLemburData = Map<String, dynamic>.from(widget.lemburData!);
-    newLemburData['jam_mulai_lembur'] = actualStart;
-
+    setState(() {
+      _isStarting = false;
+    });
     Navigator.pushReplacement(
       context,
       MaterialPageRoute(
-        builder: (context) => SelesaiLemburScreen(lemburData: newLemburData),
+        builder: (context) => SelesaiLemburScreen(lemburData: widget.lemburData!),
       ),
     );
   }
@@ -147,10 +142,23 @@ class _MulaiLemburScreenState extends State<MulaiLemburScreen> {
     final tanggal = data?['tanggal'] != null 
         ? DateFormat('dd MMMM yyyy').format(DateTime.parse(data!['tanggal'])) 
         : '-';
+    
+    String waktuMulai = '-';
+    String waktuSelesai = '-';
+    if (data?['jam_mulai'] != null) {
+       waktuMulai = DateFormat('HH:mm').format(DateTime.parse(data!['jam_mulai']).toLocal());
+    }
+    if (data?['jam_selesai'] != null) {
+       waktuSelesai = DateFormat('HH:mm').format(DateTime.parse(data!['jam_selesai']).toLocal());
+    }
+    final waktuLembur = (waktuMulai != '-' && waktuSelesai != '-') ? '$waktuMulai - $waktuSelesai WIB' : '-';
+
     final alasan = data?['alasan'] ?? '-';
     final durasiMenit = data?['durasi_lembur_menit'] != null ? (data!['durasi_lembur_menit'] as int) : 0;
     final estimasiJam = durasiMenit > 0 ? (durasiMenit / 60).toStringAsFixed(0) : '-';
     final approvedByName = data?['approved_by_l1']?['name'] ?? data?['approved_by_l2']?['name'] ?? '-';
+    
+    final statusApproval = data != null ? 'Disetujui' : 'Menunggu';
 
     return Scaffold(
       backgroundColor: const Color(0xFFF8FAFC),
@@ -217,14 +225,14 @@ class _MulaiLemburScreenState extends State<MulaiLemburScreen> {
                                 Container(
                                   padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                                   decoration: BoxDecoration(
-                                    color: widget.lemburStatus == 'Disetujui' ? const Color(0xFFD1FAE5) : const Color(0xFFFEF3C7),
+                                    color: statusApproval == 'Disetujui' ? const Color(0xFFD1FAE5) : const Color(0xFFFEF3C7),
                                     borderRadius: BorderRadius.circular(20),
-                                    border: Border.all(color: widget.lemburStatus == 'Disetujui' ? const Color(0xFF009688) : const Color(0xFFD97706)),
+                                    border: Border.all(color: statusApproval == 'Disetujui' ? const Color(0xFF009688) : const Color(0xFFD97706)),
                                   ),
                                   child: Text(
-                                    widget.lemburStatus == 'Disetujui' ? 'Disetujui' : 'Menunggu',
+                                    statusApproval,
                                     style: TextStyle(
-                                      color: widget.lemburStatus == 'Disetujui' ? const Color(0xFF009688) : const Color(0xFFD97706),
+                                      color: statusApproval == 'Disetujui' ? const Color(0xFF009688) : const Color(0xFFD97706),
                                       fontSize: 11,
                                       fontWeight: FontWeight.bold,
                                     ),
@@ -236,6 +244,10 @@ class _MulaiLemburScreenState extends State<MulaiLemburScreen> {
                           const Text('Tanggal', style: TextStyle(color: Colors.grey, fontSize: 11)),
                           const SizedBox(height: 4),
                           Text(tanggal, style: const TextStyle(fontSize: 13, color: Color(0xFF0F172A))),
+                          const SizedBox(height: 12),
+                          const Text('Waktu Lembur', style: TextStyle(color: Colors.grey, fontSize: 11)),
+                          const SizedBox(height: 4),
+                          Text(waktuLembur, style: const TextStyle(fontSize: 13, color: Color(0xFF0F172A))),
                           const SizedBox(height: 12),
                           const Text('Alasan Lembur', style: TextStyle(color: Colors.grey, fontSize: 11)),
                           const SizedBox(height: 4),

@@ -40,10 +40,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
   bool _isSudahAbsenKeluar = false;
   Map<String, dynamic>? _lemburData;
   DateTime? _serverTime;
+  DateTime? _lemburActualStartTime;
   String _lemburStatus = '';
   String _lemburCountdown = '';
-  bool _isLemburStartedLocal = false;
-  String? _lemburActualStart;
 
   LatLng? _officeLocation;
   double _radiusMeters = 0.0;
@@ -83,39 +82,26 @@ class _DashboardScreenState extends State<DashboardScreen> {
           _serverTime = _serverTime!.add(const Duration(seconds: 1));
 
           if (_lemburData != null) {
-            final statusLembur = _lemburData!['status'];
             final mulaiStr = _lemburData!['jam_mulai'];
             final selesaiStr = _lemburData!['jam_selesai'];
-            if (statusLembur == 'Disetujui' && mulaiStr != null && selesaiStr != null) {
+            if (mulaiStr != null && selesaiStr != null) {
               final mulai = DateTime.parse(mulaiStr);
               final selesai = DateTime.parse(selesaiStr);
 
-              if (_isLemburStartedLocal && _isSudahAbsenMasuk && _isSudahAbsenKeluar) {
-                final actualStart = _lemburActualStart != null ? DateTime.parse(_lemburActualStart!) : mulai;
-                if (_serverTime!.isAfter(actualStart) && _serverTime!.isBefore(selesai)) {
-                  _lemburStatus = 'Sedang Lembur';
-                  final diff = selesai.difference(_serverTime!);
-                  final h = diff.inHours.toString().padLeft(2, '0');
-                  final m = (diff.inMinutes % 60).toString().padLeft(2, '0');
-                  final s = (diff.inSeconds % 60).toString().padLeft(2, '0');
-                  _lemburCountdown = '$h:$m:$s';
-                } else if (_serverTime!.isAfter(selesai)) {
-                  _lemburStatus = 'Selesai';
-                  _lemburCountdown = 'Lembur Selesai';
-                } else {
-                  _lemburStatus = 'Disetujui';
-                  _lemburCountdown = '';
-                }
+              if (_serverTime!.isAfter(selesai)) {
+                _lemburStatus = 'Selesai';
+                _lemburCountdown = 'Lembur Selesai';
+              } else if (_lemburActualStartTime != null) {
+                _lemburStatus = 'Sedang Lembur';
+                final diff = selesai.difference(_serverTime!);
+                final h = diff.inHours.toString().padLeft(2, '0');
+                final m = (diff.inMinutes % 60).toString().padLeft(2, '0');
+                final s = (diff.inSeconds % 60).toString().padLeft(2, '0');
+                _lemburCountdown = '$h:$m:$s';
               } else {
-                _lemburStatus = 'Disetujui';
+                _lemburStatus = 'Belum Dimulai';
                 _lemburCountdown = '';
               }
-            } else if (statusLembur == 'Menunggu') {
-              _lemburStatus = 'Menunggu';
-              _lemburCountdown = '';
-            } else {
-              _lemburStatus = statusLembur ?? '';
-              _lemburCountdown = '';
             }
           }
         }
@@ -173,11 +159,18 @@ class _DashboardScreenState extends State<DashboardScreen> {
           _serverTime = DateTime.parse(resData['server_time']);
         }
         _lemburData = resData['lembur'];
+
         if (_lemburData != null) {
           final prefs = await SharedPreferences.getInstance();
-          final lemburId = _lemburData!['id'] ?? _lemburData!['tanggal'];
-          _isLemburStartedLocal = prefs.getBool('lembur_started_$lemburId') ?? false;
-          _lemburActualStart = prefs.getString('lembur_actual_start_$lemburId');
+          final lemburId = _lemburData!['id']?.toString() ?? _lemburData!['tanggal']?.toString() ?? 'today';
+          final actualStartStr = prefs.getString('lembur_start_time_$lemburId');
+          if (actualStartStr != null) {
+            _lemburActualStartTime = DateTime.parse(actualStartStr);
+          } else {
+            _lemburActualStartTime = null;
+          }
+        } else {
+          _lemburActualStartTime = null;
         }
 
         if (data != null && data is Map) {
@@ -529,7 +522,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                       const SizedBox(height: 16),
                       _buildRadiusBadge(),
                       _buildStatusHariIniCard(),
-                      if (_lemburStatus == 'Sedang Lembur') ...[
+                      if (_lemburStatus == 'Sedang Lembur' || _lemburStatus == 'Selesai') ...[
                         const SizedBox(height: 24),
                         _buildRiwayatHariIni(),
                       ],
@@ -1012,7 +1005,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
     Map<String, dynamic> data = _lemburData ?? {};
     
     final lemburDataForScreen = {
-      'jam_mulai_lembur': data['jam_mulai'] ?? DateTime.now().toIso8601String(),
+      'jam_mulai_lembur': _lemburActualStartTime?.toIso8601String() ?? data['jam_mulai'] ?? DateTime.now().toIso8601String(),
       'jam_selesai_lembur': data['jam_selesai'] ?? DateTime.now().add(const Duration(hours: 2)).toIso8601String(),
       'alasan': data['alasan'] ?? 'Lembur',
       'durasi_lembur_menit': data['estimasi_jam'] != null ? (int.tryParse(data['estimasi_jam'].toString()) ?? 0) * 60 : 120,
@@ -1084,6 +1077,31 @@ class _DashboardScreenState extends State<DashboardScreen> {
           'Sesi lembur dimulai pukul $jamMulai, Target: $targetJamStr jam.';
       badgeBg = const Color(0xFFFFF3E0); // Orange bg
       badgeTxt = const Color(0xFFE65100); // Orange text
+    } else if (_lemburStatus == 'Selesai') {
+      statusText = 'Lembur Selesai';
+      final mulaiStr = _lemburData?['jam_mulai'];
+      final selesaiStr = _lemburData?['jam_selesai'];
+      String jamSelesai = '-';
+      String durasiStr = '-';
+
+      if (mulaiStr != null && selesaiStr != null) {
+        final mulai = DateTime.parse(mulaiStr);
+        final selesai = DateTime.parse(selesaiStr);
+        jamSelesai =
+            '${selesai.hour.toString().padLeft(2, '0')}:${selesai.minute.toString().padLeft(2, '0')}';
+        final diffHrs = selesai.difference(mulai).inHours;
+        final diffMins = selesai.difference(mulai).inMinutes % 60;
+        if (diffMins > 0) {
+           durasiStr = '$diffHrs Jam $diffMins menit';
+        } else {
+           durasiStr = '$diffHrs Jam';
+        }
+      }
+
+      descText =
+          'Sesi lembur selesai pukul $jamSelesai. Durasi: $durasiStr.';
+      badgeBg = const Color(0xFFE0F2F1); // Teal bg
+      badgeTxt = const Color(0xFF009688); // Teal text
     } else if (_isSudahAbsenMasuk && !_isSudahAbsenKeluar) {
       statusText = 'Sudah Absen Masuk';
       descText =
@@ -1220,12 +1238,19 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
     // Get lembur time
     String jamMulaiLembur = '-';
+    String jamSelesaiLembur = '-';
     if (_lemburData != null) {
       final mulaiStr = _lemburData!['jam_mulai'];
+      final selesaiStr = _lemburData!['jam_selesai'];
       if (mulaiStr != null) {
         final mulai = DateTime.parse(mulaiStr);
         jamMulaiLembur =
             '${mulai.hour.toString().padLeft(2, '0')}:${mulai.minute.toString().padLeft(2, '0')} WIB';
+      }
+      if (selesaiStr != null) {
+        final selesai = DateTime.parse(selesaiStr);
+        jamSelesaiLembur =
+            '${selesai.hour.toString().padLeft(2, '0')}:${selesai.minute.toString().padLeft(2, '0')} WIB';
       }
     }
 
@@ -1281,13 +1306,24 @@ class _DashboardScreenState extends State<DashboardScreen> {
           _buildTimelineItem(
             title: 'Mulai Lembur',
             time: jamMulaiLembur,
-            badgeText: 'Sedang Berlangsung',
-            badgeColor: const Color(0xFFE65100), // Orange text
-            badgeBg: const Color(0xFFFFF3E0), // Orange bg
+            badgeText: _lemburStatus == 'Selesai' ? 'Selesai' : 'Sedang Berlangsung',
+            badgeColor: _lemburStatus == 'Selesai' ? const Color(0xFF009688) : const Color(0xFFE65100), // Teal text for Selesai, Orange for Sedang Berlangsung
+            badgeBg: _lemburStatus == 'Selesai' ? const Color(0xFFE0F2F1) : const Color(0xFFFFF3E0), // Teal bg for Selesai, Orange for Sedang Berlangsung
             isFirst: false,
-            isLast: true,
-            dotColor: const Color(0xFFF57C00), // Orange dot
+            isLast: _lemburStatus != 'Selesai',
+            dotColor: _lemburStatus == 'Selesai' ? const Color(0xFF009688) : const Color(0xFFF57C00), // Teal dot for Selesai, Orange for Sedang Berlangsung
           ),
+          if (_lemburStatus == 'Selesai')
+            _buildTimelineItem(
+              title: 'Selesai Lembur',
+              time: jamSelesaiLembur,
+              badgeText: 'Selesai',
+              badgeColor: const Color(0xFF009688), // Teal text
+              badgeBg: const Color(0xFFE0F2F1), // Teal bg
+              isFirst: false,
+              isLast: true,
+              dotColor: const Color(0xFF009688), // Teal dot
+            ),
         ],
       ),
     );

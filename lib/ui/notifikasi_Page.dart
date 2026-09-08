@@ -136,23 +136,73 @@ class _NotifikasiScreenState extends State<NotifikasiScreen> {
     return value is List ? value : const [];
   }
 
-  String _buildFormattedMessage(Map<String, dynamic> data, Map rawItem) {
+  String _getEnhancedTitle(String title, String jenis) {
+    final lowerTitle = title.toLowerCase();
+    if (!lowerTitle.contains('pengajuan')) return title;
+    
+    if (jenis.isEmpty) {
+      if (lowerTitle.contains('cuti')) jenis = 'Cuti';
+      else if (lowerTitle.contains('lembur')) jenis = 'Lembur';
+      else if (lowerTitle.contains('izin')) jenis = 'Izin';
+      else jenis = 'Pengajuan';
+    } else {
+      jenis = '${jenis[0].toUpperCase()}${jenis.substring(1).toLowerCase()}';
+    }
+
+    if (jenis != 'Pengajuan') {
+      if (lowerTitle.contains('disetujui') || lowerTitle.contains('tuju')) {
+        return 'Pengajuan $jenis telah Disetujui';
+      } else if (lowerTitle.contains('diproses') || lowerTitle.contains('kirim')) {
+        return 'Pengajuan $jenis Diproses';
+      } else if (lowerTitle.contains('ditolak') || lowerTitle.contains('tolak')) {
+        return 'Pengajuan $jenis Ditolak';
+      }
+    }
+    
+    return title;
+  }
+
+  String _buildFormattedMessage(Map<String, dynamic> data, Map rawItem, String currentTitle) {
     final String rawMessage = (data['message'] ?? data['body'] ?? rawItem['message'] ?? '').toString().trim();
-    if (rawMessage.isNotEmpty && !rawMessage.toLowerCase().contains('ada pembaruan')) {
+    
+    final bool isPengajuan = currentTitle.toLowerCase().contains('pengajuan') || 
+                             rawMessage.toLowerCase().contains('pengajuan') || 
+                             data.containsKey('jenis') || 
+                             data.containsKey('status');
+
+    if (!isPengajuan && rawMessage.isNotEmpty && !rawMessage.toLowerCase().contains('ada pembaruan')) {
       return rawMessage;
     }
-    final String jenis = (data['jenis'] ?? data['type'] ?? data['kategori'] ?? 'Pengajuan').toString();
-    final String status = (data['status'] ?? 'diproses').toString();
-    final String tgl = data['tanggal'] != null ? ' tanggal ${data['tanggal']}' : '';
+
+    String jenis = (data['jenis'] ?? data['type'] ?? data['kategori'] ?? '').toString();
+    if (jenis.isEmpty) {
+      if (rawMessage.toLowerCase().contains('cuti')) jenis = 'Cuti';
+      else if (rawMessage.toLowerCase().contains('lembur')) jenis = 'Lembur';
+      else if (rawMessage.toLowerCase().contains('izin')) jenis = 'Izin';
+      else jenis = 'Pengajuan';
+    }
+    jenis = jenis.isNotEmpty ? '${jenis[0].toUpperCase()}${jenis.substring(1).toLowerCase()}' : 'Pengajuan';
+
+    String status = (data['status'] ?? '').toString();
+    if (status.isEmpty) {
+      final combined = '${currentTitle.toLowerCase()} ${rawMessage.toLowerCase()}';
+      if (combined.contains('setuju') || combined.contains('approved')) status = 'disetujui';
+      else if (combined.contains('tolak') || combined.contains('rejected')) status = 'ditolak';
+      else status = 'diproses';
+    }
+
+    final String tanggal = (data['tanggal'] ?? '').toString();
+    final String tgl = tanggal.isNotEmpty ? ' pada tanggal $tanggal' : '';
     final String oleh = data['approved_by'] != null ? ' oleh ${data['approved_by']}' : '';
 
     if (status.toLowerCase().contains('setuju') || status.toLowerCase().contains('approved')) {
-      return 'Pengajuan $jenis Anda$tgl telah disetujui$oleh.';
+      return 'Pengajuan $jenis Anda$tgl Telah Disetujui$oleh.';
     } else if (status.toLowerCase().contains('tolak') || status.toLowerCase().contains('rejected')) {
       final String alasan = data['alasan'] != null ? ' (${data['alasan']})' : '';
-      return 'Pengajuan $jenis Anda$tgl ditolak$alasan.';
+      return 'Pengajuan $jenis Anda$tgl Telah Ditolak$alasan.';
+    } else {
+      return 'Pengajuan $jenis Anda$tgl sedang menunggu proses persetujuan.';
     }
-    return 'Pengajuan $jenis Anda$tgl sedang dalam proses verifikasi.';
   }
 
   Future<void> _fetchNotifications() async {
@@ -169,13 +219,24 @@ class _NotifikasiScreenState extends State<NotifikasiScreen> {
 
         allNotifs = list.whereType<Map>().map((e) {
           final data = _readNotificationData(e);
-          final title = (data['title'] ?? e['title'] ?? e['type'] ?? 'Notifikasi System').toString();
-          final message = _buildFormattedMessage(data, e);
-          final iconData = _getIconAndColor(title);
+          final rawTitle = (data['title'] ?? e['title'] ?? e['type'] ?? 'Notifikasi System').toString();
+          
+          final String jenis = (data['jenis'] ?? data['type'] ?? data['kategori'] ?? '').toString();
+          final message = _buildFormattedMessage(data, e, rawTitle);
+          
+          String inferredJenis = jenis;
+          if (inferredJenis.isEmpty) {
+            if (message.toLowerCase().contains('cuti')) inferredJenis = 'Cuti';
+            else if (message.toLowerCase().contains('lembur')) inferredJenis = 'Lembur';
+            else if (message.toLowerCase().contains('izin')) inferredJenis = 'Izin';
+          }
+          final enhancedTitle = _getEnhancedTitle(rawTitle, inferredJenis);
+          
+          final iconData = _getIconAndColor(enhancedTitle);
           
           return {
             'id': e['id'],
-            'title': title,
+            'title': enhancedTitle,
             'message': message,
             'timeRaw': e['created_at'],
             'time': _formatRelativeTime(e['created_at']),

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../services/image_url_service.dart';
+import '../services/api_service.dart';
 
 class DetailWorkflowScreen extends StatelessWidget {
   final Map<String, dynamic> data;
@@ -288,27 +289,54 @@ class DetailWorkflowScreen extends StatelessWidget {
               ),
             ),
             const SizedBox(height: 6),
-            ClipRRect(
-              borderRadius: BorderRadius.circular(8),
-              child: Image.network(
-                ImageUrlService.resolve(
-                      data['dokumen_pendukung']?.toString(),
-                    ) ??
-                    '',
-                height: 150,
-                width: double.infinity,
-                fit: BoxFit.cover,
-                errorBuilder: (context, error, stackTrace) {
+            FutureBuilder<String?>(
+              future: ApiService().getToken(),
+              builder: (context, snapshot) {
+                final token = snapshot.data;
+                final imageUrl = ImageUrlService.resolve(data['dokumen_pendukung']?.toString()) ?? '';
+                final isPdf = imageUrl.toLowerCase().endsWith('.pdf');
+
+                if (isPdf) {
                   return Container(
                     height: 150,
                     width: double.infinity,
-                    color: Colors.grey.shade200,
-                    child: const Center(
-                      child: Text('Gambar tidak dapat dimuat'),
+                    decoration: BoxDecoration(
+                      color: Colors.grey.shade100,
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(color: Colors.grey.shade300),
+                    ),
+                    child: const Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(Icons.picture_as_pdf, size: 40, color: Colors.red),
+                        SizedBox(height: 8),
+                        Text('Lampiran berformat PDF', style: TextStyle(fontSize: 12, color: Colors.grey)),
+                      ],
                     ),
                   );
-                },
-              ),
+                }
+
+                return ClipRRect(
+                  borderRadius: BorderRadius.circular(8),
+                  child: Image.network(
+                    imageUrl,
+                    headers: token != null ? {'Authorization': 'Bearer $token'} : null,
+                    height: 150,
+                    width: double.infinity,
+                    fit: BoxFit.cover,
+                    errorBuilder: (context, error, stackTrace) {
+                      return Container(
+                        height: 150,
+                        width: double.infinity,
+                        color: Colors.grey.shade200,
+                        child: const Center(
+                          child: Text('Gambar tidak dapat dimuat'),
+                        ),
+                      );
+                    },
+                  ),
+                );
+              }
             ),
           ],
         ],
