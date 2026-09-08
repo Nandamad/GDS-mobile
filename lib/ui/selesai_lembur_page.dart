@@ -60,20 +60,23 @@ class _SelesaiLemburScreenState extends State<SelesaiLemburScreen> {
     return '${twoDigits(startTime.hour)}:${twoDigits(startTime.minute)}';
   }
 
+  String _formatLocalTime(String isoTime) {
+    try {
+      final date = DateTime.parse(isoTime).toLocal();
+      String twoDigits(int n) => n.toString().padLeft(2, '0');
+      return '${twoDigits(date.hour)}:${twoDigits(date.minute)}';
+    } catch (_) {
+      return '-';
+    }
+  }
+
   Future<void> _akhiriLembur() async {
     setState(() => _isSubmitting = true);
     try {
       final prefs = await SharedPreferences.getInstance();
       final lemburId = widget.lemburData['id']?.toString() ?? widget.lemburData['tanggal']?.toString() ?? 'today';
       final actualStartStr = prefs.getString('lembur_start_time_$lemburId') ?? widget.lemburData['jam_mulai_lembur'];
-      
-      final response = await ApiService().dio.post(
-        '/lembur/selesai',
-        data: {
-          'jam_mulai_aktual': actualStartStr,
-          'jam_selesai_aktual': DateTime.now().toIso8601String(),
-        }
-      );
+      final response = await ApiService().dio.post('/lembur/selesai');
       
       if (!mounted) return;
       if (response.statusCode == 200) {
@@ -277,6 +280,13 @@ class _SelesaiLemburScreenState extends State<SelesaiLemburScreen> {
                   const SizedBox(height: 16),
                   _buildInfoRow('Alasan Lembur', alasan.isEmpty ? '-' : alasan),
                   const SizedBox(height: 12),
+                  if (widget.lemburData['jadwal_mulai'] != null) ...[
+                    _buildInfoRow(
+                      'Jadwal Awal', 
+                      '${_formatLocalTime(widget.lemburData['jadwal_mulai'])} - ${_formatLocalTime(widget.lemburData['jam_selesai_lembur'])}'
+                    ),
+                    const SizedBox(height: 12),
+                  ],
                   _buildInfoRow('Estimasi Awal', estimasiText),
                   const SizedBox(height: 12),
                   Row(

@@ -1,11 +1,11 @@
 import 'dart:convert';
 import 'dart:ui';
 import 'package:flutter/material.dart';
-import 'package:intl/intl.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'ajukan_lembur_page.dart';
 import 'kamera_page.dart';
 import 'selesai_lembur_page.dart';
+import '../services/api_service.dart';
 
 class MulaiLemburScreen extends StatefulWidget {
   final Map<String, dynamic>? lemburData;
@@ -119,11 +119,24 @@ class _MulaiLemburScreenState extends State<MulaiLemburScreen> {
       _isStarting = true;
     });
 
-    // Simpan jam mulai secara lokal
+    // Simpan jam mulai secara lokal sebagai backup
     final prefs = await SharedPreferences.getInstance();
     final lemburId = widget.lemburData?['id']?.toString() ?? widget.lemburData?['tanggal']?.toString() ?? 'today';
     final actualStartTime = DateTime.now().toIso8601String();
     await prefs.setString('lembur_start_time_$lemburId', actualStartTime);
+
+    // Kirim API ke backend agar status lembur berjalan
+    try {
+      final response = await ApiService().dio.post('/lembur/mulai');
+      if (response.statusCode != 200 && response.statusCode != 201) {
+        throw Exception('Gagal di server');
+      }
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Peringatan: Gagal menghubungi server saat memulai lembur.')),
+      );
+    }
 
     if (!mounted) return;
     setState(() {
@@ -132,8 +145,8 @@ class _MulaiLemburScreenState extends State<MulaiLemburScreen> {
 
     final data = widget.lemburData!;
     final lemburDataForScreen = {
-      'jam_mulai_lembur': actualStartTime,
-      'jam_selesai_lembur': data['jam_selesai'] ?? DateTime.now().add(const Duration(hours: 2)).toIso8601String(),
+      'jam_mulai_lembur': actualStartTime, // Gunakan waktu sekarang karena sudah dimulai
+      'jam_selesai_lembur': data['jam_selesai'] ?? data['jam_selesai_lembur'] ?? DateTime.now().add(const Duration(hours: 2)).toIso8601String(),
       'alasan': data['alasan'] ?? data['keterangan'] ?? 'Lembur',
       'durasi_lembur_menit': data['estimasi_jam'] != null ? (int.tryParse(data['estimasi_jam'].toString()) ?? 0) * 60 : (data['durasi_lembur_menit'] ?? 120),
     };
@@ -149,15 +162,28 @@ class _MulaiLemburScreenState extends State<MulaiLemburScreen> {
   @override
   Widget build(BuildContext context) {
     final data = widget.lemburData;
+    String formatTanggal(String isoString) {
+      try {
+        final date = DateTime.parse(isoString).toLocal();
+        const months = ['Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni', 'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'];
+        final dayStr = date.day.toString().padLeft(2, '0');
+        return '$dayStr ${months[date.month - 1]} ${date.year}';
+      } catch (_) {
+        return '-';
+      }
+    }
+
     final tanggal = data?['tanggal'] != null 
-        ? DateFormat('dd MMMM yyyy').format(DateTime.parse(data!['tanggal'])) 
-        : (data?['jam_mulai'] != null ? DateFormat('dd MMMM yyyy').format(DateTime.parse(data!['jam_mulai'])) : '-');
+        ? formatTanggal(data!['tanggal']) 
+        : (data?['jam_mulai'] != null ? formatTanggal(data!['jam_mulai']) : '-');
     
     String formatJam(String? jamStr) {
       if (jamStr == null) return '-';
       if (jamStr.contains('T') || jamStr.contains(' ')) {
         try {
-          return DateFormat('HH:mm').format(DateTime.parse(jamStr).toLocal());
+          final date = DateTime.parse(jamStr).toLocal();
+          String twoDigits(int n) => n.toString().padLeft(2, '0');
+          return '${twoDigits(date.hour)}:${twoDigits(date.minute)}';
         } catch (_) {
           return '-';
         }

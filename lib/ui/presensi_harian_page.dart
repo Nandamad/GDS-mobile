@@ -1055,6 +1055,7 @@ class _PresensiHarianScreenState extends State<PresensiHarianScreen> {
           
           final lemburDataForScreen = {
             'jam_mulai_lembur': actualStart,
+            'jadwal_mulai': dataForScreen?['jam_mulai'],
             'jam_selesai_lembur': dataForScreen?['jam_selesai'] ?? DateTime.now().add(const Duration(hours: 2)).toIso8601String(),
             'alasan': dataForScreen?['alasan'] ?? 'Lembur',
             'durasi_lembur_menit': dataForScreen?['estimasi_jam'] != null ? (int.tryParse(dataForScreen!['estimasi_jam'].toString()) ?? 0) * 60 : (dataForScreen?['durasi_lembur_menit'] ?? 120),

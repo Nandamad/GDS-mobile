@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:intl/intl.dart';
 import '../services/api_service.dart';
 
 class RingkasanPresensiPage extends StatefulWidget {
@@ -14,12 +13,24 @@ class _RingkasanPresensiPageState extends State<RingkasanPresensiPage> {
   Map<String, dynamic> _attendanceSummary = {};
   List<dynamic> _riwayatLembur = [];
   
-  final String _currentMonthStr = DateFormat('MMMM yyyy', 'id_ID').format(DateTime.now());
+  String _currentMonthStr = '';
 
   @override
   void initState() {
     super.initState();
+    _currentMonthStr = _formatMonth(DateTime.now());
     _fetchData();
+  }
+
+  String _formatMonth(DateTime date) {
+    const months = ['Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni', 'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'];
+    return '${months[date.month - 1]} ${date.year}';
+  }
+
+  String _formatDate(DateTime date) {
+    const months = ['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Agu', 'Sep', 'Okt', 'Nov', 'Des'];
+    final dayStr = date.day.toString().padLeft(2, '0');
+    return '$dayStr ${months[date.month - 1]} ${date.year}';
   }
 
   Future<void> _fetchData() async {
@@ -384,7 +395,7 @@ class _RingkasanPresensiPageState extends State<RingkasanPresensiPage> {
                String formattedDate = dateStr;
                try {
                   final date = DateTime.parse(dateStr);
-                  formattedDate = DateFormat('dd MMM yyyy', 'id_ID').format(date);
+                  formattedDate = _formatDate(date);
                } catch (_) {}
                
                final durasi = item['estimasi_jam']?.toString() ?? '0';
