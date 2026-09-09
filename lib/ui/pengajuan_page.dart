@@ -367,6 +367,9 @@ class _PengajuanScreenState extends State<PengajuanScreen> {
   }
 
   int _calculateDays(Map<String, dynamic> data) {
+    if (data['jumlah_hari'] != null) {
+      return int.tryParse(data['jumlah_hari'].toString()) ?? 1;
+    }
     if (data['jumlah_hari_kerja'] != null) {
       return int.tryParse(data['jumlah_hari_kerja'].toString()) ?? 1;
     }
