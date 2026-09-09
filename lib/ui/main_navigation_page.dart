@@ -181,7 +181,7 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
                                   ],
                                 ),
                                 child: const Icon(
-                                  Icons.access_time_rounded,
+                                  Icons.how_to_reg_rounded,
                                   color: Colors.white,
                                   size:
                                       28, // Icon juga dibesarkan agar proporsional
@@ -222,8 +222,8 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
                 // 3. RIWAYAT (untuk karyawan biasa)
                 _buildNavItem(
                   index: _riwayatIndex,
-                  icon: Icons.format_list_bulleted_rounded,
-                  activeIcon: Icons.format_list_bulleted_rounded,
+                  icon: Icons.class_outlined,
+                  activeIcon: Icons.class_rounded,
                   label: 'Riwayat',
                 ),
 
