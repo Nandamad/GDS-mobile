@@ -162,6 +162,9 @@ class _MulaiLemburScreenState extends State<MulaiLemburScreen> {
   @override
   Widget build(BuildContext context) {
     final data = widget.lemburData;
+    final bool hasLembur = data != null;
+
+    // --- Helper functions ---
     String formatTanggal(String isoString) {
       try {
         final date = DateTime.parse(isoString).toLocal();
@@ -173,43 +176,28 @@ class _MulaiLemburScreenState extends State<MulaiLemburScreen> {
       }
     }
 
-    final tanggal = data?['tanggal'] != null 
-        ? formatTanggal(data!['tanggal']) 
-        : (data?['jam_mulai'] != null ? formatTanggal(data!['jam_mulai']) : '-');
-    
-    String formatJam(String? jamStr) {
-      if (jamStr == null) return '-';
-      if (jamStr.contains('T') || jamStr.contains(' ')) {
-        try {
-          final date = DateTime.parse(jamStr).toLocal();
-          String twoDigits(int n) => n.toString().padLeft(2, '0');
-          return '${twoDigits(date.hour)}:${twoDigits(date.minute)}';
-        } catch (_) {
-          return '-';
-        }
-      }
-      final p = jamStr.split(':');
-      if (p.length >= 2) return '${p[0]}:${p[1]}';
-      return jamStr;
-    }
-
-    String waktuMulai = formatJam(data?['jam_mulai']);
-    String waktuSelesai = formatJam(data?['jam_selesai']);
-    final waktuLembur = (waktuMulai != '-' && waktuSelesai != '-') ? '$waktuMulai - $waktuSelesai WIB' : '-';
-
-    final alasan = data?['alasan'] ?? data?['keterangan'] ?? 'Lembur';
-    final durasiMenit = data?['durasi_lembur_menit'] != null ? (data!['durasi_lembur_menit'] as int) : 0;
-    
+    // --- Computed values (only used when hasLembur) ---
+    String tanggal = '-';
+    String alasan = '-';
     String estimasiJam = '-';
-    if (data?['estimasi_jam'] != null) {
-      estimasiJam = data!['estimasi_jam'].toString();
-    } else if (durasiMenit > 0) {
-      estimasiJam = (durasiMenit / 60).toStringAsFixed(0);
+    String approvedByName = 'Manager HRD';
+
+    if (hasLembur) {
+      tanggal = data['tanggal'] != null 
+          ? formatTanggal(data['tanggal']) 
+          : (data['jam_mulai'] != null ? formatTanggal(data['jam_mulai']) : '-');
+
+      alasan = data['alasan'] ?? data['keterangan'] ?? 'Lembur';
+
+      final durasiMenit = data['durasi_lembur_menit'] != null ? (data['durasi_lembur_menit'] as int) : 0;
+      if (data['estimasi_jam'] != null) {
+        estimasiJam = data['estimasi_jam'].toString();
+      } else if (durasiMenit > 0) {
+        estimasiJam = (durasiMenit / 60).toStringAsFixed(0);
+      }
+
+      approvedByName = data['approved_by_l1']?['name'] ?? data['approved_by_l2']?['name'] ?? 'Manager HRD';
     }
-    
-    final approvedByName = data?['approved_by_l1']?['name'] ?? data?['approved_by_l2']?['name'] ?? 'HRD / Atasan';
-    
-    final statusApproval = data != null ? 'Disetujui' : 'Menunggu';
 
     return Scaffold(
       backgroundColor: const Color(0xFFF8FAFC),
@@ -242,14 +230,17 @@ class _MulaiLemburScreenState extends State<MulaiLemburScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    // Detail Lembur Card
+                    // ===== Detail Lembur Card =====
                     Container(
                       width: double.infinity,
                       padding: const EdgeInsets.all(16),
                       decoration: BoxDecoration(
                         color: Colors.white,
                         borderRadius: BorderRadius.circular(12),
-                        border: Border.all(color: const Color(0xFF009688), width: 1.5),
+                        border: Border.all(
+                          color: hasLembur ? const Color(0xFF009688) : Colors.grey.shade300,
+                          width: hasLembur ? 1.5 : 1,
+                        ),
                         boxShadow: [
                           BoxShadow(
                             color: Colors.black.withOpacity(0.02),
@@ -261,6 +252,7 @@ class _MulaiLemburScreenState extends State<MulaiLemburScreen> {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
+                          // Header row: title + badge
                           Row(
                             mainAxisAlignment: MainAxisAlignment.spaceBetween,
                             children: [
@@ -272,18 +264,18 @@ class _MulaiLemburScreenState extends State<MulaiLemburScreen> {
                                   color: Color(0xFF0F172A),
                                 ),
                               ),
-                              if (widget.lemburData != null)
+                              if (hasLembur)
                                 Container(
                                   padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                                   decoration: BoxDecoration(
-                                    color: statusApproval == 'Disetujui' ? const Color(0xFFD1FAE5) : const Color(0xFFFEF3C7),
+                                    color: const Color(0xFFD1FAE5),
                                     borderRadius: BorderRadius.circular(20),
-                                    border: Border.all(color: statusApproval == 'Disetujui' ? const Color(0xFF009688) : const Color(0xFFD97706)),
+                                    border: Border.all(color: const Color(0xFF009688)),
                                   ),
-                                  child: Text(
-                                    statusApproval,
+                                  child: const Text(
+                                    'Disetujui',
                                     style: TextStyle(
-                                      color: statusApproval == 'Disetujui' ? const Color(0xFF009688) : const Color(0xFFD97706),
+                                      color: Color(0xFF009688),
                                       fontSize: 11,
                                       fontWeight: FontWeight.bold,
                                     ),
@@ -291,32 +283,47 @@ class _MulaiLemburScreenState extends State<MulaiLemburScreen> {
                                 ),
                             ],
                           ),
-                          const SizedBox(height: 16),
-                          const Text('Tanggal', style: TextStyle(color: Colors.grey, fontSize: 11)),
-                          const SizedBox(height: 4),
-                          Text(tanggal, style: const TextStyle(fontSize: 13, color: Color(0xFF0F172A))),
-                          const SizedBox(height: 12),
-                          const Text('Waktu Lembur', style: TextStyle(color: Colors.grey, fontSize: 11)),
-                          const SizedBox(height: 4),
-                          Text(waktuLembur, style: const TextStyle(fontSize: 13, color: Color(0xFF0F172A))),
-                          const SizedBox(height: 12),
-                          const Text('Alasan Lembur', style: TextStyle(color: Colors.grey, fontSize: 11)),
-                          const SizedBox(height: 4),
-                          Text(alasan, style: const TextStyle(fontSize: 13, color: Color(0xFF0F172A))),
-                          const SizedBox(height: 12),
-                          const Text('Estimasi Durasi', style: TextStyle(color: Colors.grey, fontSize: 11)),
-                          const SizedBox(height: 4),
-                          Text('$estimasiJam Jam', style: const TextStyle(fontSize: 13, color: Color(0xFF009688))),
-                          const SizedBox(height: 12),
-                          const Text('Disetujui oleh', style: TextStyle(color: Colors.grey, fontSize: 11)),
-                          const SizedBox(height: 4),
-                          Text(approvedByName, style: const TextStyle(fontSize: 13, color: Color(0xFF0F172A))),
+
+                          // Content: show detail fields or empty state
+                          if (hasLembur) ...[
+                            const SizedBox(height: 16),
+                            const Text('Tanggal', style: TextStyle(color: Colors.grey, fontSize: 11)),
+                            const SizedBox(height: 4),
+                            Text(tanggal, style: const TextStyle(fontSize: 13, color: Color(0xFF0F172A))),
+                            const SizedBox(height: 12),
+                            const Text('Alasan Lembur', style: TextStyle(color: Colors.grey, fontSize: 11)),
+                            const SizedBox(height: 4),
+                            Text(alasan, style: const TextStyle(fontSize: 13, color: Color(0xFF0F172A))),
+                            const SizedBox(height: 12),
+                            const Text('Estimasi Durasi', style: TextStyle(color: Colors.grey, fontSize: 11)),
+                            const SizedBox(height: 4),
+                            Text('$estimasiJam Jam', style: const TextStyle(fontSize: 13, color: Color(0xFF009688))),
+                            const SizedBox(height: 12),
+                            const Text('Disetujui oleh', style: TextStyle(color: Colors.grey, fontSize: 11)),
+                            const SizedBox(height: 4),
+                            Text(approvedByName, style: const TextStyle(fontSize: 13, color: Color(0xFF0F172A))),
+                          ] else ...[
+                            const SizedBox(height: 24),
+                            Center(
+                              child: Column(
+                                children: [
+                                  Icon(Icons.assignment_outlined, size: 40, color: Colors.grey.shade300),
+                                  const SizedBox(height: 8),
+                                  Text(
+                                    'Belum ada pengajuan lembur',
+                                    style: TextStyle(color: Colors.grey.shade400, fontSize: 13),
+                                  ),
+                                ],
+                              ),
+                            ),
+                            const SizedBox(height: 16),
+                          ],
                         ],
                       ),
                     ),
                     const SizedBox(height: 24),
         
-                    // Foto Selfie
+                    // ===== Kirim Foto Lembur =====
                     const Text(
                       'Kirim Foto Lembur',
                       style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: Color(0xFF0F172A)),
@@ -372,6 +379,8 @@ class _MulaiLemburScreenState extends State<MulaiLemburScreen> {
                 ),
               ),
             ),
+
+            // ===== Bottom Button =====
             Container(
               padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
@@ -387,12 +396,17 @@ class _MulaiLemburScreenState extends State<MulaiLemburScreen> {
               child: SizedBox(
                 width: double.infinity,
                 height: 48,
-                child: ElevatedButton.icon(
+                child: ElevatedButton(
                   onPressed: _isStarting ? null : _mulaiLembur,
-                  icon: _isStarting
-                      ? const SizedBox.shrink()
-                      : const Icon(Icons.play_arrow_outlined, color: Colors.white, size: 20),
-                  label: _isStarting
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFF009688),
+                    disabledBackgroundColor: Colors.grey.shade300,
+                    elevation: 0,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                  ),
+                  child: _isStarting
                       ? const SizedBox(
                           width: 20,
                           height: 20,
@@ -406,14 +420,6 @@ class _MulaiLemburScreenState extends State<MulaiLemburScreen> {
                             fontWeight: FontWeight.bold,
                           ),
                         ),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFF009688),
-                    disabledBackgroundColor: Colors.grey.shade300,
-                    elevation: 0,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                  ),
                 ),
               ),
             )
