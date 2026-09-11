@@ -16,7 +16,6 @@ import '../cubit/location_state.dart';
 import 'kamera_page.dart';
 import 'konfirmasi_foto_page.dart';
 import 'riwayat_presensi_page.dart';
-import 'ajukan_lembur_page.dart';
 import 'mulai_lembur_page.dart';
 import 'selesai_lembur_page.dart';
 import 'ringkasan_presensi_page.dart';
@@ -1033,17 +1032,11 @@ class _PresensiHarianScreenState extends State<PresensiHarianScreen> {
       }
 
       if (isMulai) {
-        if (lembur == null || status == 'Belum ada') {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Anda belum mengajukan lembur. Silakan ajukan terlebih dahulu.')),
-          );
-          Navigator.push(context, MaterialPageRoute(builder: (_) => const AjukanLemburScreen()));
-        } else if (status == 'Disetujui' || status == 'Menunggu') {
-          Navigator.push(context, MaterialPageRoute(builder: (_) => MulaiLemburScreen(lemburData: dataForScreen, lemburStatus: status)));
-        } else if (status == 'Sedang Lembur' || status == 'Selesai') {
+        if (status == 'Sedang Lembur' || status == 'Selesai') {
           ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Anda sudah memulai lembur hari ini. Silakan gunakan menu Selesai Lembur.')));
         } else {
-          ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Status lembur tidak diketahui: $status')));
+          // Buka MulaiLemburScreen — di dalamnya sudah ada logika warning jika belum ajukan
+          Navigator.push(context, MaterialPageRoute(builder: (_) => MulaiLemburScreen(lemburData: dataForScreen, lemburStatus: status)));
         }
       } else {
         if (lembur == null || status == 'Belum ada' || status == 'Menunggu' || status == 'Disetujui') {
