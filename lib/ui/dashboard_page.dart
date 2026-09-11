@@ -14,7 +14,6 @@ import '../services/image_url_service.dart';
 import 'kamera_page.dart';
 import 'konfirmasi_foto_page.dart';
 import 'selesai_lembur_page.dart';
-import 'ajukan_lembur_page.dart';
 import 'mulai_lembur_page.dart';
 
 class DashboardScreen extends StatefulWidget {
@@ -526,6 +525,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
                       if (_lemburStatus == 'Sedang Lembur' || _lemburStatus == 'Selesai') ...[
                         const SizedBox(height: 24),
                         _buildRiwayatHariIni(),
+                      ] else if (_isSudahAbsenMasuk) ...[
+                        const SizedBox(height: 24),
+                        _buildRiwayatHariIni(),
                       ],
                       const SizedBox(height: 24),
                       _buildLogKeterlambatanList(),
@@ -802,32 +804,33 @@ class _DashboardScreenState extends State<DashboardScreen> {
           ),
         ),
         const SizedBox(height: 4),
-        const Text(
-          'WIB • Hari ini',
-          style: TextStyle(
-            fontSize: 12,
-            color: Color(0xFF64748B),
-            fontWeight: FontWeight.w500,
-          ),
-        ),
         if (_lemburStatus == 'Sedang Lembur') ...[
-          const SizedBox(height: 16),
           const Text(
-            'WAKTU LEMBUR',
+            'SISA WAKTU LEMBUR',
             style: TextStyle(
               fontSize: 12,
               fontWeight: FontWeight.bold,
               color: Color(0xFF009688),
+              letterSpacing: 0.5,
             ),
           ),
         ] else if (_lemburStatus == 'Selesai') ...[
-          const SizedBox(height: 16),
           const Text(
             'SELESAI LEMBUR',
             style: TextStyle(
               fontSize: 12,
               fontWeight: FontWeight.bold,
               color: Color(0xFF009688),
+              letterSpacing: 0.5,
+            ),
+          ),
+        ] else ...[
+          const Text(
+            'WIB • Hari ini',
+            style: TextStyle(
+              fontSize: 12,
+              color: Color(0xFF64748B),
+              fontWeight: FontWeight.w500,
             ),
           ),
         ],
@@ -928,11 +931,11 @@ class _DashboardScreenState extends State<DashboardScreen> {
     }
 
     final bool isDone = _lemburStatus == 'Selesai';
-    final Color ringColor = isDone ? const Color(0xFF009688) : const Color(0xFFC0CA33);
-    final Color innerColor = isDone ? const Color(0xFF009688) : const Color(0xFFC0CA33);
+    final Color ringColor = isDone ? const Color(0xFF009688) : const Color(0xFF009688);
+    final Color innerColor = isDone ? const Color(0xFF009688) : const Color(0xFF009688);
 
     return GestureDetector(
-      onTap: isDone ? _handleSelesaiLembur : null,
+      onTap: isDone ? _handleSelesaiLembur : _handleSelesaiLembur,
       child: Container(
         width: 180,
         height: 180,
@@ -963,8 +966,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 ),
               ),
             Container(
-              width: 156,
-              height: 156,
+              width: isDone ? 180 : 156,
+              height: isDone ? 180 : 156,
               decoration: BoxDecoration(
                 color: innerColor,
                 shape: BoxShape.circle,
@@ -972,15 +975,30 @@ class _DashboardScreenState extends State<DashboardScreen> {
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  Text(
-                    _lemburCountdown,
-                    textAlign: TextAlign.center,
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontWeight: FontWeight.bold,
-                      fontSize: isDone ? 18 : 28,
+                  if (isDone) ...[
+                    const Icon(Icons.check_circle_outline, color: Colors.white, size: 28),
+                    const SizedBox(height: 8),
+                    const Text(
+                      'Lembur\nSelesai',
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontWeight: FontWeight.bold,
+                        fontSize: 18,
+                        height: 1.3,
+                      ),
                     ),
-                  ),
+                  ] else ...[
+                    Text(
+                      _lemburCountdown,
+                      textAlign: TextAlign.center,
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontWeight: FontWeight.bold,
+                        fontSize: 28,
+                      ),
+                    ),
+                  ],
                 ],
               ),
             ),
