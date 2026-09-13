@@ -1,7 +1,7 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import '../services/api_service.dart';
+import '../services/notification_service.dart';
 
 class SelesaiLemburScreen extends StatefulWidget {
   final Map<String, dynamic> lemburData;
@@ -21,11 +21,14 @@ class _SelesaiLemburScreenState extends State<SelesaiLemburScreen> {
   Duration _elapsedTime = Duration.zero;
   bool _isSubmitting = false;
   bool _alarmPlayed = false;
+  bool _alarmDialogShown = false;
+
+  final NotificationService _notificationService = NotificationService();
 
   DateTime get startTime => DateTime.parse(widget.lemburData['jam_mulai_lembur']).toLocal();
   String get alasan => widget.lemburData['alasan'] ?? '';
   String get catatan => widget.lemburData['catatan'] ?? '';
-  int get estimasiMenit => widget.lemburData['durasi_lembur_menit'] as int? ?? 120;
+  int get estimasiMenit => widget.lemburData['durasi_lembur_menit'] as int? ?? 60;
 
   /// Waktu selesai yang dijadwalkan (startTime + estimasi)
   DateTime get scheduledEndTime => startTime.add(Duration(minutes: estimasiMenit));
@@ -36,6 +39,7 @@ class _SelesaiLemburScreenState extends State<SelesaiLemburScreen> {
   @override
   void initState() {
     super.initState();
+    _notificationService.initialize();
     _updateTime();
     _timer = Timer.periodic(const Duration(seconds: 1), (timer) {
       _updateTime();
@@ -52,37 +56,145 @@ class _SelesaiLemburScreenState extends State<SelesaiLemburScreen> {
       _remainingTime = remaining.isNegative ? Duration.zero : remaining;
     });
 
-    // Bunyikan alarm saat waktu habis
+    // Bunyikan alarm dan tampilkan notifikasi saat waktu habis
     if (isTimeUp && !_alarmPlayed) {
       _alarmPlayed = true;
-      _playAlarm();
+      _triggerAlarm();
     }
   }
 
-  /// Memainkan alarm menggunakan system haptic & sound
-  Future<void> _playAlarm() async {
-    // Haptic feedback kuat
-    HapticFeedback.heavyImpact();
-
-    // Gunakan system alert sound via platform channel
+  /// Trigger alarm: notifikasi lokal + sound + dialog popup
+  Future<void> _triggerAlarm() async {
+    // 1. Kirim notifikasi lokal (muncul di notification bar)
     try {
-      SystemSound.play(SystemSoundType.alert);
-      // Ulangi beberapa kali untuk efek alarm
-      for (int i = 0; i < 3; i++) {
-        await Future.delayed(const Duration(milliseconds: 800));
-        if (mounted) {
-          SystemSound.play(SystemSoundType.alert);
-          HapticFeedback.heavyImpact();
-        }
-      }
-    } catch (_) {
-      // Fallback: cukup haptic saja
+      await _notificationService.showLemburSelesaiNotification();
+    } catch (_) {}
+
+    // 2. Mainkan alarm sound
+    try {
+      await _notificationService.playAlarmSound();
+    } catch (_) {}
+
+    // 3. Tampilkan dialog popup alarm di dalam app
+    if (mounted && !_alarmDialogShown) {
+      _alarmDialogShown = true;
+      _showAlarmDialog();
     }
+  }
+
+  /// Dialog popup alarm yang prominent
+  void _showAlarmDialog() {
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => Dialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        child: Padding(
+          padding: const EdgeInsets.all(24),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              // Animated alarm icon
+              TweenAnimationBuilder<double>(
+                tween: Tween(begin: 0.0, end: 1.0),
+                duration: const Duration(milliseconds: 600),
+                builder: (context, value, child) {
+                  return Transform.scale(
+                    scale: 0.8 + (0.2 * value),
+                    child: child,
+                  );
+                },
+                child: Container(
+                  padding: const EdgeInsets.all(20),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFEF4444).withOpacity(0.1),
+                    shape: BoxShape.circle,
+                  ),
+                  child: const Icon(
+                    Icons.alarm_on_rounded,
+                    color: Color(0xFFEF4444),
+                    size: 48,
+                  ),
+                ),
+              ),
+              const SizedBox(height: 20),
+              const Text(
+                '⏰ Waktu Lembur Selesai!',
+                style: TextStyle(
+                  fontWeight: FontWeight.bold,
+                  fontSize: 18,
+                  color: Color(0xFF0F172A),
+                ),
+              ),
+              const SizedBox(height: 12),
+              Text(
+                'Waktu lembur Anda telah habis.\nSilakan selesaikan dan laporkan lembur Anda.',
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  color: Colors.grey.shade600,
+                  fontSize: 13,
+                  height: 1.5,
+                ),
+              ),
+              const SizedBox(height: 8),
+              // Info durasi
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFF1F5F9),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const Icon(Icons.timer_outlined, size: 16, color: Color(0xFF64748B)),
+                    const SizedBox(width: 8),
+                    Text(
+                      'Durasi: ${_formatDuration(_elapsedTime)}',
+                      style: const TextStyle(
+                        color: Color(0xFF64748B),
+                        fontSize: 12,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 24),
+              SizedBox(
+                width: double.infinity,
+                child: ElevatedButton(
+                  onPressed: () {
+                    _notificationService.stopAlarmSound();
+                    Navigator.pop(context);
+                  },
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFFEF4444),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                    padding: const EdgeInsets.symmetric(vertical: 14),
+                    elevation: 0,
+                  ),
+                  child: const Text(
+                    'Mengerti, Selesaikan Lembur',
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 14,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
   }
 
   @override
   void dispose() {
     _timer.cancel();
+    _notificationService.stopAlarmSound();
     super.dispose();
   }
 
@@ -162,6 +274,7 @@ class _SelesaiLemburScreenState extends State<SelesaiLemburScreen> {
       
       if (!mounted) return;
       if (response.statusCode == 200) {
+        _notificationService.stopAlarmSound();
         Navigator.popUntil(context, (route) => route.isFirst);
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(

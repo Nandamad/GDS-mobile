@@ -19,6 +19,7 @@ import 'riwayat_presensi_page.dart';
 import 'mulai_lembur_page.dart';
 import 'selesai_lembur_page.dart';
 import 'ringkasan_presensi_page.dart';
+import '../services/lembur_helper.dart';
 
 class PresensiHarianScreen extends StatefulWidget {
   const PresensiHarianScreen({super.key});
@@ -1051,7 +1052,7 @@ class _PresensiHarianScreenState extends State<PresensiHarianScreen> {
             'jadwal_mulai': dataForScreen?['jam_mulai'],
             'jam_selesai_lembur': dataForScreen?['jam_selesai'] ?? DateTime.now().add(const Duration(hours: 2)).toIso8601String(),
             'alasan': dataForScreen?['alasan'] ?? 'Lembur',
-            'durasi_lembur_menit': dataForScreen?['estimasi_jam'] != null ? (int.tryParse(dataForScreen!['estimasi_jam'].toString()) ?? 0) * 60 : (dataForScreen?['durasi_lembur_menit'] ?? 120),
+            'durasi_lembur_menit': hitungDurasiLemburMenit(dataForScreen),
           };
           Navigator.push(context, MaterialPageRoute(builder: (_) => SelesaiLemburScreen(lemburData: lemburDataForScreen)));
         } else {

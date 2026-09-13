@@ -6,6 +6,7 @@ import 'ajukan_lembur_page.dart';
 import 'kamera_page.dart';
 import 'selesai_lembur_page.dart';
 import '../services/api_service.dart';
+import '../services/lembur_helper.dart';
 
 class MulaiLemburScreen extends StatefulWidget {
   final Map<String, dynamic>? lemburData;
@@ -148,7 +149,7 @@ class _MulaiLemburScreenState extends State<MulaiLemburScreen> {
       'jam_mulai_lembur': actualStartTime, // Gunakan waktu sekarang karena sudah dimulai
       'jam_selesai_lembur': data['jam_selesai'] ?? data['jam_selesai_lembur'] ?? DateTime.now().add(const Duration(hours: 2)).toIso8601String(),
       'alasan': data['alasan'] ?? data['keterangan'] ?? 'Lembur',
-      'durasi_lembur_menit': data['estimasi_jam'] != null ? (int.tryParse(data['estimasi_jam'].toString()) ?? 0) * 60 : (data['durasi_lembur_menit'] ?? 120),
+      'durasi_lembur_menit': hitungDurasiLemburMenit(data),
     };
 
     Navigator.pushReplacement(

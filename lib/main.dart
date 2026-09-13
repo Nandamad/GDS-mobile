@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'services/api_service.dart';
+import 'services/notification_service.dart';
 import 'ui/login_page.dart';
 import 'ui/splash_screen.dart';
 import 'cubit/location_cubit.dart';
@@ -9,6 +10,7 @@ import 'cubit/location_cubit.dart';
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await dotenv.load(fileName: "assets/.env");
+  await NotificationService().initialize();
   runApp(const MyApp());
 }
 

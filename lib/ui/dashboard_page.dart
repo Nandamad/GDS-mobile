@@ -15,6 +15,7 @@ import 'kamera_page.dart';
 import 'konfirmasi_foto_page.dart';
 import 'selesai_lembur_page.dart';
 import 'mulai_lembur_page.dart';
+import '../services/lembur_helper.dart';
 
 class DashboardScreen extends StatefulWidget {
   final VoidCallback? onNotificationTap;
@@ -1027,7 +1028,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
       'jam_mulai_lembur': _lemburActualStartTime?.toIso8601String() ?? data['jam_mulai'] ?? DateTime.now().toIso8601String(),
       'jam_selesai_lembur': data['jam_selesai'] ?? DateTime.now().add(const Duration(hours: 2)).toIso8601String(),
       'alasan': data['alasan'] ?? data['keterangan'] ?? 'Lembur',
-      'durasi_lembur_menit': data['estimasi_jam'] != null ? (int.tryParse(data['estimasi_jam'].toString()) ?? 0) * 60 : 120,
+      'durasi_lembur_menit': hitungDurasiLemburMenit(data),
     };
 
     Navigator.push(
