@@ -1,3 +1,4 @@
+import 'dart:typed_data';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:audioplayers/audioplayers.dart';
 import 'package:flutter/services.dart';
@@ -96,7 +97,8 @@ class NotificationService {
   Future<void> showLemburSelesaiNotification() async {
     if (!_isInitialized) await initialize();
 
-    AndroidNotificationDetails androidDetails;
+    late AndroidNotificationDetails androidDetails;
+    late DarwinNotificationDetails iosDetails;
 
     if (_useCustomSound) {
       androidDetails = AndroidNotificationDetails(
@@ -106,37 +108,31 @@ class NotificationService {
         importance: Importance.max,
         priority: Priority.high,
         playSound: true,
-        sound: const RawResourceAndroidNotificationSound(_alarmSoundAndroid),
+        sound: RawResourceAndroidNotificationSound(_alarmSoundAndroid),
         enableVibration: true,
         vibrationPattern: Int64List.fromList([0, 500, 200, 500, 200, 500]),
         fullScreenIntent: true,
         category: AndroidNotificationCategory.alarm,
       );
-    } else {
-      androidDetails = AndroidNotificationDetails(
-        'lembur_alarm_channel',
-        'Alarm Lembur',
-        channelDescription: 'Notifikasi saat waktu lembur telah selesai',
-        importance: Importance.max,
-        priority: Priority.high,
-        playSound: true,
-        enableVibration: true,
-        vibrationPattern: Int64List.fromList([0, 500, 200, 500, 200, 500]),
-        fullScreenIntent: true,
-        category: AndroidNotificationCategory.alarm,
-      );
-    }
-
-    DarwinNotificationDetails iosDetails;
-
-    if (_useCustomSound) {
-      iosDetails = const DarwinNotificationDetails(
+      iosDetails = DarwinNotificationDetails(
         presentAlert: true,
         presentBadge: true,
         presentSound: true,
         sound: _alarmSoundIOS,
       );
     } else {
+      androidDetails = AndroidNotificationDetails(
+        'lembur_alarm_channel',
+        'Alarm Lembur',
+        channelDescription: 'Notifikasi saat waktu lembur telah selesai',
+        importance: Importance.max,
+        priority: Priority.high,
+        playSound: true,
+        enableVibration: true,
+        vibrationPattern: Int64List.fromList([0, 500, 200, 500, 200, 500]),
+        fullScreenIntent: true,
+        category: AndroidNotificationCategory.alarm,
+      );
       iosDetails = const DarwinNotificationDetails(
         presentAlert: true,
         presentBadge: true,

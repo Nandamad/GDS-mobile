@@ -190,11 +190,13 @@ class _MulaiLemburScreenState extends State<MulaiLemburScreen> {
 
       alasan = data['alasan'] ?? data['keterangan'] ?? 'Lembur';
 
-      final durasiMenit = data['durasi_lembur_menit'] != null ? (data['durasi_lembur_menit'] as int) : 0;
+      final durasiMenit = hitungDurasiLemburMenit(data);
       if (data['estimasi_jam'] != null) {
         estimasiJam = data['estimasi_jam'].toString();
       } else if (durasiMenit > 0) {
-        estimasiJam = (durasiMenit / 60).toStringAsFixed(0);
+        final jam = durasiMenit ~/ 60;
+        final menit = durasiMenit % 60;
+        estimasiJam = menit > 0 ? '$jam Jam $menit Menit' : '$jam';
       }
 
       approvedByName = data['approved_by_l1']?['name'] ?? data['approved_by_l2']?['name'] ?? 'Manager HRD';
