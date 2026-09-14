@@ -60,7 +60,7 @@ class NotificationService {
 
   /// Apakah menggunakan custom sound file (true) atau default system (false)
   /// Set ke false jika belum menyiapkan file custom alarm.
-  static const bool _useCustomSound = false;
+  static const bool _useCustomSound = true;
 
   // ========================================
 
