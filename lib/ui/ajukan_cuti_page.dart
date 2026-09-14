@@ -5,6 +5,7 @@ import 'package:file_picker/file_picker.dart';
 import 'package:dio/dio.dart';
 import 'package:http_parser/http_parser.dart';
 import '../services/api_service.dart';
+import '../services/notification_service.dart';
 
 class AjukanCutiScreen extends StatefulWidget {
   const AjukanCutiScreen({super.key});
@@ -123,6 +124,13 @@ class _AjukanCutiScreenState extends State<AjukanCutiScreen> {
           content: Text('Pengajuan berhasil dikirim!'),
           backgroundColor: Color(0xFF009688),
         ),
+      );
+
+      // Trigger notifikasi lokal
+      NotificationService().showInfoNotification(
+        title: 'Pengajuan Terkirim',
+        body: 'Pengajuan ${_tipePengajuan.toLowerCase()} Anda telah berhasil dikirim dan menunggu persetujuan.',
+        preferenceKey: 'notif_pengajuan',
       );
 
       Navigator.pop(context, true); 

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import '../services/api_service.dart';
+import '../services/notification_service.dart';
 
 class AjukanLemburScreen extends StatefulWidget {
   const AjukanLemburScreen({super.key});
@@ -88,6 +89,14 @@ class _AjukanLemburScreenState extends State<AjukanLemburScreen> {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('Pengajuan lembur berhasil dikirim'), backgroundColor: Colors.green),
         );
+
+        // Trigger notifikasi lokal
+        NotificationService().showInfoNotification(
+          title: 'Pengajuan Lembur Terkirim',
+          body: 'Pengajuan lembur Anda telah berhasil dikirim dan menunggu persetujuan.',
+          preferenceKey: 'notif_pengajuan',
+        );
+
         Navigator.pop(context, true); // Return true to refresh history
       }
     } catch (e) {

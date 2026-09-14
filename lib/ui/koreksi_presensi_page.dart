@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:dio/dio.dart';
 import '../services/api_service.dart';
+import '../services/notification_service.dart';
 
 class KoreksiPresensiScreen extends StatefulWidget {
   const KoreksiPresensiScreen({super.key});
@@ -142,6 +143,14 @@ class _KoreksiPresensiScreenState extends State<KoreksiPresensiScreen> {
             backgroundColor: Colors.green,
           ),
         );
+
+        // Trigger notifikasi lokal
+        NotificationService().showInfoNotification(
+          title: 'Koreksi Presensi Terkirim',
+          body: 'Pengajuan koreksi presensi Anda telah berhasil dikirim dan menunggu persetujuan.',
+          preferenceKey: 'notif_pengajuan',
+        );
+
         Navigator.pop(context);
       }
     } on DioException catch (e) {

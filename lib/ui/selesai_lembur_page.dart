@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:dio/dio.dart';
 import '../services/api_service.dart';
 import '../services/notification_service.dart';
 
@@ -285,9 +286,16 @@ class _SelesaiLemburScreenState extends State<SelesaiLemburScreen> {
       }
     } catch (e) {
       if (!mounted) return;
+      String errorMsg = 'Gagal mengakhiri lembur';
+      if (e is DioException && e.response?.data != null) {
+        final data = e.response!.data;
+        if (data is Map && data['message'] != null) {
+          errorMsg = data['message'].toString();
+        }
+      }
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('Gagal mengakhiri lembur: $e'),
+          content: Text(errorMsg),
           backgroundColor: const Color(0xFFEF4444),
         ),
       );

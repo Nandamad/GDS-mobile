@@ -2,6 +2,8 @@ import 'dart:typed_data';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:audioplayers/audioplayers.dart';
 import 'package:flutter/services.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'dart:math';
 
 /// Service untuk mengelola notifikasi lokal dan alarm lembur.
 ///
@@ -95,6 +97,12 @@ class NotificationService {
 
   /// Tampilkan notifikasi lokal saat lembur selesai.
   Future<void> showLemburSelesaiNotification() async {
+    final prefs = await SharedPreferences.getInstance();
+    final infoLemburEnabled = prefs.getBool('notif_lembur') ?? false;
+    
+    // Jika user menonaktifkan fitur info lembur di profil, jangan tampilkan notifikasi
+    if (!infoLemburEnabled) return;
+
     if (!_isInitialized) await initialize();
 
     late AndroidNotificationDetails androidDetails;
@@ -156,6 +164,12 @@ class NotificationService {
   /// Mainkan alarm sound menggunakan AudioPlayer.
   /// Ini memberikan suara alarm yang lebih kuat dan bisa diulang.
   Future<void> playAlarmSound() async {
+    final prefs = await SharedPreferences.getInstance();
+    final infoLemburEnabled = prefs.getBool('notif_lembur') ?? false;
+    
+    // Jika user menonaktifkan fitur info lembur di profil, jangan mainkan alarm
+    if (!infoLemburEnabled) return;
+
     try {
       // Set volume ke maksimum
       await _audioPlayer.setVolume(1.0);
@@ -193,5 +207,53 @@ class NotificationService {
   /// Dispose resources.
   void dispose() {
     _audioPlayer.dispose();
+  }
+
+  /// Tampilkan notifikasi info general (misal: pengajuan berhasil, dll)
+  Future<void> showInfoNotification({
+    required String title,
+    required String body,
+    String? payload,
+    String preferenceKey = 'notif_pengajuan',
+    bool defaultPreference = true,
+  }) async {
+    final prefs = await SharedPreferences.getInstance();
+    final isEnabled = prefs.getBool(preferenceKey) ?? defaultPreference;
+    
+    // Jika preference diset false oleh user, batalkan
+    if (!isEnabled) return;
+
+    if (!_isInitialized) await initialize();
+
+    const androidDetails = AndroidNotificationDetails(
+      'info_channel',
+      'Informasi Umum',
+      channelDescription: 'Notifikasi untuk info pengajuan, absensi, dll',
+      importance: Importance.high,
+      priority: Priority.high,
+      icon: '@mipmap/ic_launcher',
+    );
+
+    const iosDetails = DarwinNotificationDetails(
+      presentAlert: true,
+      presentBadge: true,
+      presentSound: true,
+    );
+
+    const details = NotificationDetails(
+      android: androidDetails,
+      iOS: iosDetails,
+    );
+
+    // Gunakan random ID untuk notifikasi info agar tidak tertimpa
+    final id = Random().nextInt(100000);
+
+    await _notifications.show(
+      id,
+      title,
+      body,
+      details,
+      payload: payload,
+    );
   }
 }

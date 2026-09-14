@@ -77,7 +77,11 @@ class _EditProfilScreenState extends State<EditProfilScreen> {
         formData.files.add(
           MapEntry(
             'foto',
-            MultipartFile.fromBytes(bytes, filename: 'profile.jpg'),
+            MultipartFile.fromBytes(
+              bytes,
+              filename: 'profile.jpg',
+              contentType: DioMediaType('image', 'jpeg'),
+            ),
           ),
         );
       }
