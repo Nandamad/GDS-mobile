@@ -43,6 +43,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
   DateTime? _lemburActualStartTime;
   String _lemburStatus = '';
   String _lemburCountdown = '';
+  bool _isWorkingDay = false;
 
   LatLng? _officeLocation;
   double _radiusMeters = 0.0;
@@ -160,6 +161,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
           _serverTime = DateTime.parse(resData['server_time']);
         }
         _lemburData = resData['lembur'];
+        
+        _isWorkingDay = resData['jam_kerja'] != null ? (resData['jam_kerja']['is_working_day'] ?? false) : false;
 
         if (_lemburData != null) {
           final prefs = await SharedPreferences.getInstance();
@@ -392,6 +395,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
       if (response.statusCode == 200 || response.statusCode == 201) return null;
       return 'Server menolak penyimpanan presensi.';
     } on DioException catch (e) {
+      if (e.response?.statusCode == 422) {
+        return e.response?.data['message']?.toString() ?? 'Gagal absensi';
+      }
       final data = e.response?.data;
       if (data is Map && data['message'] != null)
         return data['message'].toString();
@@ -842,6 +848,33 @@ class _DashboardScreenState extends State<DashboardScreen> {
   Widget _buildAbsenButton() {
     if (_lemburStatus == 'Sedang Lembur' || _lemburStatus == 'Selesai') {
       return _buildLemburButton();
+    }
+
+    bool hasLembur = _lemburData != null;
+    if (!_isWorkingDay && !hasLembur) {
+      return Column(
+        children: [
+          Container(
+            width: 180,
+            height: 180,
+            decoration: BoxDecoration(
+              color: Colors.grey.shade400,
+              shape: BoxShape.circle,
+            ),
+            child: const Center(
+              child: Icon(Icons.beach_access, size: 50, color: Colors.white),
+            ),
+          ),
+          const SizedBox(height: 16),
+          const Text(
+            'Hari ini adalah jadwal libur Anda',
+            style: TextStyle(
+              color: Colors.grey,
+              fontWeight: FontWeight.bold,
+            ),
+          )
+        ],
+      );
     }
 
     Color btnColor;

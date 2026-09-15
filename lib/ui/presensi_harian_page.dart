@@ -44,6 +44,8 @@ class _PresensiHarianScreenState extends State<PresensiHarianScreen> {
   bool _isSudahAbsenKeluar = false;
   String? _jamMasuk;
   String? _jamKeluar;
+  bool _isWorkingDay = false;
+  bool _hasLembur = false;
 
   // Time
   late Timer _timer;
@@ -154,6 +156,9 @@ class _PresensiHarianScreenState extends State<PresensiHarianScreen> {
           _namaKantor = kantor['nama_kantor']?.toString() ?? 'Kantor';
           _alamatKantor = kantor['alamat']?.toString() ?? '';
         }
+
+        _isWorkingDay = resData['jam_kerja'] != null ? (resData['jam_kerja']['is_working_day'] ?? false) : false;
+        _hasLembur = resData['lembur'] != null;
 
         if (data != null && data is Map) {
           _jamMasuk = data['jam_masuk']?.toString();
@@ -330,6 +335,9 @@ class _PresensiHarianScreenState extends State<PresensiHarianScreen> {
       if (response.statusCode == 200 || response.statusCode == 201) return null;
       return 'Server menolak penyimpanan presensi.';
     } on DioException catch (e) {
+      if (e.response?.statusCode == 422) {
+        return e.response?.data['message']?.toString() ?? 'Gagal absensi';
+      }
       final data = e.response?.data;
       if (data is Map && data['message'] != null)
         return data['message'].toString();
@@ -562,6 +570,31 @@ class _PresensiHarianScreenState extends State<PresensiHarianScreen> {
   }
 
   Widget _buildActionButtons(LocationState locState) {
+    if (!_isWorkingDay && !_hasLembur) {
+      return Container(
+        padding: const EdgeInsets.symmetric(vertical: 24),
+        width: double.infinity,
+        decoration: BoxDecoration(
+          color: Colors.grey.shade100,
+          borderRadius: BorderRadius.circular(24),
+          border: Border.all(color: Colors.grey.shade300),
+        ),
+        child: Column(
+          children: [
+            const Icon(Icons.beach_access, size: 40, color: Colors.grey),
+            const SizedBox(height: 12),
+            const Text(
+              'Hari ini adalah jadwal libur Anda',
+              style: TextStyle(
+                color: Colors.grey,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
     bool canAbsenMasuk = !_isSudahAbsenMasuk && (locState.maxRadius <= 0 || locState.isInRadius);
     bool canAbsenKeluar =
         _isSudahAbsenMasuk && !_isSudahAbsenKeluar && (locState.maxRadius <= 0 || locState.isInRadius);
