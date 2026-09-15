@@ -4,6 +4,10 @@ import '../services/api_service.dart';
 import '../ui/ajukan_cuti_page.dart';
 import '../ui/ajukan_lembur_page.dart';
 import '../ui/detail_workflow_page.dart';
+import '../ui/pengajuan_lembur_manager_page.dart';
+import '../ui/pengajuan_cuti_manager_page.dart';
+import '../ui/riwayat_lembur_manager_page.dart';
+import '../ui/riwayat_cuti_manager_page.dart';
 
 List<Map<String, dynamic>> normalizeSubmissionList(
   dynamic body, {
@@ -86,11 +90,22 @@ class _PengajuanScreenState extends State<PengajuanScreen> {
   String _errorMessage = '';
 
   final List<Map<String, dynamic>> _history = [];
+  bool _isAtasan = false;
 
   @override
   void initState() {
     super.initState();
+    _checkAtasan();
     _fetchHistory();
+  }
+
+  Future<void> _checkAtasan() async {
+    final isAtasan = await ApiService().getIsAtasan();
+    if (mounted) {
+      setState(() {
+        _isAtasan = isAtasan;
+      });
+    }
   }
 
   // ============================================================
@@ -479,6 +494,83 @@ class _PengajuanScreenState extends State<PengajuanScreen> {
   }
 
   // ============================================================
+  // WIDGETS
+  // ============================================================
+
+  Widget _buildMenuCard({
+    required String title,
+    required String subtitle,
+    required VoidCallback onTap,
+  }) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(12),
+      child: Container(
+        width: double.infinity,
+        margin: const EdgeInsets.only(bottom: 16),
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 20),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: Colors.grey.shade200),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.02),
+              blurRadius: 10,
+              offset: const Offset(0, 4),
+            ),
+          ],
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              title,
+              style: const TextStyle(
+                fontWeight: FontWeight.bold,
+                fontSize: 14,
+                color: Color(0xFF0F172A),
+              ),
+            ),
+            const SizedBox(height: 4),
+            Text(
+              subtitle,
+              style: TextStyle(color: Colors.grey.shade600, fontSize: 11),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+
+
+  Widget _buildError() {
+    return Padding(
+      padding: const EdgeInsets.all(24),
+      child: Center(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Icon(Icons.error_outline, color: Colors.grey, size: 48),
+            const SizedBox(height: 12),
+            Text(
+              _errorMessage,
+              textAlign: TextAlign.center,
+              style: const TextStyle(color: Colors.grey),
+            ),
+            const SizedBox(height: 16),
+            OutlinedButton(
+              onPressed: _fetchHistory,
+              child: const Text('Coba Lagi'),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  // ============================================================
   // BUILD
   // ============================================================
 
@@ -528,134 +620,113 @@ class _PengajuanScreenState extends State<PengajuanScreen> {
           padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
 
           children: [
-            // Card Ajukan Lembur
-            InkWell(
-              onTap: () async {
-                final result = await Navigator.push(
+            if (_isAtasan) ...[
+              _buildMenuCard(
+                title: 'Ajukan Lembur',
+                subtitle: 'Pengajuan lembur kerja',
+                onTap: () async {
+                  final result = await Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (context) => const AjukanLemburScreen()),
+                  );
+                  if (mounted && result == true) _fetchHistory();
+                },
+              ),
+              _buildMenuCard(
+                title: 'Ajukan Cuti',
+                subtitle: 'Sakit, cuti tahunan, atau izin pribadi',
+                onTap: () async {
+                  final result = await Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (context) => const AjukanCutiScreen()),
+                  );
+                  if (mounted && result == true) _fetchHistory();
+                },
+              ),
+              _buildMenuCard(
+                title: 'Pengajuan Lembur',
+                subtitle: 'Tinjau pengajuan lembur dari karyawan',
+                onTap: () => Navigator.push(
                   context,
-                  MaterialPageRoute(
-                    builder: (context) => const AjukanLemburScreen(),
-                  ),
-                );
-                if (mounted && result == true) {
-                  _fetchHistory();
-                }
-              },
-              borderRadius: BorderRadius.circular(12),
-              child: Container(
-                width: double.infinity,
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 20),
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(12),
-                  border: Border.all(color: Colors.grey.shade200),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.black.withOpacity(0.02),
-                      blurRadius: 10,
-                      offset: const Offset(0, 4),
-                    ),
-                  ],
-                ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const Text(
-                      'Ajukan Lembur',
-                      style: TextStyle(
-                        fontWeight: FontWeight.bold,
-                        fontSize: 14,
-                        color: Color(0xFF0F172A),
-                      ),
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      'Pengajuan lembur kerja',
-                      style: TextStyle(color: Colors.grey.shade600, fontSize: 11),
-                    ),
-                  ],
+                  MaterialPageRoute(builder: (context) => const PengajuanLemburManagerScreen()),
                 ),
               ),
-            ),
-            
-            const SizedBox(height: 16),
-
-            // Card Ajukan Cuti
-            InkWell(
-              onTap: () async {
-                final result = await Navigator.push(
+              _buildMenuCard(
+                title: 'Pengajuan Cuti',
+                subtitle: 'Tinjau pengajuan cuti dari karyawan',
+                onTap: () => Navigator.push(
                   context,
-                  MaterialPageRoute(
-                    builder: (context) => const AjukanCutiScreen(),
+                  MaterialPageRoute(builder: (context) => const PengajuanCutiManagerScreen()),
+                ),
+              ),
+              _buildMenuCard(
+                title: 'Riwayat Pengajuan Lembur',
+                subtitle: 'Lihat riwayat pengajuan lembur',
+                onTap: () => Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (context) => const RiwayatLemburManagerScreen()),
+                ),
+              ),
+              _buildMenuCard(
+                title: 'Riwayat Pengajuan Cuti',
+                subtitle: 'Lihat riwayat pengajuan cuti',
+                onTap: () => Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (context) => const RiwayatCutiManagerScreen()),
+                ),
+              ),
+            ] else ...[
+              // Card Ajukan Lembur
+              _buildMenuCard(
+                title: 'Ajukan Lembur',
+                subtitle: 'Pengajuan lembur kerja',
+                onTap: () async {
+                  final result = await Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (context) => const AjukanLemburScreen()),
+                  );
+                  if (mounted && result == true) _fetchHistory();
+                },
+              ),
+
+              // Card Ajukan Cuti
+              _buildMenuCard(
+                title: 'Ajukan Cuti',
+                subtitle: 'Sakit, cuti tahunan, atau izin pribadi',
+                onTap: () async {
+                  final result = await Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (context) => const AjukanCutiScreen()),
+                  );
+                  if (mounted && result == true) _fetchHistory();
+                },
+              ),
+
+              const SizedBox(height: 8),
+
+              const Text(
+                'Riwayat Pengajuan',
+                style: TextStyle(
+                  fontWeight: FontWeight.bold,
+                  fontSize: 13,
+                  color: Color(0xFF1E293B),
+                ),
+              ),
+
+              const SizedBox(height: 12),
+
+              if (_isLoading)
+                const Padding(
+                  padding: EdgeInsets.all(40),
+                  child: Center(
+                    child: CircularProgressIndicator(color: Color(0xFF009688)),
                   ),
-                );
-
-                if (mounted && result == true) {
-                  _fetchHistory();
-                }
-              },
-              borderRadius: BorderRadius.circular(12),
-              child: Container(
-                width: double.infinity,
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 20),
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(12),
-                  border: Border.all(color: Colors.grey.shade200),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.black.withOpacity(0.02),
-                      blurRadius: 10,
-                      offset: const Offset(0, 4),
-                    ),
-                  ],
-                ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const Text(
-                      'Ajukan Cuti',
-                      style: TextStyle(
-                        fontWeight: FontWeight.bold,
-                        fontSize: 14,
-                        color: Color(0xFF0F172A),
-                      ),
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      'Sakit, cuti tahunan, atau izin pribadi',
-                      style: TextStyle(color: Colors.grey.shade600, fontSize: 11),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-
-            const SizedBox(height: 24),
-
-            const Text(
-              'Riwayat Pengajuan',
-              style: TextStyle(
-                fontWeight: FontWeight.bold,
-                fontSize: 13,
-                color: Color(0xFF1E293B),
-              ),
-            ),
-
-            const SizedBox(height: 12),
-
-
-            if (_isLoading)
-              const Padding(
-                padding: EdgeInsets.all(40),
-                child: Center(
-                  child: CircularProgressIndicator(color: Color(0xFF009688)),
-                ),
-              )
-            else if (_errorMessage.isNotEmpty)
-              _buildError()
-            else
-              _buildHistoryList(),
+                )
+              else if (_errorMessage.isNotEmpty)
+                _buildError()
+              else
+                _buildHistoryList(),
+            ]
           ],
         ),
       ),
@@ -817,34 +888,5 @@ class _PengajuanScreenState extends State<PengajuanScreen> {
     );
   }
 
-  // ============================================================
-  // ERROR
-  // ============================================================
 
-  Widget _buildError() {
-    return Padding(
-      padding: const EdgeInsets.all(30),
-
-      child: Column(
-        children: [
-          const Icon(Icons.error_outline, color: Colors.red, size: 40),
-
-          const SizedBox(height: 8),
-
-          Text(
-            _errorMessage,
-            textAlign: TextAlign.center,
-            style: const TextStyle(fontSize: 11, color: Colors.grey),
-          ),
-
-          const SizedBox(height: 10),
-
-          ElevatedButton(
-            onPressed: _fetchHistory,
-            child: const Text('Coba Lagi'),
-          ),
-        ],
-      ),
-    );
-  }
 }

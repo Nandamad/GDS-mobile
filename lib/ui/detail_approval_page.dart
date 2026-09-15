@@ -173,242 +173,294 @@ class _DetailApprovalScreenState extends State<DetailApprovalScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final title = isCuti ? 'Detail Cuti' : 'Detail Lembur';
+
     return Scaffold(
       backgroundColor: const Color(0xFFF8FAFC),
       appBar: AppBar(
         backgroundColor: Colors.white,
         elevation: 0,
-        leading: Padding(
-          padding: const EdgeInsets.all(8.0),
-          child: InkWell(
-            onTap: () => Navigator.pop(context),
-            borderRadius: BorderRadius.circular(20),
-            child: Container(
-              decoration: BoxDecoration(
-                color: Colors.grey.shade100,
-                shape: BoxShape.circle,
-              ),
-              child: const Icon(Icons.arrow_back, size: 18,
-                  color: Color(0xFF0F172A)),
-            ),
-          ),
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back_ios_new_rounded, color: Color(0xFF0F172A), size: 18),
+          onPressed: () => Navigator.pop(context),
         ),
-        title: Text(
-          isCuti ? 'Detail Pengajuan Cuti' : 'Detail Pengajuan Lembur',
-          style: const TextStyle(
-            color: Color(0xFF0F172A),
-            fontWeight: FontWeight.bold,
-            fontSize: 16,
-          ),
-        ),
-        centerTitle: true,
-      ),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
+        title: Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            // ======== INFO KARYAWAN ========
-            _buildSectionCard(
-              title: 'Informasi Pengaju',
-              children: [
-                _infoRow('Nama', _getKaryawanName()),
-                _infoRow(
-                    'Jabatan',
-                    data['karyawan']?['jabatan'] ??
-                        data['jabatan'] ??
-                        '-'),
-                _infoRow('Diajukan',
-                    _formatDate(data['created_at'])),
-              ],
+            Text(
+              title,
+              style: const TextStyle(color: Color(0xFF0F172A), fontWeight: FontWeight.bold, fontSize: 16),
             ),
-            const SizedBox(height: 12),
-
-            // ======== DETAIL PENGAJUAN ========
-            _buildSectionCard(
-              title: 'Detail Pengajuan',
-              children: isCuti
-                  ? _buildCutiDetails()
-                  : _buildLemburDetails(),
-            ),
-            const SizedBox(height: 12),
-
-            // ======== ALASAN ========
-            _buildSectionCard(
-              title: 'Alasan',
-              children: [
-                Text(
-                  data['alasan']?.toString() ?? '-',
-                  style: const TextStyle(
-                      fontSize: 12, color: Color(0xFF334155), height: 1.5),
-                ),
-              ],
-            ),
-            const SizedBox(height: 16),
-
-            // ======== CATATAN PERSETUJUAN ========
-            const Text(
-              'Catatan Persetujuan',
-              style: TextStyle(
-                fontWeight: FontWeight.bold,
-                fontSize: 13,
-                color: Color(0xFF0F172A),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+              decoration: BoxDecoration(
+                color: const Color(0xFFE0F2F1),
+                borderRadius: BorderRadius.circular(4),
+              ),
+              child: const Text(
+                'Manager View',
+                style: TextStyle(color: Color(0xFF009688), fontWeight: FontWeight.bold, fontSize: 10),
               ),
             ),
-            const SizedBox(height: 6),
-            TextFormField(
-              controller: _catatanController,
-              maxLines: 3,
-              decoration: InputDecoration(
-                hintText: 'Tulis catatan (wajib jika menolak)...',
-                hintStyle:
-                    TextStyle(fontSize: 12, color: Colors.grey.shade400),
-                filled: true,
-                fillColor: Colors.white,
-                contentPadding: const EdgeInsets.all(12),
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
-                  borderSide: BorderSide(color: Colors.grey.shade300),
-                ),
-                enabledBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
-                  borderSide: BorderSide(color: Colors.grey.shade300),
-                ),
-                focusedBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
-                  borderSide: const BorderSide(color: Color(0xFF009688)),
-                ),
-              ),
-              style: const TextStyle(fontSize: 12),
-            ),
-            const SizedBox(height: 20),
-
-            // ======== TOMBOL AKSI ========
-            Row(
-              children: [
-                // TOLAK
-                Expanded(
-                  child: SizedBox(
-                    height: 46,
-                    child: OutlinedButton.icon(
-                      onPressed:
-                          _isSubmitting ? null : () => _submitAction('reject'),
-                      icon: const Icon(Icons.close_rounded, size: 18),
-                      label: const Text('Tolak',
-                          style: TextStyle(fontWeight: FontWeight.bold)),
-                      style: OutlinedButton.styleFrom(
-                        foregroundColor: Colors.redAccent,
-                        side: const BorderSide(color: Colors.redAccent),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                      ),
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 12),
-
-                // SETUJUI
-                Expanded(
-                  child: SizedBox(
-                    height: 46,
-                    child: ElevatedButton.icon(
-                      onPressed: _isSubmitting
-                          ? null
-                          : () => _submitAction('approve'),
-                      icon: const Icon(Icons.check_rounded,
-                          size: 18, color: Colors.white),
-                      label: const Text('Setujui',
-                          style: TextStyle(
-                              fontWeight: FontWeight.bold,
-                              color: Colors.white)),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: const Color(0xFF009688),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                      ),
-                    ),
-                  ),
-                ),
-              ],
-            ),
-
-            if (_isSubmitting) ...[
-              const SizedBox(height: 16),
-              const Center(
-                child:
-                    CircularProgressIndicator(color: Color(0xFF009688)),
-              ),
-            ],
           ],
         ),
+      ),
+      body: Column(
+        children: [
+          Expanded(
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.all(16),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // ======== STATUS PENGAJUAN ========
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      const Text(
+                        'STATUS PENGAJUAN',
+                        style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.grey, letterSpacing: 0.5),
+                      ),
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFFEF9C3),
+                          borderRadius: BorderRadius.circular(20),
+                        ),
+                        child: const Text(
+                          'Menunggu Persetujuan',
+                          style: TextStyle(color: Color(0xFFCA8A04), fontWeight: FontWeight.bold, fontSize: 10),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 16),
+
+                  // ======== INFO KARYAWAN CARD ========
+                  _buildKaryawanCard(),
+                  const SizedBox(height: 16),
+
+                  // ======== DETAIL CARD ========
+                  _buildDetailCard(),
+                  const SizedBox(height: 16),
+
+                  // ======== ALASAN CARD ========
+                  _buildAlasanCard(),
+                  const SizedBox(height: 16),
+                  
+                  // ======== CATATAN ATASAN CARD (OPSIONAL) ========
+                  _buildCatatanAtasanCard(),
+                  
+                  // ======== LAMPIRAN CARD (OPSIONAL) ========
+                  _buildLampiranCard(),
+
+                  // ======== PESAN UNTUK KARYAWAN ========
+                  _buildPesanCard(),
+                ],
+              ),
+            ),
+          ),
+          
+          // ======== TOMBOL AKSI ========
+          Container(
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withOpacity(0.05),
+                  blurRadius: 10,
+                  offset: const Offset(0, -5),
+                ),
+              ],
+            ),
+            child: SafeArea(
+              child: _isSubmitting 
+                ? const Center(child: CircularProgressIndicator(color: Color(0xFF009688)))
+                : Row(
+                    children: [
+                      Expanded(
+                        child: SizedBox(
+                          height: 48,
+                          child: ElevatedButton(
+                            onPressed: () => _submitAction('reject'),
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: const Color(0xFFFEE2E2), // Light Red
+                              elevation: 0,
+                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                            ),
+                            child: const Text('Tolak', style: TextStyle(color: Color(0xFFDC2626), fontWeight: FontWeight.bold)),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: SizedBox(
+                          height: 48,
+                          child: ElevatedButton(
+                            onPressed: () => _submitAction('approve'),
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: const Color(0xFF009688), // Teal
+                              elevation: 0,
+                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                            ),
+                            child: const Text('Setujui', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+            ),
+          ),
+        ],
       ),
     );
   }
 
   // ============================================================
-  // DETAIL BUILDERS
+  // CARD BUILDERS
   // ============================================================
 
-  List<Widget> _buildCutiDetails() {
-    final jenis = _capitalize(data['jenis']?.toString() ?? 'Cuti');
-    final mulai = _formatDate(data['tanggal_mulai']);
-    final selesai = _formatDate(data['tanggal_selesai']);
+  Widget _buildKaryawanCard() {
+    final nama = _getKaryawanName();
+    final inisial = nama.isNotEmpty ? nama.substring(0, 1).toUpperCase() : '?';
+    final jabatan = data['user']?['jabatan'] ?? data['karyawan']?['jabatan'] ?? data['jabatan'] ?? 'Karyawan';
 
-    int durasi = 1;
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: Colors.grey.shade200),
+      ),
+      child: Row(
+        children: [
+          CircleAvatar(
+            backgroundColor: const Color(0xFFE0F2F1),
+            radius: 24,
+            child: Text(
+              inisial,
+              style: const TextStyle(color: Color(0xFF009688), fontWeight: FontWeight.bold, fontSize: 16),
+            ),
+          ),
+          const SizedBox(width: 16),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  nama,
+                  style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15, color: Color(0xFF0F172A)),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  jabatan,
+                  style: const TextStyle(fontSize: 12, color: Colors.grey),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildDetailCard() {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: Colors.grey.shade200),
+      ),
+      child: Column(
+        children: isCuti ? _buildCutiRows() : _buildLemburRows(),
+      ),
+    );
+  }
+  
+  List<Widget> _buildLemburRows() {
+    // Tanggal pengajuan fallback ke tanggal hari ini jika tidak ada
+    final tglPengajuan = _formatDate(data['created_at'] ?? DateTime.now().toIso8601String());
+    final tglLembur = _formatDate(data['tanggal']);
+    
+    final jamMulai = data['jam_mulai_lembur']?.toString().substring(0, 5) ?? '-';
+    final jamSelesai = data['jam_selesai_lembur']?.toString().substring(0, 5) ?? '-';
+    final waktu = '$jamMulai - $jamSelesai';
+    
+    final menit = int.tryParse(data['durasi_lembur_menit']?.toString() ?? '0') ?? 0;
+    final jam = menit ~/ 60;
+    final sisa = menit % 60;
+    final durasi = sisa == 0 ? '$jam Jam' : '$jam Jam $sisa Menit';
+
+    return [
+      _detailRow('Tanggal Pengajuan', tglPengajuan),
+      const SizedBox(height: 16),
+      _detailRow('Tanggal Lembur', tglLembur),
+      const SizedBox(height: 16),
+      _detailRow('Rencana Waktu', waktu),
+      const SizedBox(height: 16),
+      _detailRow('Total Durasi', durasi, valueColor: const Color(0xFF009688)),
+    ];
+  }
+
+  List<Widget> _buildCutiRows() {
+    final jenis = _capitalize(data['jenis']?.toString() ?? 'Cuti Tahunan');
+    final tglPengajuan = _formatDate(data['created_at'] ?? DateTime.now().toIso8601String());
+    
+    final mulaiRaw = _formatDate(data['tanggal_mulai']);
+    final selesaiRaw = _formatDate(data['tanggal_selesai']);
+    
+    String rentang = '$mulaiRaw - $selesaiRaw';
+    if (mulaiRaw == selesaiRaw) {
+       rentang = mulaiRaw;
+    } else {
+       try {
+         final dM = DateTime.parse(data['tanggal_mulai'].toString());
+         final dS = DateTime.parse(data['tanggal_selesai'].toString());
+         if (dM.month == dS.month && dM.year == dS.year) {
+           const months = ['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Agt', 'Sep', 'Okt', 'Nov', 'Des'];
+           rentang = '${dM.day} - ${dS.day} ${months[dM.month - 1]} ${dM.year}';
+         }
+       } catch (_) {}
+    }
+
+    int durasiHari = 1;
     if (data['jumlah_hari_kerja'] != null) {
-      durasi = int.tryParse(data['jumlah_hari_kerja'].toString()) ?? 1;
+      durasiHari = int.tryParse(data['jumlah_hari_kerja'].toString()) ?? 1;
     } else {
       try {
         final m = DateTime.parse(data['tanggal_mulai'].toString());
         final s = DateTime.parse(data['tanggal_selesai'].toString());
-        durasi = s.difference(m).inDays + 1;
+        durasiHari = s.difference(m).inDays + 1;
       } catch (_) {}
     }
+    
+    final sisaKuota = data['sisa_kuota_cuti'] ?? '-'; 
+
     return [
-      _infoRow('Jenis', jenis),
-      _infoRow('Tanggal Mulai', mulai),
-      _infoRow('Tanggal Selesai', selesai),
-      _infoRow('Durasi', '$durasi hari kerja'),
+      _detailRow('Jenis Cuti', jenis, valueColor: const Color(0xFF009688)),
+      const SizedBox(height: 16),
+      _detailRow('Tanggal Pengajuan', tglPengajuan),
+      const SizedBox(height: 16),
+      _detailRow('Rentang Tanggal', rentang),
+      const SizedBox(height: 16),
+      _detailRow('Durasi Cuti', '$durasiHari Hari Kerja'),
+      const SizedBox(height: 16),
+      _detailRow('Sisa Kuota Cuti', '$sisaKuota Hari Kerja'),
     ];
   }
 
-  List<Widget> _buildLemburDetails() {
-    final tanggal = _formatDate(data['tanggal']);
-    final jamMulai =
-        data['jam_mulai_lembur']?.toString().substring(0, 5) ?? '-';
-    final jamSelesai =
-        data['jam_selesai_lembur']?.toString().substring(0, 5) ?? '-';
-    final menit =
-        int.tryParse(data['durasi_lembur_menit']?.toString() ?? '0') ?? 0;
-    final jam = menit ~/ 60;
-    final sisa = menit % 60;
-    final durasiText =
-        sisa == 0 ? '$jam jam' : '$jam jam $sisa menit';
-
-    return [
-      _infoRow('Tanggal', tanggal),
-      _infoRow('Jam Mulai', jamMulai),
-      _infoRow('Jam Selesai', jamSelesai),
-      _infoRow('Durasi', durasiText),
-    ];
-  }
-
-  // ============================================================
-  // REUSABLE WIDGETS
-  // ============================================================
-
-  Widget _buildSectionCard({
-    required String title,
-    required List<Widget> children,
-  }) {
+  Widget _buildAlasanCard() {
+    final title = isCuti ? 'ALASAN CUTI' : 'ALASAN LEMBUR';
+    final alasan = data['alasan']?.toString() ?? '-';
+    
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.all(14),
+      padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(14),
+        borderRadius: BorderRadius.circular(12),
         border: Border.all(color: Colors.grey.shade200),
       ),
       child: Column(
@@ -416,45 +468,185 @@ class _DetailApprovalScreenState extends State<DetailApprovalScreen> {
         children: [
           Text(
             title,
-            style: const TextStyle(
-              fontWeight: FontWeight.bold,
-              fontSize: 13,
-              color: Color(0xFF0F172A),
-            ),
+            style: const TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.grey, letterSpacing: 0.5),
           ),
-          const SizedBox(height: 10),
-          ...children,
+          const SizedBox(height: 8),
+          Text(
+            alasan,
+            style: const TextStyle(fontSize: 13, color: Color(0xFF0F172A), height: 1.5),
+          ),
         ],
       ),
     );
   }
 
-  Widget _infoRow(String label, String value) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 6),
-      child: Row(
+  Widget _buildCatatanAtasanCard() {
+    final catatan = data['catatan_atasan'] ?? data['catatan_approval_level1'];
+    if (catatan == null || catatan.toString().trim().isEmpty) return const SizedBox();
+
+    return Container(
+      width: double.infinity,
+      margin: const EdgeInsets.only(bottom: 16),
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: Colors.grey.shade200),
+      ),
+      child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          SizedBox(
-            width: 110,
-            child: Text(
-              label,
-              style: const TextStyle(
-                  fontSize: 11, color: Colors.grey),
-            ),
+          const Text(
+            'CATATAN ATASAN',
+            style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.grey, letterSpacing: 0.5),
           ),
-          Expanded(
-            child: Text(
-              value,
-              style: const TextStyle(
-                fontSize: 12,
-                color: Color(0xFF334155),
-                fontWeight: FontWeight.w500,
-              ),
+          const SizedBox(height: 8),
+          Text(
+            catatan.toString(),
+            style: const TextStyle(fontSize: 13, color: Color(0xFF0F172A), height: 1.5),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildLampiranCard() {
+    final lampiranUrl = data['lampiran_url'] ?? data['file_lampiran_url'];
+    
+    if (lampiranUrl == null) return const SizedBox();
+
+    final lampiranName = data['lampiran_nama'] ?? data['file_lampiran_nama'] ?? 'Lampiran Dokumen';
+    final lampiranSize = data['lampiran_ukuran'] ?? 'Tidak diketahui';
+    
+    return Container(
+      margin: const EdgeInsets.only(bottom: 16),
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: Colors.grey.shade200),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text(
+            'LAMPIRAN',
+            style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.grey, letterSpacing: 0.5),
+          ),
+          const SizedBox(height: 12),
+          Container(
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: const Color(0xFFF8FAFC),
+              borderRadius: BorderRadius.circular(8),
+              border: Border.all(color: Colors.grey.shade200),
+            ),
+            child: Row(
+              children: [
+                const Icon(Icons.insert_drive_file, color: Colors.grey, size: 24),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        lampiranName,
+                        style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Color(0xFF0F172A)),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        lampiranSize,
+                        style: const TextStyle(fontSize: 10, color: Colors.grey),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(width: 12),
+                InkWell(
+                  onTap: () {
+                    // Download action
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(content: Text('Mengunduh lampiran...')),
+                    );
+                  },
+                  child: const Text(
+                    'Unduh',
+                    style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Color(0xFF009688)),
+                  ),
+                ),
+              ],
             ),
           ),
         ],
       ),
+    );
+  }
+
+  Widget _buildPesanCard() {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: Colors.grey.shade200),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text(
+            'PESAN UNTUK KARYAWAN',
+            style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.grey, letterSpacing: 0.5),
+          ),
+          const SizedBox(height: 12),
+          TextField(
+            controller: _catatanController,
+            maxLines: 3,
+            decoration: InputDecoration(
+              hintText: 'Tulis pesan opsional untuk karyawan...',
+              hintStyle: const TextStyle(fontSize: 12, color: Colors.grey),
+              filled: true,
+              fillColor: const Color(0xFFF8FAFC),
+              contentPadding: const EdgeInsets.all(12),
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(8),
+                borderSide: BorderSide.none,
+              ),
+              enabledBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(8),
+                borderSide: BorderSide(color: Colors.grey.shade200),
+              ),
+              focusedBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(8),
+                borderSide: const BorderSide(color: Color(0xFF009688)),
+              ),
+            ),
+            style: const TextStyle(fontSize: 13, color: Color(0xFF0F172A)),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _detailRow(String label, String value, {Color? valueColor}) {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      children: [
+        Text(
+          label,
+          style: const TextStyle(fontSize: 12, color: Colors.grey),
+        ),
+        Text(
+          value,
+          style: TextStyle(
+            fontSize: 12,
+            color: valueColor ?? const Color(0xFF0F172A),
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+      ],
     );
   }
 

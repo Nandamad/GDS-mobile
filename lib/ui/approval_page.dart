@@ -5,7 +5,12 @@ import 'detail_approval_page.dart';
 
 class ApprovalScreen extends StatefulWidget {
   final bool showBackButton;
-  const ApprovalScreen({super.key, this.showBackButton = false});
+  final int initialTab;
+  const ApprovalScreen({
+    super.key,
+    this.showBackButton = false,
+    this.initialTab = 0,
+  });
 
   @override
   State<ApprovalScreen> createState() => _ApprovalScreenState();
@@ -22,7 +27,11 @@ class _ApprovalScreenState extends State<ApprovalScreen>
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 2, vsync: this);
+    _tabController = TabController(
+      length: 2,
+      vsync: this,
+      initialIndex: widget.initialTab,
+    );
     _fetchPendingApprovals();
   }
 
