@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:dio/dio.dart';
+import 'package:http_parser/http_parser.dart';
 import '../services/image_url_service.dart';
 import '../services/api_service.dart';
 import 'kamera_page.dart';
@@ -80,7 +81,7 @@ class _EditProfilScreenState extends State<EditProfilScreen> {
             MultipartFile.fromBytes(
               bytes,
               filename: 'profile.jpg',
-              contentType: DioMediaType('image', 'jpeg'),
+              contentType: MediaType('image', 'jpeg'),
             ),
           ),
         );
