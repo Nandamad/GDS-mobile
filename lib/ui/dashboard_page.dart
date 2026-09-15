@@ -1529,38 +1529,44 @@ class _DashboardScreenState extends State<DashboardScreen> {
               children: [
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Row(
-                      children: [
-                        Text(
-                          tgl,
-                          style: const TextStyle(
-                            fontWeight: FontWeight.bold,
-                            fontSize: 13,
-                            color: Color(0xFF0F172A),
-                          ),
-                        ),
-                        const SizedBox(width: 8),
-                        Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 8,
-                            vertical: 3,
-                          ),
-                          decoration: BoxDecoration(
-                            color: colorBg,
-                            borderRadius: BorderRadius.circular(8),
-                          ),
-                          child: Text(
-                            title,
-                            style: TextStyle(
-                              color: colorTxt,
-                              fontSize: 10,
+                    Expanded(
+                      child: Wrap(
+                        crossAxisAlignment: WrapCrossAlignment.center,
+                        spacing: 8,
+                        runSpacing: 4,
+                        children: [
+                          Text(
+                            tgl,
+                            style: const TextStyle(
                               fontWeight: FontWeight.bold,
+                              fontSize: 13,
+                              color: Color(0xFF0F172A),
                             ),
                           ),
-                        ),
-                      ],
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 8,
+                              vertical: 3,
+                            ),
+                            decoration: BoxDecoration(
+                              color: colorBg,
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            child: Text(
+                              title,
+                              style: TextStyle(
+                                color: colorTxt,
+                                fontSize: 10,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
                     ),
+                    const SizedBox(width: 8),
                     Text(
                       valText,
                       style: TextStyle(
@@ -1572,37 +1578,31 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   ],
                 ),
                 const SizedBox(height: 12),
-                Row(
-                  children: [
-                    const Text(
-                      'Persetujuan: ',
-                      style: TextStyle(fontSize: 11, color: Color(0xFF64748B)),
+                SizedBox(
+                  width: double.infinity,
+                  child: RichText(
+                    text: TextSpan(
+                      style: const TextStyle(fontSize: 11, color: Color(0xFF64748B), fontFamily: 'Inter'), // Assuming default font, but Flutter's RichText needs explicit style if no DefaultTextStyle
+                      children: [
+                        const TextSpan(text: 'Persetujuan: Atasan: '),
+                        TextSpan(
+                          text: '${log['status_atasan'] ?? 'Pending'}',
+                          style: const TextStyle(
+                            color: Color(0xFF0F172A),
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                        const TextSpan(text: '  |  HRD: '),
+                        TextSpan(
+                          text: '${log['status_hrd'] ?? 'Pending'}',
+                          style: const TextStyle(
+                            color: Color(0xFF0F172A),
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ],
                     ),
-                    const Text(
-                      'Atasan: ',
-                      style: TextStyle(fontSize: 11, color: Color(0xFF64748B)),
-                    ),
-                    Text(
-                      '${log['status_atasan'] ?? 'Pending'}  ',
-                      style: const TextStyle(
-                        fontSize: 11,
-                        color: Color(0xFF0F172A),
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                    const Text(
-                      'HRD: ',
-                      style: TextStyle(fontSize: 11, color: Color(0xFF64748B)),
-                    ),
-                    Text(
-                      '${log['status_hrd'] ?? 'Pending'}',
-                      style: const TextStyle(
-                        fontSize: 11,
-                        color: Color(0xFF0F172A),
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                  ],
+                  ),
                 ),
               ],
             ),
