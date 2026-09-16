@@ -154,8 +154,15 @@ class _DetailApprovalScreenState extends State<DetailApprovalScreen> {
         );
       }
       
-      if (e.response?.statusCode == 422 || e.response?.statusCode == 404) {
-        if (mounted) Navigator.pop(context, true);
+      final int? statusCode = e.response?.statusCode;
+      final bool isAlreadyDecided = msg.toLowerCase().contains('sudah diputuskan') || msg.toLowerCase().contains('tidak dapat diubah');
+      
+      if (statusCode == 422 || statusCode == 404 || statusCode == 400 || isAlreadyDecided) {
+        if (mounted) {
+          Future.delayed(const Duration(milliseconds: 500), () {
+            if (mounted) Navigator.pop(context, true);
+          });
+        }
       }
     } catch (e) {
       if (mounted) {

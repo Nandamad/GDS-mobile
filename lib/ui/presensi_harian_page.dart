@@ -16,6 +16,8 @@ import '../cubit/location_state.dart';
 import 'kamera_page.dart';
 import 'konfirmasi_foto_page.dart';
 import 'riwayat_presensi_page.dart';
+import 'mulai_kunjungan_page.dart';
+import 'selesai_kunjungan_page.dart';
 import 'mulai_lembur_page.dart';
 import 'selesai_lembur_page.dart';
 import 'ringkasan_presensi_page.dart';
@@ -932,8 +934,9 @@ class _PresensiHarianScreenState extends State<PresensiHarianScreen> {
                 iconColor: const Color(0xFF3B82F6),
                 title: 'Mulai Kunjungan Klien',
                 onTap: () {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('Fitur ini akan segera hadir.')),
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (_) => const MulaiKunjunganScreen()),
                   );
                 },
               ),
@@ -943,36 +946,9 @@ class _PresensiHarianScreenState extends State<PresensiHarianScreen> {
                 iconColor: const Color(0xFF3B82F6),
                 title: 'Selesai Kunjungan Klien',
                 onTap: () {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('Fitur ini akan segera hadir.')),
-                  );
-                },
-              ),
-              _buildMenuDivider(),
-              _buildMenuItem(
-                icon: Icons.assignment_outlined,
-                iconColor: const Color(0xFF009688),
-                title: 'Ringkasan Presensi',
-                onTap: () {
                   Navigator.push(
                     context,
-                    MaterialPageRoute(
-                      builder: (context) => const RingkasanPresensiPage(),
-                    ),
-                  );
-                },
-              ),
-              _buildMenuDivider(),
-              _buildMenuItem(
-                icon: Icons.assignment_outlined,
-                iconColor: const Color(0xFF009688),
-                title: 'Histori Absensi',
-                onTap: () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (context) => const RiwayatPresensiScreen(showBackButton: true),
-                    ),
+                    MaterialPageRoute(builder: (_) => const SelesaiKunjunganScreen()),
                   );
                 },
               ),

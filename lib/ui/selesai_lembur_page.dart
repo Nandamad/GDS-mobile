@@ -286,7 +286,7 @@ class _SelesaiLemburScreenState extends State<SelesaiLemburScreen> {
       }
     } catch (e) {
       if (!mounted) return;
-      String errorMsg = 'Gagal mengakhiri lembur';
+      String errorMsg = 'Gagal mengakhiri lembur: $e';
       if (e is DioException && e.response?.data != null) {
         final data = e.response!.data;
         if (data is Map && data['message'] != null) {

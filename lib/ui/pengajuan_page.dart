@@ -8,6 +8,7 @@ import '../ui/pengajuan_lembur_manager_page.dart';
 import '../ui/pengajuan_cuti_manager_page.dart';
 import '../ui/riwayat_lembur_manager_page.dart';
 import '../ui/riwayat_cuti_manager_page.dart';
+import '../ui/ajukan_koreksi_presensi_page.dart';
 
 List<Map<String, dynamic>> normalizeSubmissionList(
   dynamic body, {
@@ -644,6 +645,17 @@ class _PengajuanScreenState extends State<PengajuanScreen> {
                 },
               ),
               _buildMenuCard(
+                title: 'Ajukan Koreksi Presensi',
+                subtitle: 'Koreksi data presensi, jam masuk, atau jam pulang',
+                onTap: () async {
+                  final result = await Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (context) => const AjukanKoreksiPresensiScreen()),
+                  );
+                  if (mounted && result == true) _fetchHistory();
+                },
+              ),
+              _buildMenuCard(
                 title: 'Pengajuan Lembur',
                 subtitle: 'Tinjau pengajuan lembur dari karyawan',
                 onTap: () => Navigator.push(
@@ -697,6 +709,19 @@ class _PengajuanScreenState extends State<PengajuanScreen> {
                   final result = await Navigator.push(
                     context,
                     MaterialPageRoute(builder: (context) => const AjukanCutiScreen()),
+                  );
+                  if (mounted && result == true) _fetchHistory();
+                },
+              ),
+
+              // Card Ajukan Koreksi Presensi
+              _buildMenuCard(
+                title: 'Ajukan Koreksi Presensi',
+                subtitle: 'Koreksi data presensi, jam masuk, atau jam pulang',
+                onTap: () async {
+                  final result = await Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (context) => const AjukanKoreksiPresensiScreen()),
                   );
                   if (mounted && result == true) _fetchHistory();
                 },
