@@ -153,6 +153,10 @@ class _DetailApprovalScreenState extends State<DetailApprovalScreen> {
           SnackBar(content: Text(msg), backgroundColor: Colors.red),
         );
       }
+      
+      if (e.response?.statusCode == 422 || e.response?.statusCode == 404) {
+        if (mounted) Navigator.pop(context, true);
+      }
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -277,8 +281,33 @@ class _DetailApprovalScreenState extends State<DetailApprovalScreen> {
             child: SafeArea(
               child: _isSubmitting 
                 ? const Center(child: CircularProgressIndicator(color: Color(0xFF009688)))
-                : Row(
+                : Column(
+                    mainAxisSize: MainAxisSize.min,
                     children: [
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                        margin: const EdgeInsets.only(bottom: 12),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFFEF3C7),
+                          borderRadius: BorderRadius.circular(8),
+                          border: Border.all(color: const Color(0xFFF59E0B).withOpacity(0.3)),
+                        ),
+                        child: Row(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const Icon(Icons.info_outline_rounded, size: 16, color: Color(0xFFD97706)),
+                            const SizedBox(width: 8),
+                            Expanded(
+                              child: const Text(
+                                'Sebagai Atasan (L1), setelah Anda menyetujui, pengajuan ini akan diteruskan ke HRD/Admin (L2) untuk validasi akhir.',
+                                style: TextStyle(fontSize: 11, color: Color(0xFF92400E), height: 1.4),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      Row(
+                        children: [
                       Expanded(
                         child: SizedBox(
                           height: 48,
@@ -310,6 +339,8 @@ class _DetailApprovalScreenState extends State<DetailApprovalScreen> {
                       ),
                     ],
                   ),
+                ],
+              ),
             ),
           ),
         ],

@@ -315,10 +315,10 @@ class _PengajuanScreenState extends State<PengajuanScreen> {
     }
 
     if (_isApproved(atasan)) {
-      return 'L1 Disetujui, L2 Pending';
+      return 'Diproses HRD';
     }
 
-    return 'Pending Approval L1';
+    return 'Menunggu Persetujuan Atasan';
   }
 
   String _getLemburStatus(Map<String, dynamic> data) {
@@ -337,10 +337,10 @@ class _PengajuanScreenState extends State<PengajuanScreen> {
     }
 
     if (_isApproved(l1)) {
-      return 'L1 Disetujui, L2 Pending';
+      return 'Diproses HRD';
     }
 
-    return 'Pending Approval L1';
+    return 'Menunggu Persetujuan Atasan';
   }
 
   // ============================================================
