@@ -1,5 +1,6 @@
 import 'dart:io';
 import 'dart:ui';
+import '../services/api_service.dart';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 
@@ -45,7 +46,7 @@ class _SelesaiKunjunganScreenState extends State<SelesaiKunjunganScreen> {
     }
   }
 
-  void _submit() {
+  void _submit() async {
     if (!_formKey.currentState!.validate()) return;
     if (_fotoSelfie == null) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -61,21 +62,45 @@ class _SelesaiKunjunganScreenState extends State<SelesaiKunjunganScreen> {
       _isSubmitting = true;
     });
 
-    // Simulasi loading
-    Future.delayed(const Duration(seconds: 1), () {
+    try {
+      final response = await ApiService().dio.post('/kunjungan/selesai', data: {
+        'lokasi_gps_selesai': '-6.2274,106.8055', // Mock GPS
+      });
+
+      if (mounted) {
+        setState(() {
+          _isSubmitting = false;
+        });
+        if (response.statusCode == 200) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Kunjungan berhasil diselesaikan!'),
+              backgroundColor: Colors.green,
+            ),
+          );
+          Navigator.pop(context, true);
+        } else {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(response.data['message'] ?? 'Gagal menyelesaikan kunjungan'),
+              backgroundColor: Colors.red,
+            ),
+          );
+        }
+      }
+    } catch (e) {
       if (mounted) {
         setState(() {
           _isSubmitting = false;
         });
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
-            content: Text('Kunjungan berhasil diselesaikan!'),
-            backgroundColor: Colors.green,
+            content: Text('Terjadi kesalahan jaringan'),
+            backgroundColor: Colors.red,
           ),
         );
-        Navigator.pop(context);
       }
-    });
+    }
   }
 
   @override

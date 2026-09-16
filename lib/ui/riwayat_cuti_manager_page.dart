@@ -39,9 +39,8 @@ class _RiwayatCutiManagerScreenState extends State<RiwayatCutiManagerScreen> {
 
     try {
       final dio = ApiService().dio;
-      // TODO: Using /approval/pending as mock endpoint for now. 
-      // Replace with /approval/history when backend is ready.
-      final response = await dio.get('/approval/pending');
+      // Memanggil endpoint history yang baru dibuat
+      final response = await dio.get('/approval/history');
 
       if (response.statusCode == 200) {
         final payload = response.data;

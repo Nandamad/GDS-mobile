@@ -33,6 +33,7 @@ class _AjukanCutiScreenState extends State<AjukanCutiScreen> {
   void initState() {
     super.initState();
     _fetchSisaCuti();
+    _fetchJenisCuti();
   }
 
   @override
@@ -41,25 +42,41 @@ class _AjukanCutiScreenState extends State<AjukanCutiScreen> {
     super.dispose();
   }
 
+  List<String> _listJenisCuti = ['Cuti', 'Izin', 'Sakit'];
+
   Future<void> _fetchSisaCuti() async {
     try {
       final dio = ApiService().dio;
-      final response = await dio.get('/dashboard');
+      final response = await dio.get('/karyawan/kuota-cuti');
       if (response.statusCode == 200) {
         final payload = response.data;
-        final data = payload is Map && payload['data'] is Map
-            ? payload['data']
-            : payload;
-        final summary = data['summary'];
-        if (summary != null && summary['sisa_cuti'] != null) {
+        if (payload['sisa_cuti'] != null) {
           setState(() {
-            _sisaCuti = int.tryParse(summary['sisa_cuti'].toString()) ?? 0;
+            _sisaCuti = int.tryParse(payload['sisa_cuti'].toString()) ?? 0;
           });
         }
       }
     } catch (_) {} finally {
       if (mounted) setState(() => _isLoadingSisaCuti = false);
     }
+  }
+
+  Future<void> _fetchJenisCuti() async {
+    try {
+      final dio = ApiService().dio;
+      final response = await dio.get('/master/jenis-cuti');
+      if (response.statusCode == 200) {
+        final payload = response.data;
+        if (payload['data'] != null && payload['data'] is List) {
+          setState(() {
+            _listJenisCuti = List<String>.from(payload['data']);
+            if (!_listJenisCuti.contains(_tipePengajuan)) {
+              _tipePengajuan = _listJenisCuti.first;
+            }
+          });
+        }
+      }
+    } catch (_) {}
   }
 
   Future<void> _submitCuti() async {
@@ -90,16 +107,11 @@ class _AjukanCutiScreenState extends State<AjukanCutiScreen> {
       final endFormatted =
           "${_tanggalSelesai.year}-${_tanggalSelesai.month.toString().padLeft(2, '0')}-${_tanggalSelesai.day.toString().padLeft(2, '0')}";
 
-      String jenisIzinVal = _tipePengajuan.toLowerCase();
-      if (jenisIzinVal != 'cuti') {
-        jenisIzinVal = 'izin';
-      }
-
       final formData = FormData.fromMap({
-        'jenis': jenisIzinVal,
+        'jenis': _tipePengajuan,
         'tanggal_mulai': startFormatted,
         'tanggal_selesai': endFormatted,
-        'alasan': _alasanController.text,
+        'alasan': _alasanController.text.trim(),
       });
 
       if (_selectedFile != null) {
@@ -378,7 +390,7 @@ class _AjukanCutiScreenState extends State<AjukanCutiScreen> {
                       });
                     }
                   },
-                  items: <String>['Cuti', 'Izin', 'Sakit']
+                  items: _listJenisCuti
                       .map<DropdownMenuItem<String>>((String value) {
                     return DropdownMenuItem<String>(
                       value: value,

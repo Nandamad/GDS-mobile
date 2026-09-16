@@ -212,6 +212,8 @@ class _SelesaiLemburScreenState extends State<SelesaiLemburScreen> {
     return '${twoDigits(startTime.hour)}:${twoDigits(startTime.minute)}';
   }
 
+  final TextEditingController _alasanAwalController = TextEditingController();
+
   /// Dialog peringatan jika mencoba selesai sebelum waktunya
   void _showCannotFinishDialog() {
     showDialog(
@@ -226,34 +228,51 @@ class _SelesaiLemburScreenState extends State<SelesaiLemburScreen> {
               Container(
                 padding: const EdgeInsets.all(16),
                 decoration: BoxDecoration(
-                  color: Colors.red.shade50,
+                  color: Colors.orange.shade50,
                   shape: BoxShape.circle,
                 ),
-                child: const Icon(Icons.info_outline, color: Colors.red, size: 32),
+                child: const Icon(Icons.info_outline, color: Colors.orange, size: 32),
               ),
               const SizedBox(height: 16),
               const Text(
-                'Selesai Lembur',
+                'Selesai Lebih Awal',
                 style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: Color(0xFF0F172A)),
               ),
               const SizedBox(height: 8),
               const Text(
-                'Maaf lembur tidak dapat diselesaikan sampai jam yang telah ditentukan',
+                'Waktu lembur belum habis. Jika ingin mengakhiri sekarang, silakan isi alasan:',
                 textAlign: TextAlign.center,
                 style: TextStyle(color: Colors.grey, fontSize: 12, height: 1.5),
               ),
-              const SizedBox(height: 24),
-              SizedBox(
-                width: double.infinity,
-                child: OutlinedButton(
-                  onPressed: () => Navigator.pop(context),
-                  style: OutlinedButton.styleFrom(
-                    side: BorderSide(color: Colors.grey.shade300),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-                    padding: const EdgeInsets.symmetric(vertical: 12),
-                  ),
-                  child: const Text('Kembali', style: TextStyle(color: Colors.grey, fontSize: 13)),
+              const SizedBox(height: 16),
+              TextField(
+                controller: _alasanAwalController,
+                decoration: InputDecoration(
+                  hintText: 'Alasan selesai awal...',
+                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
                 ),
+              ),
+              const SizedBox(height: 24),
+              Row(
+                children: [
+                  Expanded(
+                    child: OutlinedButton(
+                      onPressed: () => Navigator.pop(context),
+                      child: const Text('Batal', style: TextStyle(color: Colors.grey)),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: ElevatedButton(
+                      style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF009688)),
+                      onPressed: () {
+                        Navigator.pop(context);
+                        _akhiriLembur(isEarly: true);
+                      },
+                      child: const Text('Kirim', style: TextStyle(color: Colors.white)),
+                    ),
+                  ),
+                ],
               ),
             ],
           ),
@@ -262,16 +281,22 @@ class _SelesaiLemburScreenState extends State<SelesaiLemburScreen> {
     );
   }
 
-  Future<void> _akhiriLembur() async {
+  Future<void> _akhiriLembur({bool isEarly = false}) async {
     // Cek apakah waktu sudah habis
-    if (!isTimeUp) {
+    if (!isTimeUp && !isEarly) {
       _showCannotFinishDialog();
+      return;
+    }
+    
+    if (isEarly && _alasanAwalController.text.trim().isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Alasan wajib diisi!')));
       return;
     }
 
     setState(() => _isSubmitting = true);
     try {
-      final response = await ApiService().dio.post('/lembur/selesai');
+      final payload = isEarly ? {'is_early_checkout': true, 'alasan': _alasanAwalController.text.trim()} : {};
+      final response = await ApiService().dio.post('/lembur/selesai', data: payload);
       
       if (!mounted) return;
       if (response.statusCode == 200) {

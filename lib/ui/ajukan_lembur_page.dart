@@ -13,7 +13,7 @@ class AjukanLemburScreen extends StatefulWidget {
 class _AjukanLemburScreenState extends State<AjukanLemburScreen> {
   final TextEditingController _alasanController = TextEditingController();
   final TextEditingController _catatanController = TextEditingController();
-  int _estimasiJam = 2;
+  final TextEditingController _estimasiMenitController = TextEditingController(text: '120'); // Default 2 jam
   bool _isSubmitting = false;
   
   DateTime _selectedDate = DateTime.now();
@@ -69,10 +69,10 @@ class _AjukanLemburScreenState extends State<AjukanLemburScreen> {
       
       final String jamMulaiStr = '${_selectedTime.hour.toString().padLeft(2, '0')}:${_selectedTime.minute.toString().padLeft(2, '0')}';
       
-      // Hitung jam selesai berdasarkan durasi
-      int endHour = _selectedTime.hour + _estimasiJam;
-      int endMinute = _selectedTime.minute;
-      if (endHour >= 24) endHour = endHour % 24; // Handle lewat tengah malam
+      // Hitung jam selesai berdasarkan durasi (dalam menit)
+      int totalMenit = _selectedTime.hour * 60 + _selectedTime.minute + (int.tryParse(_estimasiMenitController.text) ?? 120);
+      int endHour = (totalMenit ~/ 60) % 24;
+      int endMinute = totalMenit % 60;
       
       final String jamSelesaiStr = '${endHour.toString().padLeft(2, '0')}:${endMinute.toString().padLeft(2, '0')}';
 
@@ -255,22 +255,30 @@ class _AjukanLemburScreenState extends State<AjukanLemburScreen> {
             ),
             const SizedBox(height: 20),
 
-            // Estimasi Durasi
             const Text(
-              'Estimasi Durasi Lembur *',
+              'Estimasi Durasi Lembur (Menit) *',
               style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Color(0xFF0F172A)),
             ),
             const SizedBox(height: 8),
-            Row(
-              children: [
-                _buildDurationChip(1),
-                const SizedBox(width: 8),
-                _buildDurationChip(2),
-                const SizedBox(width: 8),
-                _buildDurationChip(3),
-                const SizedBox(width: 8),
-                _buildDurationChip(4),
-              ],
+            TextField(
+              controller: _estimasiMenitController,
+              keyboardType: TextInputType.number,
+              style: const TextStyle(fontSize: 13),
+              decoration: InputDecoration(
+                hintText: 'Contoh: 120 untuk 2 jam',
+                hintStyle: TextStyle(fontSize: 12, color: Colors.grey.shade400),
+                contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                filled: true,
+                fillColor: const Color(0xFFF8FAFC),
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(8),
+                  borderSide: BorderSide.none,
+                ),
+                enabledBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(8),
+                  borderSide: BorderSide(color: Colors.grey.shade300),
+                ),
+              ),
             ),
             const SizedBox(height: 20),
 
@@ -342,35 +350,5 @@ class _AjukanLemburScreenState extends State<AjukanLemburScreen> {
     );
   }
 
-  Widget _buildDurationChip(int hours) {
-    bool isSelected = _estimasiJam == hours;
-    return Expanded(
-      child: GestureDetector(
-        onTap: () {
-          setState(() {
-            _estimasiJam = hours;
-          });
-        },
-        child: Container(
-          padding: const EdgeInsets.symmetric(vertical: 10),
-          decoration: BoxDecoration(
-            color: isSelected ? const Color(0xFFCCFBF1) : Colors.white,
-            borderRadius: BorderRadius.circular(8),
-            border: Border.all(
-              color: isSelected ? const Color(0xFF0F766E) : Colors.grey.shade300,
-            ),
-          ),
-          alignment: Alignment.center,
-          child: Text(
-            '$hours Jam',
-            style: TextStyle(
-              fontSize: 12,
-              fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
-              color: isSelected ? const Color(0xFF0F766E) : const Color(0xFF0F172A),
-            ),
-          ),
-        ),
-      ),
-    );
-  }
+
 }

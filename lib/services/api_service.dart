@@ -32,10 +32,12 @@ class ApiService {
       createHttpClient: () {
         final client = HttpClient();
         client.badCertificateCallback = (X509Certificate cert, String host, int port) {
-          // Implementasikan perbandingan `cert.sha1` atau `cert.sha256` di sini
-          // Jika tidak sesuai, kembalikan false.
-          // Contoh: return cert.sha256 == 'XXXX...';
-          return true; // SEKARANG MASIH ALLOW ALL UNTUK DEVELOPMENT
+          if (host == 'localhost' || host == '10.0.2.2' || host == '127.0.0.1' || host.contains('192.168.')) {
+            return true; // Bypass SSL khusus untuk local development
+          }
+          // SSL Pinning untuk environment Production
+          const String EXPECTED_FINGERPRINT = 'HASH_DARI_SERTIFIKAT_SERVER_PRODUCTION_ANDA';
+          return cert.sha256.toString().replaceAll(' ', '').toLowerCase() == EXPECTED_FINGERPRINT.toLowerCase();
         };
         return client;
       },
