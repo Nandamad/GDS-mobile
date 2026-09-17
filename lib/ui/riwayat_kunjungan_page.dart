@@ -113,9 +113,7 @@ class _RiwayatKunjunganScreenState extends State<RiwayatKunjunganScreen> {
   Widget _buildBody() {
     if (_isLoading) {
       return const Center(
-        child: CircularProgressIndicator(
-          color: Color(0xFF009688),
-        ),
+        child: CircularProgressIndicator(color: Color(0xFF009688)),
       );
     }
 
@@ -136,7 +134,10 @@ class _RiwayatKunjunganScreenState extends State<RiwayatKunjunganScreen> {
               style: ElevatedButton.styleFrom(
                 backgroundColor: const Color(0xFF009688),
               ),
-              child: const Text('Coba Lagi', style: TextStyle(color: Colors.white)),
+              child: const Text(
+                'Coba Lagi',
+                style: TextStyle(color: Colors.white),
+              ),
             ),
           ],
         ),
@@ -152,10 +153,7 @@ class _RiwayatKunjunganScreenState extends State<RiwayatKunjunganScreen> {
             const SizedBox(height: 16),
             const Text(
               'Belum ada riwayat kunjungan',
-              style: TextStyle(
-                color: Color(0xFF64748B),
-                fontSize: 16,
-              ),
+              style: TextStyle(color: Color(0xFF64748B), fontSize: 16),
             ),
           ],
         ),
@@ -184,78 +182,93 @@ class _RiwayatKunjunganScreenState extends State<RiwayatKunjunganScreen> {
               margin: const EdgeInsets.only(bottom: 16),
               elevation: 1,
               color: Colors.white,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
               child: Padding(
-              padding: const EdgeInsets.all(16),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Expanded(
-                        child: Text(
-                          item['nama_klien'] ?? '-',
-                          style: const TextStyle(
-                            color: Color(0xFF0F172A),
-                            fontWeight: FontWeight.bold,
-                            fontSize: 16,
+                padding: const EdgeInsets.all(16),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Expanded(
+                          child: Text(
+                            item['nama_klien'] ?? '-',
+                            style: const TextStyle(
+                              color: Color(0xFF0F172A),
+                              fontWeight: FontWeight.bold,
+                              fontSize: 16,
+                            ),
                           ),
                         ),
-                      ),
-                      _buildStatusBadge(item['status_final'] ?? ''),
-                    ],
-                  ),
-                  const SizedBox(height: 8),
-                  Row(
-                    children: [
-                      const Icon(Icons.location_on_outlined, size: 16, color: Color(0xFF64748B)),
-                      const SizedBox(width: 4),
-                      Expanded(
-                        child: Text(
-                          item['alamat_kunjungan'] ?? '-',
+                        _buildStatusBadge(item['status_final'] ?? ''),
+                      ],
+                    ),
+                    const SizedBox(height: 8),
+                    Row(
+                      children: [
+                        const Icon(
+                          Icons.location_on_outlined,
+                          size: 16,
+                          color: Color(0xFF64748B),
+                        ),
+                        const SizedBox(width: 4),
+                        Expanded(
+                          child: Text(
+                            item['alamat_kunjungan'] ?? '-',
+                            style: const TextStyle(
+                              color: Color(0xFF64748B),
+                              fontSize: 14,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 8),
+                    Row(
+                      children: [
+                        const Icon(
+                          Icons.calendar_today_outlined,
+                          size: 16,
+                          color: Color(0xFF64748B),
+                        ),
+                        const SizedBox(width: 4),
+                        Text(
+                          '${_formatDate(item['tanggal'] ?? '')}  •  ${_formatTime(item['jam_mulai_kunjungan'] ?? '')} - ${_formatTime(item['jam_selesai_kunjungan'] ?? '')}',
                           style: const TextStyle(
                             color: Color(0xFF64748B),
                             fontSize: 14,
                           ),
                         ),
+                      ],
+                    ),
+                    const SizedBox(height: 12),
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 10,
+                        vertical: 4,
                       ),
-                    ],
-                  ),
-                  const SizedBox(height: 8),
-                  Row(
-                    children: [
-                      const Icon(Icons.calendar_today_outlined, size: 16, color: Color(0xFF64748B)),
-                      const SizedBox(width: 4),
-                      Text(
-                        '${_formatDate(item['tanggal'] ?? '')}  •  ${_formatTime(item['jam_mulai_kunjungan'] ?? '')} - ${_formatTime(item['jam_selesai_kunjungan'] ?? '')}',
-                        style: const TextStyle(
-                          color: Color(0xFF64748B),
-                          fontSize: 14,
+                      decoration: BoxDecoration(
+                        color: const Color(0xFF009688).withOpacity(0.1),
+                        borderRadius: BorderRadius.circular(8),
+                        border: Border.all(
+                          color: const Color(0xFF009688).withOpacity(0.3),
                         ),
                       ),
-                    ],
-                  ),
-                  const SizedBox(height: 12),
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                    decoration: BoxDecoration(
-                      color: const Color(0xFF009688).withOpacity(0.1),
-                      borderRadius: BorderRadius.circular(8),
-                      border: Border.all(color: const Color(0xFF009688).withOpacity(0.3)),
-                    ),
-                    child: Text(
-                      item['tujuan_kunjungan'] ?? '-',
-                      style: const TextStyle(
-                        color: Color(0xFF009688),
-                        fontSize: 12,
-                        fontWeight: FontWeight.w600,
+                      child: Text(
+                        item['tujuan_kunjungan'] ?? '-',
+                        style: const TextStyle(
+                          color: Color(0xFF009688),
+                          fontSize: 12,
+                          fontWeight: FontWeight.w600,
+                        ),
                       ),
                     ),
-                  ),
-                ],
+                  ],
+                ),
               ),
-            ),
             ),
           );
         },
