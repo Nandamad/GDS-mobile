@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
-import 'package:geolocator/geolocator.dart';
+import 'dart:async';
 import 'package:geocoding/geocoding.dart';
 import 'package:dio/dio.dart';
+import 'package:flutter_map/flutter_map.dart';
+import 'package:latlong2/latlong.dart' hide Path;
 import '../services/api_service.dart';
 
 class MulaiKunjunganScreen extends StatefulWidget {
@@ -26,89 +28,43 @@ class _MulaiKunjunganScreenState extends State<MulaiKunjunganScreen> {
 
   double? _latitude;
   double? _longitude;
-  String _locationName = 'Mendapatkan lokasi...';
-  String _locationAddress = 'Mohon tunggu sebentar';
-  bool _isLoadingLocation = true;
+  String _locationName = 'Lokasi Kunjungan';
+  String _locationAddress = 'Ketik alamat di atas untuk melihat peta';
+  bool _isLoadingLocation = false;
+  Timer? _debounce;
 
   @override
   void initState() {
     super.initState();
-    _getCurrentLocation();
+    _alamatController.addListener(_onAlamatChanged);
   }
 
-  Future<void> _getCurrentLocation() async {
-    bool serviceEnabled;
-    LocationPermission permission;
+  void _onAlamatChanged() {
+    if (_debounce?.isActive ?? false) _debounce!.cancel();
+    _debounce = Timer(const Duration(milliseconds: 1500), () {
+      final address = _alamatController.text.trim();
+      if (address.isNotEmpty) {
+        _geocodeAddress(address);
+      }
+    });
+  }
+
+  Future<void> _geocodeAddress(String address) async {
+    setState(() {
+      _isLoadingLocation = true;
+      _locationAddress = 'Mencari lokasi...';
+    });
 
     try {
-      serviceEnabled = await Geolocator.isLocationServiceEnabled();
-      if (!serviceEnabled) {
+      List<Location> locations = await locationFromAddress(address);
+      if (locations.isNotEmpty) {
+        final loc = locations.first;
         if (mounted) {
           setState(() {
-            _locationName = 'Layanan lokasi tidak aktif';
-            _locationAddress = 'Mohon aktifkan GPS Anda';
-            _isLoadingLocation = false;
-          });
-        }
-        return;
-      }
-
-      permission = await Geolocator.checkPermission();
-      if (permission == LocationPermission.denied) {
-        permission = await Geolocator.requestPermission();
-        if (permission == LocationPermission.denied) {
-          if (mounted) {
-            setState(() {
-              _locationName = 'Izin lokasi ditolak';
-              _locationAddress = 'Aplikasi membutuhkan izin lokasi';
-              _isLoadingLocation = false;
-            });
-          }
-          return;
-        }
-      }
-
-      if (permission == LocationPermission.deniedForever) {
-        if (mounted) {
-          setState(() {
-            _locationName = 'Izin lokasi ditolak permanen';
-            _locationAddress = 'Silakan ubah pengaturan izin lokasi di sistem';
-            _isLoadingLocation = false;
-          });
-        }
-        return;
-      }
-
-      Position position = await Geolocator.getCurrentPosition();
-      if (mounted) {
-        setState(() {
-          _latitude = position.latitude;
-          _longitude = position.longitude;
-        });
-      }
-
-      List<Placemark> placemarks = await placemarkFromCoordinates(position.latitude, position.longitude);
-      if (mounted) {
-        if (placemarks.isNotEmpty) {
-          Placemark place = placemarks[0];
-          setState(() {
-            _locationName = place.name ?? 'Lokasi Terdeteksi';
-            List<String> addressParts = [];
-            if (place.street != null && place.street!.isNotEmpty) addressParts.add(place.street!);
-            if (place.subLocality != null && place.subLocality!.isNotEmpty) addressParts.add(place.subLocality!);
-            if (place.locality != null && place.locality!.isNotEmpty) addressParts.add(place.locality!);
-            if (place.administrativeArea != null && place.administrativeArea!.isNotEmpty) addressParts.add(place.administrativeArea!);
-            
-            _locationAddress = addressParts.join(', ');
-            if (_locationAddress.isEmpty) {
-              _locationAddress = '$_latitude, $_longitude';
-            }
-            _isLoadingLocation = false;
-          });
-        } else {
-          setState(() {
-            _locationName = 'Lokasi Terdeteksi';
-            _locationAddress = '$_latitude, $_longitude';
+            _latitude = loc.latitude;
+            _longitude = loc.longitude;
+            _locationName = 'Lokasi Ditemukan';
+            _locationAddress = address;
             _isLoadingLocation = false;
           });
         }
@@ -116,8 +72,8 @@ class _MulaiKunjunganScreenState extends State<MulaiKunjunganScreen> {
     } catch (e) {
       if (mounted) {
         setState(() {
-          _locationName = 'Gagal mendapatkan lokasi';
-          _locationAddress = 'Terjadi kesalahan saat memuat lokasi';
+          _locationName = 'Lokasi tidak ditemukan';
+          _locationAddress = 'Alamat belum terbaca di peta';
           _isLoadingLocation = false;
         });
       }
@@ -126,6 +82,7 @@ class _MulaiKunjunganScreenState extends State<MulaiKunjunganScreen> {
 
   @override
   void dispose() {
+    _debounce?.cancel();
     _namaKlienController.dispose();
     _alamatController.dispose();
     _catatanController.dispose();
@@ -135,11 +92,10 @@ class _MulaiKunjunganScreenState extends State<MulaiKunjunganScreen> {
   void _submit() async {
     if (!_formKey.currentState!.validate()) return;
     
-    // We can block submission if location is not loaded, but for now we just send what we have
     if (_latitude == null || _longitude == null) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text('Lokasi belum didapatkan. Mohon tunggu atau periksa izin lokasi.'),
+          content: Text('Lokasi peta belum ditemukan. Mohon ketikkan alamat kunjungan yang lebih jelas.'),
           backgroundColor: Colors.orange,
         ),
       );
@@ -390,7 +346,7 @@ class _MulaiKunjunganScreenState extends State<MulaiKunjunganScreen> {
               Icon(Icons.location_on_outlined, color: primaryTeal, size: 18),
               const SizedBox(width: 8),
               const Text(
-                'Lokasi GPS Terdeteksi',
+                'Lokasi Peta (Berdasarkan Alamat)',
                 style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12, color: Color(0xFF0F172A)),
               ),
               if (_isLoadingLocation) ...[
@@ -422,18 +378,45 @@ class _MulaiKunjunganScreenState extends State<MulaiKunjunganScreen> {
               decoration: const BoxDecoration(
                 color: Color(0xFFE2E8F0),
               ),
-              child: Stack(
-                alignment: Alignment.center,
-                children: [
-                  // Placeholder background representing a map
-                  Positioned.fill(
-                    child: CustomPaint(
-                      painter: MapPlaceholderPainter(),
+              child: _latitude != null && _longitude != null
+                  ? FlutterMap(
+                      key: ValueKey('$_latitude-$_longitude'),
+                      options: MapOptions(
+                        initialCenter: LatLng(_latitude!, _longitude!),
+                        initialZoom: 15.0,
+                        interactionOptions: const InteractionOptions(flags: InteractiveFlag.none),
+                      ),
+                      children: [
+                        TileLayer(
+                          urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+                        ),
+                        MarkerLayer(
+                          markers: [
+                            Marker(
+                              point: LatLng(_latitude!, _longitude!),
+                              width: 40,
+                              height: 40,
+                              child: const Icon(
+                                Icons.location_on,
+                                color: Colors.red,
+                                size: 32,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
+                    )
+                  : Stack(
+                      alignment: Alignment.center,
+                      children: [
+                        Positioned.fill(
+                          child: CustomPaint(
+                            painter: MapPlaceholderPainter(),
+                          ),
+                        ),
+                        const Icon(Icons.location_off, color: Colors.grey, size: 30),
+                      ],
                     ),
-                  ),
-                  const Icon(Icons.location_on, color: Colors.red, size: 40),
-                ],
-              ),
             ),
           )
         ],
@@ -449,12 +432,18 @@ class MapPlaceholderPainter extends CustomPainter {
       ..color = const Color(0xFFCBD5E1)
       ..strokeWidth = 2
       ..style = PaintingStyle.stroke;
-      
-    // Draw some random lines to look like streets
-    canvas.drawLine(Offset(0, size.height * 0.3), Offset(size.width, size.height * 0.4), paint);
-    canvas.drawLine(Offset(size.width * 0.4, 0), Offset(size.width * 0.5, size.height), paint);
-    canvas.drawLine(Offset(0, size.height * 0.7), Offset(size.width, size.height * 0.8), paint);
-    canvas.drawLine(Offset(size.width * 0.7, 0), Offset(size.width * 0.8, size.height), paint);
+
+    final path = Path();
+    double step = 20;
+    for (double i = 0; i < size.width; i += step) {
+      path.moveTo(i, 0);
+      path.lineTo(i, size.height);
+    }
+    for (double i = 0; i < size.height; i += step) {
+      path.moveTo(0, i);
+      path.lineTo(size.width, i);
+    }
+    canvas.drawPath(path, paint);
   }
 
   @override

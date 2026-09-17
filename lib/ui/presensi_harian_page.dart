@@ -116,12 +116,12 @@ class _PresensiHarianScreenState extends State<PresensiHarianScreen> {
     setState(() {
       _isLoading = true;
     });
-    
+
     // Fetch current location to update LocationCubit state
     if (mounted) {
       await context.read<LocationCubit>().getCurrentLocation();
     }
-    
+
     await Future.wait([_fetchDashboardAndToday(), _fetchRecentHistory()]);
   }
 
@@ -159,16 +159,16 @@ class _PresensiHarianScreenState extends State<PresensiHarianScreen> {
           _alamatKantor = kantor['alamat']?.toString() ?? '';
         }
 
-        _isWorkingDay = resData['jam_kerja'] != null ? (resData['jam_kerja']['is_working_day'] ?? false) : false;
+        _isWorkingDay = resData['jam_kerja'] != null
+            ? (resData['jam_kerja']['is_working_day'] ?? false)
+            : false;
         _hasLembur = resData['lembur'] != null;
 
         if (data != null && data is Map) {
           _jamMasuk = data['jam_masuk']?.toString();
           _jamKeluar = data['jam_keluar']?.toString();
-          _isSudahAbsenMasuk =
-              _jamMasuk != null && _jamMasuk!.isNotEmpty;
-          _isSudahAbsenKeluar =
-              _jamKeluar != null && _jamKeluar!.isNotEmpty;
+          _isSudahAbsenMasuk = _jamMasuk != null && _jamMasuk!.isNotEmpty;
+          _isSudahAbsenKeluar = _jamKeluar != null && _jamKeluar!.isNotEmpty;
         } else {
           _jamMasuk = null;
           _jamKeluar = null;
@@ -587,19 +587,19 @@ class _PresensiHarianScreenState extends State<PresensiHarianScreen> {
             const SizedBox(height: 12),
             const Text(
               'Hari ini adalah jadwal libur Anda',
-              style: TextStyle(
-                color: Colors.grey,
-                fontWeight: FontWeight.bold,
-              ),
+              style: TextStyle(color: Colors.grey, fontWeight: FontWeight.bold),
             ),
           ],
         ),
       );
     }
 
-    bool canAbsenMasuk = !_isSudahAbsenMasuk && (locState.maxRadius <= 0 || locState.isInRadius);
+    bool canAbsenMasuk =
+        !_isSudahAbsenMasuk && (locState.maxRadius <= 0 || locState.isInRadius);
     bool canAbsenKeluar =
-        _isSudahAbsenMasuk && !_isSudahAbsenKeluar && (locState.maxRadius <= 0 || locState.isInRadius);
+        _isSudahAbsenMasuk &&
+        !_isSudahAbsenKeluar &&
+        (locState.maxRadius <= 0 || locState.isInRadius);
 
     return Row(
       children: [
@@ -798,22 +798,23 @@ class _PresensiHarianScreenState extends State<PresensiHarianScreen> {
     String durasiKerja = '--';
     if (_jamMasuk != null && _jamKeluar != null) {
       try {
-        final masukSplit = _jamMasuk!.split(':');
-        final keluarSplit = _jamKeluar!.split(':');
-        final m = DateTime(2000, 1, 1, int.parse(masukSplit[0]), int.parse(masukSplit[1]));
-        final k = DateTime(2000, 1, 1, int.parse(keluarSplit[0]), int.parse(keluarSplit[1]));
-        final diff = k.difference(m);
-        durasiKerja = '${diff.inHours}j ${diff.inMinutes.remainder(60)}m';
+        DateTime? m = _parseFlexibleTime(_jamMasuk!);
+        DateTime? k = _parseFlexibleTime(_jamKeluar!);
+        if (m != null && k != null) {
+          final diff = k.difference(m);
+          durasiKerja = '${diff.inHours}j ${diff.inMinutes.remainder(60)}m';
+        }
       } catch (e) {
         // ignore
       }
     } else if (_jamMasuk != null) {
       try {
-        final masukSplit = _jamMasuk!.split(':');
-        final m = DateTime.now().copyWith(hour: int.parse(masukSplit[0]), minute: int.parse(masukSplit[1]), second: 0, millisecond: 0, microsecond: 0);
-        final diff = DateTime.now().difference(m);
-        if (!diff.isNegative) {
-          durasiKerja = '${diff.inHours}j ${diff.inMinutes.remainder(60)}m';
+        DateTime? m = _parseFlexibleTime(_jamMasuk!);
+        if (m != null) {
+          final diff = DateTime.now().difference(m);
+          if (!diff.isNegative) {
+            durasiKerja = '${diff.inHours}j ${diff.inMinutes.remainder(60)}m';
+          }
         }
       } catch (e) {
         // ignore
@@ -853,33 +854,50 @@ class _PresensiHarianScreenState extends State<PresensiHarianScreen> {
             ],
           ),
           const SizedBox(height: 16),
-          _buildStatusRow('Absen Masuk', _jamMasuk != null ? '$_jamMasuk WIB' : '--', isCheck: _jamMasuk != null),
+          _buildStatusRow(
+            'Absen Masuk',
+            _formatTimeForDisplay(_jamMasuk),
+            isCheck: _jamMasuk != null,
+          ),
           const SizedBox(height: 8),
-          _buildStatusRow('Absen Keluar', _jamKeluar != null ? '$_jamKeluar WIB' : '--', isCheck: false),
+          _buildStatusRow(
+            'Absen Keluar',
+            _formatTimeForDisplay(_jamKeluar),
+            isCheck: _jamKeluar != null,
+          ),
           const SizedBox(height: 8),
-          _buildStatusRow('Durasi Kerja', durasiKerja, isCheck: false, isBold: true),
+          _buildStatusRow(
+            'Durasi Kerja',
+            durasiKerja,
+            isCheck: false,
+            isBold: true,
+          ),
         ],
       ),
     );
   }
 
-  Widget _buildStatusRow(String label, String value, {bool isCheck = false, bool isBold = false}) {
+  Widget _buildStatusRow(
+    String label,
+    String value, {
+    bool isCheck = false,
+    bool isBold = false,
+  }) {
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
         Text(
           label,
-          style: const TextStyle(
-            color: Color(0xFF64748B),
-            fontSize: 12,
-          ),
+          style: const TextStyle(color: Color(0xFF64748B), fontSize: 12),
         ),
         Row(
           children: [
             Text(
               value,
               style: TextStyle(
-                color: isBold ? const Color(0xFF009688) : const Color(0xFF0F172A),
+                color: isBold
+                    ? const Color(0xFF009688)
+                    : const Color(0xFF0F172A),
                 fontWeight: isBold ? FontWeight.bold : FontWeight.w500,
                 fontSize: 12,
               ),
@@ -887,7 +905,7 @@ class _PresensiHarianScreenState extends State<PresensiHarianScreen> {
             if (isCheck) ...[
               const SizedBox(width: 6),
               const Icon(Icons.check, color: Color(0xFF009688), size: 16),
-            ]
+            ],
           ],
         ),
       ],
@@ -936,7 +954,9 @@ class _PresensiHarianScreenState extends State<PresensiHarianScreen> {
                 onTap: () {
                   Navigator.push(
                     context,
-                    MaterialPageRoute(builder: (_) => const MulaiKunjunganScreen()),
+                    MaterialPageRoute(
+                      builder: (_) => const MulaiKunjunganScreen(),
+                    ),
                   );
                 },
               ),
@@ -948,7 +968,9 @@ class _PresensiHarianScreenState extends State<PresensiHarianScreen> {
                 onTap: () {
                   Navigator.push(
                     context,
-                    MaterialPageRoute(builder: (_) => const SelesaiKunjunganScreen()),
+                    MaterialPageRoute(
+                      builder: (_) => const SelesaiKunjunganScreen(),
+                    ),
                   );
                 },
               ),
@@ -1000,7 +1022,13 @@ class _PresensiHarianScreenState extends State<PresensiHarianScreen> {
 
   Future<void> _handleMenuLembur(bool isMulai) async {
     if (_jamMasuk == null || _jamKeluar == null) {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Anda harus menyelesaikan Absen Masuk dan Absen Keluar terlebih dahulu sebelum bisa melakukan aktivitas lembur.')));
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text(
+            'Anda harus menyelesaikan Absen Masuk dan Absen Keluar terlebih dahulu sebelum bisa melakukan aktivitas lembur.',
+          ),
+        ),
+      );
       return;
     }
 
@@ -1016,7 +1044,7 @@ class _PresensiHarianScreenState extends State<PresensiHarianScreen> {
 
       final payload = res.data;
       final lembur = payload['lembur'];
-      
+
       String status = 'Belum ada';
       Map<String, dynamic>? dataForScreen;
 
@@ -1025,53 +1053,93 @@ class _PresensiHarianScreenState extends State<PresensiHarianScreen> {
         dataForScreen = lembur;
 
         if (status == 'Disetujui' && payload['server_time'] != null) {
-           final serverTime = DateTime.parse(payload['server_time']);
-           final mulai = DateTime.parse(lembur['jam_mulai']);
-           final selesai = DateTime.parse(lembur['jam_selesai']);
+          final serverTime = DateTime.parse(payload['server_time']);
+          final mulai = DateTime.parse(lembur['jam_mulai']);
+          final selesai = DateTime.parse(lembur['jam_selesai']);
 
-           final prefs = await SharedPreferences.getInstance();
-           final lemburId = lembur['id']?.toString() ?? lembur['tanggal']?.toString() ?? 'today';
-           final actualStartStr = prefs.getString('lembur_start_time_$lemburId');
+          final prefs = await SharedPreferences.getInstance();
+          final lemburId =
+              lembur['id']?.toString() ??
+              lembur['tanggal']?.toString() ??
+              'today';
+          final actualStartStr = prefs.getString('lembur_start_time_$lemburId');
 
-           if (serverTime.isAfter(selesai)) {
-              status = 'Selesai';
-           } else if (actualStartStr != null || serverTime.isAfter(mulai)) {
-              status = 'Sedang Lembur';
-           }
+          if (serverTime.isAfter(selesai)) {
+            status = 'Selesai';
+          } else if (actualStartStr != null || serverTime.isAfter(mulai)) {
+            status = 'Sedang Lembur';
+          }
         }
       }
 
       if (isMulai) {
         if (status == 'Sedang Lembur' || status == 'Selesai') {
-          ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Anda sudah memulai lembur hari ini. Silakan gunakan menu Selesai Lembur.')));
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text(
+                'Anda sudah memulai lembur hari ini. Silakan gunakan menu Selesai Lembur.',
+              ),
+            ),
+          );
         } else {
           // Buka MulaiLemburScreen — di dalamnya sudah ada logika warning jika belum ajukan
-          Navigator.push(context, MaterialPageRoute(builder: (_) => MulaiLemburScreen(lemburData: dataForScreen, lemburStatus: status)));
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (_) => MulaiLemburScreen(
+                lemburData: dataForScreen,
+                lemburStatus: status,
+              ),
+            ),
+          );
         }
       } else {
-        if (lembur == null || status == 'Belum ada' || status == 'Menunggu' || status == 'Disetujui') {
-          ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Anda belum memulai lembur!')));
+        if (lembur == null ||
+            status == 'Belum ada' ||
+            status == 'Menunggu' ||
+            status == 'Disetujui') {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Anda belum memulai lembur!')),
+          );
         } else if (status == 'Sedang Lembur' || status == 'Selesai') {
           final prefs = await SharedPreferences.getInstance();
-          final lemburId = dataForScreen?['id']?.toString() ?? dataForScreen?['tanggal']?.toString() ?? 'today';
-          final actualStart = prefs.getString('lembur_start_time_$lemburId') ?? dataForScreen?['jam_mulai'] ?? DateTime.now().toIso8601String();
-          
+          final lemburId =
+              dataForScreen?['id']?.toString() ??
+              dataForScreen?['tanggal']?.toString() ??
+              'today';
+          final actualStart =
+              prefs.getString('lembur_start_time_$lemburId') ??
+              dataForScreen?['jam_mulai'] ??
+              DateTime.now().toIso8601String();
+
           final lemburDataForScreen = {
             'jam_mulai_lembur': actualStart,
             'jadwal_mulai': dataForScreen?['jam_mulai'],
-            'jam_selesai_lembur': dataForScreen?['jam_selesai'] ?? DateTime.now().add(const Duration(hours: 2)).toIso8601String(),
+            'jam_selesai_lembur':
+                dataForScreen?['jam_selesai'] ??
+                DateTime.now().add(const Duration(hours: 2)).toIso8601String(),
             'alasan': dataForScreen?['alasan'] ?? 'Lembur',
             'durasi_lembur_menit': hitungDurasiLemburMenit(dataForScreen),
           };
-          Navigator.push(context, MaterialPageRoute(builder: (_) => SelesaiLemburScreen(lemburData: lemburDataForScreen)));
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (_) =>
+                  SelesaiLemburScreen(lemburData: lemburDataForScreen),
+            ),
+          );
         } else {
-          ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Status lembur tidak diketahui: $status')));
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Status lembur tidak diketahui: $status')),
+          );
         }
       }
     } catch (e) {
       if (!mounted) return;
       Navigator.pop(context);
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Gagal memuat data lembur.')));
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Gagal memuat data lembur.')),
+      );
     }
   }
 
@@ -1082,5 +1150,36 @@ class _PresensiHarianScreenState extends State<PresensiHarianScreen> {
       thickness: 1,
       indent: 52, // Align with text
     );
+  }
+
+  DateTime? _parseFlexibleTime(String timeStr) {
+    try {
+      if (timeStr.contains('T') || timeStr.contains('-')) {
+        return DateTime.parse(timeStr);
+      } else {
+        final parts = timeStr.split(':');
+        final now = DateTime.now();
+        return DateTime(
+          now.year,
+          now.month,
+          now.day,
+          int.parse(parts[0]),
+          int.parse(parts[1]),
+        );
+      }
+    } catch (e) {
+      return null;
+    }
+  }
+
+  String _formatTimeForDisplay(String? timeStr) {
+    if (timeStr == null || timeStr.isEmpty) return '--';
+    final dt = _parseFlexibleTime(timeStr);
+    if (dt != null) {
+      final h = dt.hour.toString().padLeft(2, '0');
+      final m = dt.minute.toString().padLeft(2, '0');
+      return '$h:$m WIB';
+    }
+    return '$timeStr WIB';
   }
 }

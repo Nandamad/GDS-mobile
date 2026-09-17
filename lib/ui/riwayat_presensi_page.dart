@@ -4,6 +4,7 @@ import '../services/api_service.dart';
 import 'detail_log_page.dart';
 import 'detail_workflow_page.dart';
 import '../model/absensi.dart';
+import 'riwayat_kunjungan_page.dart';
 
 class RiwayatPresensiScreen extends StatefulWidget {
   final bool showBackButton;
@@ -21,8 +22,15 @@ class _RiwayatPresensiScreenState extends State<RiwayatPresensiScreen> {
   bool _isLoading = true;
   String? _errorMessage;
   List<Map<String, dynamic>> _allHistoryData = [];
-  
-  final List<String> _filterOptions = ['Semua', 'Hadir', 'Terlambat', 'Izin', 'Lembur', 'Alpha'];
+
+  final List<String> _filterOptions = [
+    'Semua',
+    'Hadir',
+    'Terlambat',
+    'Izin',
+    'Lembur',
+    'Alpha',
+  ];
 
   @override
   void initState() {
@@ -32,8 +40,18 @@ class _RiwayatPresensiScreenState extends State<RiwayatPresensiScreen> {
   }
 
   static const _monthNames = [
-    'Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni',
-    'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember',
+    'Januari',
+    'Februari',
+    'Maret',
+    'April',
+    'Mei',
+    'Juni',
+    'Juli',
+    'Agustus',
+    'September',
+    'Oktober',
+    'November',
+    'Desember',
   ];
 
   String _formatMonth(DateTime date) {
@@ -45,7 +63,7 @@ class _RiwayatPresensiScreenState extends State<RiwayatPresensiScreen> {
 
   String _formatTime(DateTime? date) {
     if (date == null) return '- - -';
-    final localDate = date.toLocal(); 
+    final localDate = date.toLocal();
     final hour = localDate.hour.toString().padLeft(2, '0');
     final minute = localDate.minute.toString().padLeft(2, '0');
     return '$hour:$minute';
@@ -57,7 +75,7 @@ class _RiwayatPresensiScreenState extends State<RiwayatPresensiScreen> {
       if (token == null) return;
 
       final dio = ApiService().dio;
-      
+
       // Fetch History
       final historyRes = await dio.get(
         '/history',
@@ -69,11 +87,13 @@ class _RiwayatPresensiScreenState extends State<RiwayatPresensiScreen> {
 
       // Fetch Lembur
       final lemburRes = await dio.get('/lembur');
-      
+
       if (historyRes.statusCode == 200) {
         final List<dynamic> historyData = historyRes.data['data'] ?? [];
-        final List<dynamic> lemburData = lemburRes.statusCode == 200 ? (lemburRes.data['data'] ?? []) : [];
-        
+        final List<dynamic> lemburData = lemburRes.statusCode == 200
+            ? (lemburRes.data['data'] ?? [])
+            : [];
+
         // Map lembur by date (YYYY-MM-DD)
         final Map<String, dynamic> lemburMap = {};
         for (var l in lemburData) {
@@ -85,7 +105,9 @@ class _RiwayatPresensiScreenState extends State<RiwayatPresensiScreen> {
         final parsedData = historyData.map((item) {
           final absensiObj = Absensi.fromJson(item);
           final tipe = item['tipe'] as String? ?? 'Kehadiran';
-          final rawStatus = (absensiObj.status ?? item['status'] ?? 'hadir').toString().toLowerCase();
+          final rawStatus = (absensiObj.status ?? item['status'] ?? 'hadir')
+              .toString()
+              .toLowerCase();
 
           Color bgColor = const Color(0xFFD1FAE5);
           Color txtColor = const Color(0xFF059669);
@@ -98,11 +120,16 @@ class _RiwayatPresensiScreenState extends State<RiwayatPresensiScreen> {
             if (rawStatus.contains('cuti')) {
               statusTxt = 'Cuti';
             }
-          } else if (rawStatus.contains('terlambat') || rawStatus.contains('late') || rawStatus.contains('pulang_awal') || rawStatus.contains('pulang awal')) {
+          } else if (rawStatus.contains('terlambat') ||
+              rawStatus.contains('late') ||
+              rawStatus.contains('pulang_awal') ||
+              rawStatus.contains('pulang awal')) {
             statusTxt = 'Terlambat';
             bgColor = const Color(0xFFFEF3C7);
             txtColor = const Color(0xFFD97706);
-          } else if (rawStatus.contains('tidak_absen') || rawStatus.contains('alpha') || rawStatus.contains('tidak hadir')) {
+          } else if (rawStatus.contains('tidak_absen') ||
+              rawStatus.contains('alpha') ||
+              rawStatus.contains('tidak hadir')) {
             statusTxt = 'Alpha';
             bgColor = const Color(0xFFFEE2E2);
             txtColor = const Color(0xFFDC2626);
@@ -113,16 +140,16 @@ class _RiwayatPresensiScreenState extends State<RiwayatPresensiScreen> {
           }
 
           final tanggal = absensiObj.tanggal?.toLocal();
-          
+
           String lemburJam = '';
           if (tanggal != null) {
-             final dateKey = DateFormat('yyyy-MM-dd').format(tanggal);
-             if (lemburMap.containsKey(dateKey)) {
-                final est = lemburMap[dateKey]['estimasi_jam'];
-                if (est != null) {
-                   lemburJam = '${est.toString()} Jam';
-                }
-             }
+            final dateKey = DateFormat('yyyy-MM-dd').format(tanggal);
+            if (lemburMap.containsKey(dateKey)) {
+              final est = lemburMap[dateKey]['estimasi_jam'];
+              if (est != null) {
+                lemburJam = '${est.toString()} Jam';
+              }
+            }
           }
 
           return {
@@ -132,19 +159,25 @@ class _RiwayatPresensiScreenState extends State<RiwayatPresensiScreen> {
             'statusTextColor': txtColor,
             'checkIn': _formatTime(absensiObj.jamMasuk),
             'checkOut': _formatTime(absensiObj.jamPulang),
+            'durasi':
+                absensiObj.jamMasuk != null && absensiObj.jamPulang != null
+                ? '${absensiObj.jamPulang!.difference(absensiObj.jamMasuk!).inHours}j ${absensiObj.jamPulang!.difference(absensiObj.jamMasuk!).inMinutes.remainder(60)}m'
+                : null,
             'lemburJam': lemburJam,
             'raw_data': item,
+            'tipe': tipe,
+            'absensi': absensiObj,
           };
         }).toList();
-        
+
         // Sort descending
         parsedData.sort((a, b) {
-           final da = a['rawDate'] as DateTime?;
-           final db = b['rawDate'] as DateTime?;
-           if (da == null && db == null) return 0;
-           if (da == null) return 1;
-           if (db == null) return -1;
-           return db.compareTo(da);
+          final da = a['rawDate'] as DateTime?;
+          final db = b['rawDate'] as DateTime?;
+          if (da == null && db == null) return 0;
+          if (da == null) return 1;
+          if (db == null) return -1;
+          return db.compareTo(da);
         });
 
         setState(() {
@@ -175,17 +208,52 @@ class _RiwayatPresensiScreenState extends State<RiwayatPresensiScreen> {
         automaticallyImplyLeading: false,
         leading: widget.showBackButton
             ? IconButton(
-                icon: const Icon(Icons.arrow_back_ios_new_rounded, color: Color(0xFF0F172A), size: 18),
+                icon: const Icon(
+                  Icons.arrow_back_ios_new_rounded,
+                  color: Color(0xFF0F172A),
+                  size: 18,
+                ),
                 onPressed: () => Navigator.pop(context),
               )
             : null,
         title: const Text(
           'Histori Absensi',
-          style: TextStyle(color: Color(0xFF0F172A), fontWeight: FontWeight.bold, fontSize: 16),
+          style: TextStyle(
+            color: Color(0xFF0F172A),
+            fontWeight: FontWeight.bold,
+            fontSize: 16,
+          ),
         ),
+        actions: [
+          TextButton.icon(
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (_) => const RiwayatKunjunganScreen(),
+                ),
+              );
+            },
+            icon: const Icon(
+              Icons.directions_car,
+              size: 16,
+              color: Color(0xFF009688),
+            ),
+            label: const Text(
+              'Perjalanan Dinas',
+              style: TextStyle(
+                color: Color(0xFF009688),
+                fontSize: 12,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+          ),
+        ],
       ),
       body: _isLoading
-          ? const Center(child: CircularProgressIndicator(color: Color(0xFF009688)))
+          ? const Center(
+              child: CircularProgressIndicator(color: Color(0xFF009688)),
+            )
           : RefreshIndicator(
               onRefresh: _fetchData,
               color: const Color(0xFF009688),
@@ -221,10 +289,21 @@ class _RiwayatPresensiScreenState extends State<RiwayatPresensiScreen> {
                 child: DropdownButton<String>(
                   value: _formatMonth(_selectedPeriod),
                   isExpanded: true,
-                  icon: const Icon(Icons.keyboard_arrow_down, color: Colors.grey, size: 20),
-                  style: const TextStyle(color: Color(0xFF0F172A), fontSize: 13, fontWeight: FontWeight.bold),
+                  icon: const Icon(
+                    Icons.keyboard_arrow_down,
+                    color: Colors.grey,
+                    size: 20,
+                  ),
+                  style: const TextStyle(
+                    color: Color(0xFF0F172A),
+                    fontSize: 13,
+                    fontWeight: FontWeight.bold,
+                  ),
                   onChanged: (val) {
-                    final index = _periodOptions.map(_formatMonth).toList().indexOf(val!);
+                    final index = _periodOptions
+                        .map(_formatMonth)
+                        .toList()
+                        .indexOf(val!);
                     if (index < 0) return;
                     setState(() {
                       _selectedPeriod = _periodOptions[index];
@@ -234,7 +313,10 @@ class _RiwayatPresensiScreenState extends State<RiwayatPresensiScreen> {
                   },
                   items: _periodOptions.map((date) {
                     final str = _formatMonth(date);
-                    return DropdownMenuItem<String>(value: str, child: Text(str));
+                    return DropdownMenuItem<String>(
+                      value: str,
+                      child: Text(str),
+                    );
                   }).toList(),
                 ),
               ),
@@ -257,18 +339,31 @@ class _RiwayatPresensiScreenState extends State<RiwayatPresensiScreen> {
                     },
                     borderRadius: BorderRadius.circular(20),
                     child: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 16,
+                        vertical: 8,
+                      ),
                       decoration: BoxDecoration(
-                        color: isSelected ? const Color(0xFF009688) : Colors.white,
+                        color: isSelected
+                            ? const Color(0xFF009688)
+                            : Colors.white,
                         borderRadius: BorderRadius.circular(20),
-                        border: Border.all(color: isSelected ? const Color(0xFF009688) : Colors.grey.shade300),
+                        border: Border.all(
+                          color: isSelected
+                              ? const Color(0xFF009688)
+                              : Colors.grey.shade300,
+                        ),
                       ),
                       child: Text(
                         filter,
                         style: TextStyle(
                           fontSize: 12,
-                          color: isSelected ? Colors.white : const Color(0xFF64748B),
-                          fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                          color: isSelected
+                              ? Colors.white
+                              : const Color(0xFF64748B),
+                          fontWeight: isSelected
+                              ? FontWeight.bold
+                              : FontWeight.normal,
                         ),
                       ),
                     ),
@@ -290,7 +385,10 @@ class _RiwayatPresensiScreenState extends State<RiwayatPresensiScreen> {
         children: [
           const Icon(Icons.error_outline, size: 40, color: Colors.grey),
           const SizedBox(height: 8),
-          Text(_errorMessage!, style: const TextStyle(color: Colors.grey, fontSize: 12)),
+          Text(
+            _errorMessage!,
+            style: const TextStyle(color: Colors.grey, fontSize: 12),
+          ),
         ],
       ),
     );
@@ -299,13 +397,17 @@ class _RiwayatPresensiScreenState extends State<RiwayatPresensiScreen> {
   Widget _buildHistoryList() {
     final filteredData = _allHistoryData.where((item) {
       if (_selectedStatus == 'Semua') return true;
-      if (_selectedStatus == 'Lembur') return (item['lemburJam'] as String).isNotEmpty;
+      if (_selectedStatus == 'Lembur')
+        return (item['lemburJam'] as String).isNotEmpty;
       return item['statusText'] == _selectedStatus;
     }).toList();
 
     if (filteredData.isEmpty) {
       return const Center(
-        child: Text('Tidak ada data absensi', style: TextStyle(color: Colors.grey, fontSize: 12)),
+        child: Text(
+          'Tidak ada data absensi',
+          style: TextStyle(color: Colors.grey, fontSize: 12),
+        ),
       );
     }
 
@@ -315,13 +417,20 @@ class _RiwayatPresensiScreenState extends State<RiwayatPresensiScreen> {
       itemBuilder: (context, index) {
         final item = filteredData[index];
         final date = item['rawDate'] as DateTime?;
-        final hariStr = date != null ? ['MIN', 'SEN', 'SEL', 'RAB', 'KAM', 'JUM', 'SAB'][date.weekday % 7] : '-';
-        final tanggalStr = date != null ? date.day.toString().padLeft(2, '0') : '-';
-        
+        final hariStr = date != null
+            ? ['MIN', 'SEN', 'SEL', 'RAB', 'KAM', 'JUM', 'SAB'][date.weekday %
+                  7]
+            : '-';
+        final tanggalStr = date != null
+            ? date.day.toString().padLeft(2, '0')
+            : '-';
+
         final checkIn = item['checkIn'];
         final checkOut = item['checkOut'];
-        final timeStr = (checkIn == '- - -' && checkOut == '- - -') ? '- - -' : '$checkIn - $checkOut';
-        
+        final timeStr = (checkIn == '- - -' && checkOut == '- - -')
+            ? '- - -'
+            : '$checkIn - $checkOut';
+
         final hasLembur = (item['lemburJam'] as String).isNotEmpty;
 
         return Container(
@@ -332,61 +441,161 @@ class _RiwayatPresensiScreenState extends State<RiwayatPresensiScreen> {
             borderRadius: BorderRadius.circular(12),
             border: Border.all(color: Colors.grey.shade100),
           ),
-          child: Row(
+          child: Column(
             children: [
-              // Date Circle
-              Container(
-                width: 48,
-                height: 48,
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  border: Border.all(color: Colors.grey.shade200),
-                ),
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Text(hariStr, style: const TextStyle(fontSize: 10, color: Color(0xFF64748B), fontWeight: FontWeight.bold)),
-                    Text(tanggalStr, style: const TextStyle(fontSize: 14, color: Color(0xFF0F172A), fontWeight: FontWeight.bold)),
-                  ],
-                ),
-              ),
-              const SizedBox(width: 16),
-              
-              // Center Info
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const Text('Jam Masuk / Pulang', style: TextStyle(fontSize: 10, color: Color(0xFF64748B))),
-                    const SizedBox(height: 4),
-                    Text(
-                      timeStr,
-                      style: const TextStyle(fontSize: 13, color: Color(0xFF0F172A), fontWeight: FontWeight.bold),
+              Row(
+                children: [
+                  // Date Circle
+                  Container(
+                    width: 48,
+                    height: 48,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      border: Border.all(color: Colors.grey.shade200),
                     ),
-                    if (hasLembur) ...[
-                      const SizedBox(height: 4),
-                      Text(
-                        'Lembur: ${item['lemburJam']}',
-                        style: const TextStyle(fontSize: 11, color: Color(0xFF009688), fontWeight: FontWeight.w600),
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Text(
+                          hariStr,
+                          style: const TextStyle(
+                            fontSize: 10,
+                            color: Color(0xFF64748B),
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                        Text(
+                          tanggalStr,
+                          style: const TextStyle(
+                            fontSize: 14,
+                            color: Color(0xFF0F172A),
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(width: 16),
+
+                  // Center Info
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Text(
+                          'Jam Masuk / Pulang',
+                          style: TextStyle(
+                            fontSize: 10,
+                            color: Color(0xFF64748B),
+                          ),
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          timeStr,
+                          style: const TextStyle(
+                            fontSize: 13,
+                            color: Color(0xFF0F172A),
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                        if (item['durasi'] != null) ...[
+                          const SizedBox(height: 4),
+                          Text(
+                            'Durasi Kerja: ${item['durasi']}',
+                            style: const TextStyle(
+                              fontSize: 11,
+                              color: Color(0xFF0F172A),
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ],
+                        if (hasLembur) ...[
+                          const SizedBox(height: 4),
+                          Text(
+                            'Lembur: ${item['lemburJam']}',
+                            style: const TextStyle(
+                              fontSize: 11,
+                              color: Color(0xFF009688),
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ],
+                      ],
+                    ),
+                  ),
+
+                  // Status Badge
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 12,
+                      vertical: 6,
+                    ),
+                    decoration: BoxDecoration(
+                      color: item['statusBgColor'],
+                      borderRadius: BorderRadius.circular(6),
+                    ),
+                    child: Text(
+                      item['statusText'],
+                      style: TextStyle(
+                        fontSize: 11,
+                        color: item['statusTextColor'],
+                        fontWeight: FontWeight.bold,
                       ),
-                    ]
-                  ],
-                ),
+                    ),
+                  ),
+                ],
               ),
-              
-              // Status Badge
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                decoration: BoxDecoration(
-                  color: item['statusBgColor'],
-                  borderRadius: BorderRadius.circular(6),
-                ),
-                child: Text(
-                  item['statusText'],
-                  style: TextStyle(
-                    fontSize: 11,
-                    color: item['statusTextColor'],
-                    fontWeight: FontWeight.bold,
+              const SizedBox(height: 12),
+              SizedBox(
+                width: double.infinity,
+                child: OutlinedButton(
+                  onPressed: () {
+                    if (item['tipe'] == 'Kehadiran' ||
+                        item['statusText'] == 'Hadir' ||
+                        item['statusText'] == 'Terlambat' ||
+                        item['statusText'] == 'Alpha') {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) =>
+                              DetailLogScreen(absensi: item['absensi']),
+                        ),
+                      );
+                    } else if (item['tipe'] == 'Cuti' ||
+                        item['statusText'] == 'Cuti' ||
+                        item['statusText'] == 'Izin') {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => DetailWorkflowScreen(
+                            data: item['raw_data'],
+                            type: item['tipe'] ?? 'Cuti',
+                          ),
+                        ),
+                      );
+                    } else {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) =>
+                              DetailLogScreen(absensi: item['absensi']),
+                        ),
+                      );
+                    }
+                  },
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: const Color(0xFF009688),
+                    side: const BorderSide(color: Color(0xFF009688)),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                  ),
+                  child: Text(
+                    'Detail ${item['tipe'] == 'Kehadiran' ? 'Log' : item['tipe']}',
+                    style: const TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.bold,
+                    ),
                   ),
                 ),
               ),

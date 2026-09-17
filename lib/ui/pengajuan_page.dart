@@ -202,36 +202,6 @@ class _PengajuanScreenState extends State<PengajuanScreen> {
       } on DioException catch (e) {
         debugPrint('GET /lembur ERROR: ${e.response?.data}');
       }
-      // ----------------------------------------------------------
-      // KUNJUNGAN
-      // ----------------------------------------------------------
-
-      try {
-        final response = await dio.get('/kunjungan');
-
-        final body = response.data;
-        final entries = normalizeSubmissionList(body, preferredKey: 'data');
-
-        for (final item in entries) {
-          final raw = Map<String, dynamic>.from(item);
-
-          result.add({
-            'id': raw['id'],
-            'type': 'Kunjungan',
-            'rawData': raw,
-            'title': raw['tujuan_kunjungan'] ?? 'Kunjungan',
-            'badgeText': 'Kunjungan',
-            'badgeBgColor': const Color(0xFFE0E7FF),
-            'badgeTextColor': const Color(0xFF4F46E5),
-            'statusText': raw['status_final'] == 'menunggu_verifikasi' ? 'Pending' : _capitalize(raw['status_final'] ?? ''),
-            'dateRange': _formatDate(raw['tanggal']),
-            'submittedDate': 'Klien: ${raw['nama_klien']}',
-            'sortDate': _parseDate(raw['created_at']),
-          });
-        }
-      } on DioException catch (e) {
-        debugPrint('GET /kunjungan ERROR: ${e.response?.data}');
-      }
 
       // ----------------------------------------------------------
       // SORT TERBARU
@@ -776,27 +746,6 @@ class _PengajuanScreenState extends State<PengajuanScreen> {
                   );
                   if (mounted && result == true) _fetchHistory();
                 },
-              ),
-
-              // Card Kunjungan
-              _buildMenuCard(
-                title: 'Kunjungan Klien',
-                subtitle: 'Catat perjalanan dinas atau kunjungan klien',
-                onTap: () async {
-                  final result = await Navigator.push(
-                    context,
-                    MaterialPageRoute(builder: (context) => const MulaiKunjunganScreen()),
-                  );
-                  if (mounted && result == true) _fetchHistory();
-                },
-              ),
-              _buildMenuCard(
-                title: 'Riwayat Kunjungan Klien',
-                subtitle: 'Lihat riwayat kunjungan klien Anda',
-                onTap: () => Navigator.push(
-                  context,
-                  MaterialPageRoute(builder: (context) => const RiwayatKunjunganScreen()),
-                ),
               ),
 
               const SizedBox(height: 8),
