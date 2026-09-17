@@ -212,91 +212,10 @@ class _SelesaiLemburScreenState extends State<SelesaiLemburScreen> {
     return '${twoDigits(startTime.hour)}:${twoDigits(startTime.minute)}';
   }
 
-  final TextEditingController _alasanAwalController = TextEditingController();
-
-  /// Dialog peringatan jika mencoba selesai sebelum waktunya
-  void _showCannotFinishDialog() {
-    showDialog(
-      context: context,
-      builder: (context) => Dialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        child: Padding(
-          padding: const EdgeInsets.all(24),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Container(
-                padding: const EdgeInsets.all(16),
-                decoration: BoxDecoration(
-                  color: Colors.orange.shade50,
-                  shape: BoxShape.circle,
-                ),
-                child: const Icon(Icons.info_outline, color: Colors.orange, size: 32),
-              ),
-              const SizedBox(height: 16),
-              const Text(
-                'Selesai Lebih Awal',
-                style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: Color(0xFF0F172A)),
-              ),
-              const SizedBox(height: 8),
-              const Text(
-                'Waktu lembur belum habis. Jika ingin mengakhiri sekarang, silakan isi alasan:',
-                textAlign: TextAlign.center,
-                style: TextStyle(color: Colors.grey, fontSize: 12, height: 1.5),
-              ),
-              const SizedBox(height: 16),
-              TextField(
-                controller: _alasanAwalController,
-                decoration: InputDecoration(
-                  hintText: 'Alasan selesai awal...',
-                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
-                ),
-              ),
-              const SizedBox(height: 24),
-              Row(
-                children: [
-                  Expanded(
-                    child: OutlinedButton(
-                      onPressed: () => Navigator.pop(context),
-                      child: const Text('Batal', style: TextStyle(color: Colors.grey)),
-                    ),
-                  ),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: ElevatedButton(
-                      style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF009688)),
-                      onPressed: () {
-                        Navigator.pop(context);
-                        _akhiriLembur(isEarly: true);
-                      },
-                      child: const Text('Kirim', style: TextStyle(color: Colors.white)),
-                    ),
-                  ),
-                ],
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
-  Future<void> _akhiriLembur({bool isEarly = false}) async {
-    // Cek apakah waktu sudah habis
-    if (!isTimeUp && !isEarly) {
-      _showCannotFinishDialog();
-      return;
-    }
-    
-    if (isEarly && _alasanAwalController.text.trim().isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Alasan wajib diisi!')));
-      return;
-    }
-
+  Future<void> _akhiriLembur() async {
     setState(() => _isSubmitting = true);
     try {
-      final payload = isEarly ? {'is_early_checkout': true, 'alasan': _alasanAwalController.text.trim()} : {};
-      final response = await ApiService().dio.post('/lembur/selesai', data: payload);
+      final response = await ApiService().dio.post('/lembur/selesai');
       
       if (!mounted) return;
       if (response.statusCode == 200) {
@@ -582,7 +501,7 @@ class _SelesaiLemburScreenState extends State<SelesaiLemburScreen> {
                 child: ElevatedButton(
                   onPressed: _isSubmitting ? null : _akhiriLembur,
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: timeUp ? const Color(0xFFEF4444) : const Color(0xFF009688),
+                    backgroundColor: const Color(0xFFEF4444),
                     disabledBackgroundColor: Colors.grey.shade300,
                     elevation: 0,
                     shape: RoundedRectangleBorder(

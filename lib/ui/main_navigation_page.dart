@@ -89,29 +89,29 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
   ///   Biasa:   Home(0) | Pengajuan(1) | [FAB=Presensi(2)] | Riwayat(3)  | Profil(4)
 
   List<Widget> get _pages {
-    final base = <Widget>[
-      DashboardScreen(onNotificationTap: _openNotifikasi),
-      const PengajuanScreen(),
-      const PresensiHarianScreen(),
+    return const <Widget>[
+      DashboardScreen(),
+      PengajuanScreen(),
+      PresensiHarianScreen(),
+      RiwayatPresensiScreen(),
+      ProfilPage(),
     ];
-
-    if (_isAtasan) {
-      base.add(const ApprovalScreen());
-    }
-
-    base.addAll([const RiwayatPresensiScreen(), const ProfilPage()]);
-
-    return base;
   }
 
   int get _presensiIndex => 2;
-  int get _riwayatIndex => _isAtasan ? 4 : 3;
-  int get _profilIndex => _isAtasan ? 5 : 4;
-  int get _approvalIndex => 3; // Hanya berlaku saat _isAtasan
+  int get _riwayatIndex => 3;
+  int get _profilIndex => 4;
 
   @override
   Widget build(BuildContext context) {
-    final pages = _pages;
+    // Need to create pages with dynamic callback for Notification
+    final pages = <Widget>[
+      DashboardScreen(onNotificationTap: _openNotifikasi),
+      const PengajuanScreen(),
+      const PresensiHarianScreen(),
+      const RiwayatPresensiScreen(),
+      const ProfilPage(),
+    ];
 
     return Scaffold(
       body: IndexedStack(index: _currentIndex, children: pages),
@@ -209,45 +209,21 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
                 ),
               ),
 
-              // 3. APPROVAL (hanya untuk atasan) atau RIWAYAT
-              if (_isAtasan)
-                _buildNavItem(
-                  index: _approvalIndex,
-                  icon: Icons.assignment_turned_in_outlined,
-                  activeIcon: Icons.assignment_turned_in_rounded,
-                  label: 'Approval',
-                ),
+              // 4. RIWAYAT
+              _buildNavItem(
+                index: _riwayatIndex,
+                icon: Icons.class_outlined,
+                activeIcon: Icons.class_rounded,
+                label: 'Riwayat',
+              ),
 
-              if (!_isAtasan)
-                // 3. RIWAYAT (untuk karyawan biasa)
-                _buildNavItem(
-                  index: _riwayatIndex,
-                  icon: Icons.class_outlined,
-                  activeIcon: Icons.class_rounded,
-                  label: 'Riwayat',
-                ),
-
-              // 4. PROFIL (atau RIWAYAT + PROFIL jika atasan, tapi ruang terbatas)
-              // Jika atasan, kita ganti Profil dengan Riwayat di tab ke-4
-              // dan Profil diakses dari Riwayat atau drawer.
-              // NAMUN: Untuk menjaga UX yang konsisten, kita tetap tampilkan
-              // 4 item navigasi. Untuk atasan: Home | Pengajuan | Approval | Profil
-              // Riwayat bisa diakses dari dashboard atau menu profil.
-              if (_isAtasan)
-                _buildNavItem(
-                  index: _profilIndex,
-                  icon: Icons.person_outline_rounded,
-                  activeIcon: Icons.person_rounded,
-                  label: 'Profil',
-                ),
-
-              if (!_isAtasan)
-                _buildNavItem(
-                  index: _profilIndex,
-                  icon: Icons.person_outline_rounded,
-                  activeIcon: Icons.person_rounded,
-                  label: 'Profil',
-                ),
+              // 5. PROFIL
+              _buildNavItem(
+                index: _profilIndex,
+                icon: Icons.person_outline_rounded,
+                activeIcon: Icons.person_rounded,
+                label: 'Profil',
+              ),
             ],
           ),
         ),

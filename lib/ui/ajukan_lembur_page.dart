@@ -1,7 +1,12 @@
+import 'dart:io';
+import 'dart:ui';
+import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
+import 'package:image_picker/image_picker.dart';
 import '../services/api_service.dart';
 import '../services/notification_service.dart';
+import 'kamera_page.dart';
 
 class AjukanLemburScreen extends StatefulWidget {
   const AjukanLemburScreen({super.key});
@@ -13,11 +18,12 @@ class AjukanLemburScreen extends StatefulWidget {
 class _AjukanLemburScreenState extends State<AjukanLemburScreen> {
   final TextEditingController _alasanController = TextEditingController();
   final TextEditingController _catatanController = TextEditingController();
-  final TextEditingController _estimasiMenitController = TextEditingController(text: '120'); // Default 2 jam
   bool _isSubmitting = false;
   
   DateTime _selectedDate = DateTime.now();
-  TimeOfDay _selectedTime = TimeOfDay.now();
+  int _selectedDuration = 2; // Default 2 jam
+
+  String? _fotoSelfieBase64;
 
   @override
   void dispose() {
@@ -40,22 +46,30 @@ class _AjukanLemburScreenState extends State<AjukanLemburScreen> {
     }
   }
 
-  Future<void> _selectTime(BuildContext context) async {
-    final TimeOfDay? picked = await showTimePicker(
-      context: context,
-      initialTime: _selectedTime,
+  Future<void> _ambilFoto() async {
+    final result = await Navigator.push(
+      context,
+      MaterialPageRoute(builder: (context) => const KameraScreen(namaKantor: 'Verifikasi Lembur')),
     );
-    if (picked != null && picked != _selectedTime) {
+
+    if (result != null && result is String) {
       setState(() {
-        _selectedTime = picked;
+        _fotoSelfieBase64 = result;
       });
     }
   }
 
-  Future<void> _mulaiLembur() async {
+  Future<void> _ajukanLembur() async {
     if (_alasanController.text.trim().isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Alasan lembur wajib diisi!')),
+      );
+      return;
+    }
+
+    if (_fotoSelfieBase64 == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Foto verifikasi wajib diambil!')),
       );
       return;
     }
@@ -67,37 +81,34 @@ class _AjukanLemburScreenState extends State<AjukanLemburScreen> {
     try {
       final String tanggal = DateFormat('yyyy-MM-dd').format(_selectedDate);
       
-      final String jamMulaiStr = '${_selectedTime.hour.toString().padLeft(2, '0')}:${_selectedTime.minute.toString().padLeft(2, '0')}';
-      
-      // Hitung jam selesai berdasarkan durasi (dalam menit)
-      int totalMenit = _selectedTime.hour * 60 + _selectedTime.minute + (int.tryParse(_estimasiMenitController.text) ?? 120);
-      int endHour = (totalMenit ~/ 60) % 24;
-      int endMinute = totalMenit % 60;
-      
-      final String jamSelesaiStr = '${endHour.toString().padLeft(2, '0')}:${endMinute.toString().padLeft(2, '0')}';
+      // Default waktu mulai jam 17:00 jika tidak ada input jam (asumsi jam kerja selesai 17:00)
+      final String jamMulaiStr = '17:00';
+      int endHour = 17 + _selectedDuration;
+      final String jamSelesaiStr = '${endHour.toString().padLeft(2, '0')}:00';
 
       final payload = {
         'tanggal': tanggal,
         'jam_mulai_lembur': jamMulaiStr,
         'jam_selesai_lembur': jamSelesaiStr,
-        'alasan': _alasanController.text.trim() + (_catatanController.text.isNotEmpty ? ' - ' + _catatanController.text : ''),
+        'foto': _fotoSelfieBase64,
       };
 
       final response = await ApiService().dio.post('/lembur', data: payload);
-      if (response.statusCode == 201) {
+      if (response.statusCode == 201 || response.statusCode == 200) {
         if (!mounted) return;
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('Pengajuan lembur berhasil dikirim'), backgroundColor: Colors.green),
         );
 
-        // Trigger notifikasi lokal
         NotificationService().showInfoNotification(
           title: 'Pengajuan Lembur Terkirim',
           body: 'Pengajuan lembur Anda telah berhasil dikirim dan menunggu persetujuan.',
           preferenceKey: 'notif_pengajuan',
         );
 
-        Navigator.pop(context, true); // Return true to refresh history
+        Navigator.pop(context, true); 
+      } else {
+        throw Exception('Gagal mengirim ke server');
       }
     } catch (e) {
       if (!mounted) return;
@@ -111,40 +122,36 @@ class _AjukanLemburScreenState extends State<AjukanLemburScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFF8FAFC),
+      backgroundColor: Colors.white,
       appBar: AppBar(
         backgroundColor: Colors.white,
         elevation: 0,
-        leading: Padding(
-          padding: const EdgeInsets.all(8.0),
-          child: InkWell(
-            onTap: () => Navigator.pop(context),
-            borderRadius: BorderRadius.circular(20),
-            child: Container(
-              decoration: BoxDecoration(color: Colors.grey.shade100, shape: BoxShape.circle),
-              child: const Icon(Icons.arrow_back, size: 18, color: Color(0xFF0F172A)),
-            ),
-          ),
+        centerTitle: false,
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back_ios_new, color: Color(0xFF0F172A), size: 18),
+          onPressed: () => Navigator.pop(context),
         ),
         title: const Text(
-          'Ajukan Lembur',
-          style: TextStyle(color: Color(0xFF0F172A), fontWeight: FontWeight.bold, fontSize: 16),
+          'Mulai Lembur',
+          style: TextStyle(
+            color: Color(0xFF0F172A),
+            fontWeight: FontWeight.bold,
+            fontSize: 16,
+          ),
         ),
-        centerTitle: true,
       ),
       body: SingleChildScrollView(
-        padding: const EdgeInsets.all(16),
+        padding: const EdgeInsets.all(20),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             // Warning Banner
             Container(
               width: double.infinity,
-              padding: const EdgeInsets.all(12),
+              padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
                 color: const Color(0xFFFFEDD5),
                 borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: const Color(0xFFFED7AA)),
               ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -163,9 +170,9 @@ class _AjukanLemburScreenState extends State<AjukanLemburScreen> {
                       ),
                     ],
                   ),
-                  const SizedBox(height: 6),
+                  const SizedBox(height: 8),
                   const Text(
-                    'Kegiatan lembur hanya akan dihitung setelah waktu kerja normal Anda hari ini selesai dan membutuhkan persetujuan HRD.',
+                    'Kegiatan lembur hanya akan dihitung setelah waktu kerja normal Anda hari ini selesai.',
                     style: TextStyle(
                       color: Color(0xFFEA580C),
                       fontSize: 11,
@@ -175,18 +182,14 @@ class _AjukanLemburScreenState extends State<AjukanLemburScreen> {
                 ],
               ),
             ),
-            const SizedBox(height: 20),
+            const SizedBox(height: 24),
 
             // Pilih Tanggal
-            const Text(
-              'Tanggal Lembur *',
-              style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Color(0xFF0F172A)),
-            ),
-            const SizedBox(height: 8),
+            _buildLabel('Tanggal Lembur *'),
             GestureDetector(
               onTap: () => _selectDate(context),
               child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
                 decoration: BoxDecoration(
                   color: Colors.white,
                   borderRadius: BorderRadius.circular(8),
@@ -195,34 +198,8 @@ class _AjukanLemburScreenState extends State<AjukanLemburScreen> {
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    Text(DateFormat('dd MMM yyyy').format(_selectedDate), style: const TextStyle(fontSize: 12)),
-                    const Icon(Icons.calendar_today, size: 16, color: Colors.grey),
-                  ],
-                ),
-              ),
-            ),
-            const SizedBox(height: 20),
-
-            // Pilih Waktu Mulai
-            const Text(
-              'Waktu Mulai Lembur *',
-              style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Color(0xFF0F172A)),
-            ),
-            const SizedBox(height: 8),
-            GestureDetector(
-              onTap: () => _selectTime(context),
-              child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(8),
-                  border: Border.all(color: Colors.grey.shade300),
-                ),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Text(_selectedTime.format(context), style: const TextStyle(fontSize: 12)),
-                    const Icon(Icons.access_time, size: 16, color: Colors.grey),
+                    Text(DateFormat('dd MMMM yyyy', 'id_ID').format(_selectedDate), style: const TextStyle(fontSize: 13, color: Color(0xFF0F172A))),
+                    const Icon(Icons.calendar_today_outlined, size: 18, color: Color(0xFF64748B)),
                   ],
                 ),
               ),
@@ -230,19 +207,14 @@ class _AjukanLemburScreenState extends State<AjukanLemburScreen> {
             const SizedBox(height: 20),
 
             // Alasan Lembur
-            const Text(
-              'Alasan Lembur *',
-              style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Color(0xFF0F172A)),
-            ),
-            const SizedBox(height: 8),
+            _buildLabel('Alasan Lembur *'),
             TextField(
               controller: _alasanController,
-              style: const TextStyle(fontSize: 12),
+              style: const TextStyle(fontSize: 13),
               decoration: InputDecoration(
-                hintText: 'Contoh: Pekerjaan tambahan',
-                fillColor: Colors.white,
                 filled: true,
-                contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+                fillColor: Colors.white,
+                contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
                 border: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(8),
                   borderSide: BorderSide(color: Colors.grey.shade300),
@@ -250,54 +222,40 @@ class _AjukanLemburScreenState extends State<AjukanLemburScreen> {
                 enabledBorder: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(8),
                   borderSide: BorderSide(color: Colors.grey.shade300),
+                ),
+                focusedBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(8),
+                  borderSide: BorderSide(color: const Color(0xFF009688)),
                 ),
               ),
             ),
             const SizedBox(height: 20),
 
-            const Text(
-              'Estimasi Durasi Lembur (Menit) *',
-              style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Color(0xFF0F172A)),
-            ),
-            const SizedBox(height: 8),
-            TextField(
-              controller: _estimasiMenitController,
-              keyboardType: TextInputType.number,
-              style: const TextStyle(fontSize: 13),
-              decoration: InputDecoration(
-                hintText: 'Contoh: 120 untuk 2 jam',
-                hintStyle: TextStyle(fontSize: 12, color: Colors.grey.shade400),
-                contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                filled: true,
-                fillColor: const Color(0xFFF8FAFC),
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(8),
-                  borderSide: BorderSide.none,
-                ),
-                enabledBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(8),
-                  borderSide: BorderSide(color: Colors.grey.shade300),
-                ),
-              ),
+            // Estimasi Durasi Lembur
+            _buildLabel('Estimasi Durasi Lembur *'),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                _buildDurationChip(1),
+                _buildDurationChip(2),
+                _buildDurationChip(3),
+                _buildDurationChip(4),
+              ],
             ),
             const SizedBox(height: 20),
 
             // Catatan Tambahan
-            const Text(
-              'Catatan Tambahan',
-              style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Color(0xFF0F172A)),
-            ),
-            const SizedBox(height: 8),
+            _buildLabel('Catatan Tambahan'),
             TextField(
               controller: _catatanController,
               maxLines: 4,
-              style: const TextStyle(fontSize: 12),
+              style: const TextStyle(fontSize: 13),
               decoration: InputDecoration(
-                hintText: 'Perlu lembur tambahan...',
-                hintStyle: const TextStyle(fontSize: 12, color: Colors.grey, height: 1.4),
+                hintText: 'Perlu lembur tambahan untuk menyelesaikan testing security setelah deployment server selesai malam ini.',
+                hintStyle: const TextStyle(fontSize: 13, color: Colors.grey, height: 1.4),
                 fillColor: Colors.white,
                 filled: true,
-                contentPadding: const EdgeInsets.all(12),
+                contentPadding: const EdgeInsets.all(16),
                 border: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(8),
                   borderSide: BorderSide(color: Colors.grey.shade300),
@@ -306,20 +264,85 @@ class _AjukanLemburScreenState extends State<AjukanLemburScreen> {
                   borderRadius: BorderRadius.circular(8),
                   borderSide: BorderSide(color: Colors.grey.shade300),
                 ),
+                focusedBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(8),
+                  borderSide: BorderSide(color: const Color(0xFF009688)),
+                ),
               ),
             ),
-            const SizedBox(height: 32),
+            const SizedBox(height: 24),
 
-            // Submit Button
+            // Foto Selfie
+            _buildLabel('Foto Selfie Verifikasi'),
+            GestureDetector(
+              onTap: _ambilFoto,
+              child: CustomPaint(
+                painter: DashedRectPainter(color: Colors.grey.shade400, strokeWidth: 1, gap: 5),
+                child: Container(
+                  width: double.infinity,
+                  height: 180,
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFF8FAFC),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: _fotoSelfieBase64 != null
+                      ? ClipRRect(
+                          borderRadius: BorderRadius.circular(12),
+                          child: Image.memory(
+                            base64Decode(_fotoSelfieBase64!.split(',').last),
+                            fit: BoxFit.cover,
+                          ),
+                        )
+                      : Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Container(
+                              padding: const EdgeInsets.all(12),
+                              decoration: BoxDecoration(
+                                color: Colors.white,
+                                shape: BoxShape.circle,
+                                border: Border.all(color: Colors.grey.shade200),
+                              ),
+                              child: const Icon(Icons.camera_alt_outlined, color: Color(0xFF009688), size: 28),
+                            ),
+                            const SizedBox(height: 12),
+                            const Text(
+                              'Ambil Foto Selfie',
+                              style: TextStyle(color: Color(0xFF009688), fontWeight: FontWeight.bold, fontSize: 13),
+                            ),
+                            const SizedBox(height: 6),
+                            const Text(
+                              'Foto wajah diperlukan untuk verifikasi lembur',
+                              style: TextStyle(color: Colors.grey, fontSize: 11),
+                            ),
+                          ],
+                        ),
+                ),
+              ),
+            ),
+            const SizedBox(height: 24),
+
+            const Center(
+              child: Text(
+                'Maksimal lembur dalam sebulan adalah 72 jam',
+                style: TextStyle(color: Colors.grey, fontSize: 11),
+              ),
+            ),
+            const SizedBox(height: 16),
+
             SizedBox(
               width: double.infinity,
               height: 48,
-              child: ElevatedButton.icon(
-                onPressed: _isSubmitting ? null : _mulaiLembur,
-                icon: _isSubmitting
-                    ? const SizedBox.shrink()
-                    : const Icon(Icons.send_rounded, color: Colors.white, size: 20),
-                label: _isSubmitting
+              child: ElevatedButton(
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: const Color(0xFF009688),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  elevation: 0,
+                ),
+                onPressed: _isSubmitting ? null : _ajukanLembur,
+                child: _isSubmitting
                     ? const SizedBox(
                         width: 20,
                         height: 20,
@@ -327,20 +350,8 @@ class _AjukanLemburScreenState extends State<AjukanLemburScreen> {
                       )
                     : const Text(
                         'Ajukan Lembur',
-                        style: TextStyle(
-                          color: Colors.white,
-                          fontSize: 13,
-                          fontWeight: FontWeight.bold,
-                        ),
+                        style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 13),
                       ),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFF009688),
-                  disabledBackgroundColor: Colors.grey.shade300,
-                  elevation: 0,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                ),
               ),
             ),
             const SizedBox(height: 20),
@@ -350,5 +361,79 @@ class _AjukanLemburScreenState extends State<AjukanLemburScreen> {
     );
   }
 
+  Widget _buildLabel(String text) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 8.0),
+      child: Text(
+        text,
+        style: const TextStyle(
+          fontSize: 12,
+          fontWeight: FontWeight.bold,
+          color: Color(0xFF0F172A),
+        ),
+      ),
+    );
+  }
 
+  Widget _buildDurationChip(int hours) {
+    final bool isSelected = _selectedDuration == hours;
+    return GestureDetector(
+      onTap: () {
+        setState(() {
+          _selectedDuration = hours;
+        });
+      },
+      child: Container(
+        width: 75,
+        padding: const EdgeInsets.symmetric(vertical: 12),
+        decoration: BoxDecoration(
+          color: isSelected ? const Color(0xFFE6F7F5) : Colors.white,
+          borderRadius: BorderRadius.circular(8),
+          border: Border.all(
+            color: isSelected ? const Color(0xFF009688) : Colors.grey.shade300,
+          ),
+        ),
+        alignment: Alignment.center,
+        child: Text(
+          '$hours Jam',
+          style: TextStyle(
+            fontSize: 13,
+            fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+            color: isSelected ? const Color(0xFF009688) : const Color(0xFF64748B),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class DashedRectPainter extends CustomPainter {
+  final Color color;
+  final double strokeWidth;
+  final double gap;
+
+  DashedRectPainter({required this.color, required this.strokeWidth, required this.gap});
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final Paint paint = Paint()
+      ..color = color
+      ..strokeWidth = strokeWidth
+      ..style = PaintingStyle.stroke;
+
+    final Path path = Path()
+      ..addRRect(RRect.fromRectAndRadius(Rect.fromLTWH(0, 0, size.width, size.height), const Radius.circular(12)));
+
+    final PathMetrics pathMetrics = path.computeMetrics();
+    for (PathMetric pathMetric in pathMetrics) {
+      double distance = 0.0;
+      while (distance < pathMetric.length) {
+        canvas.drawPath(pathMetric.extractPath(distance, distance + gap), paint);
+        distance += gap * 2;
+      }
+    }
+  }
+
+  @override
+  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
 }

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import '../services/api_service.dart';
+import 'detail_kunjungan_page.dart';
 
 class RiwayatKunjunganScreen extends StatefulWidget {
   const RiwayatKunjunganScreen({Key? key}) : super(key: key);
@@ -169,12 +170,22 @@ class _RiwayatKunjunganScreenState extends State<RiwayatKunjunganScreen> {
         itemCount: _kunjunganList.length,
         itemBuilder: (context, index) {
           final item = _kunjunganList[index];
-          return Card(
-            margin: const EdgeInsets.only(bottom: 16),
-            elevation: 1,
-            color: Colors.white,
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-            child: Padding(
+          return InkWell(
+            onTap: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => DetailKunjunganScreen(data: item),
+                ),
+              );
+            },
+            borderRadius: BorderRadius.circular(12),
+            child: Card(
+              margin: const EdgeInsets.only(bottom: 16),
+              elevation: 1,
+              color: Colors.white,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              child: Padding(
               padding: const EdgeInsets.all(16),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -244,6 +255,7 @@ class _RiwayatKunjunganScreenState extends State<RiwayatKunjunganScreen> {
                   ),
                 ],
               ),
+            ),
             ),
           );
         },

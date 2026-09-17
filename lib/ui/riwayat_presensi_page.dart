@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
-import '../services/api_service.dart';
-import '../model/absensi.dart';
 import 'package:intl/intl.dart';
+import '../services/api_service.dart';
+import 'detail_log_page.dart';
+import 'detail_workflow_page.dart';
+import '../model/absensi.dart';
 
 class RiwayatPresensiScreen extends StatefulWidget {
   final bool showBackButton;
@@ -131,6 +133,7 @@ class _RiwayatPresensiScreenState extends State<RiwayatPresensiScreen> {
             'checkIn': _formatTime(absensiObj.jamMasuk),
             'checkOut': _formatTime(absensiObj.jamPulang),
             'lemburJam': lemburJam,
+            'raw_data': item,
           };
         }).toList();
         

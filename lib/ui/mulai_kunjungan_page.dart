@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:geocoding/geocoding.dart';
+import 'package:dio/dio.dart';
 import '../services/api_service.dart';
 
 class MulaiKunjunganScreen extends StatefulWidget {
@@ -179,14 +180,34 @@ class _MulaiKunjunganScreenState extends State<MulaiKunjunganScreen> {
           );
         }
       }
+    } on DioException catch (e) {
+      if (mounted) {
+        setState(() {
+          _isSubmitting = false;
+        });
+        String errorMessage = 'Terjadi kesalahan jaringan';
+        if (e.response != null && e.response?.data != null) {
+           if (e.response?.data['message'] != null) {
+              errorMessage = e.response?.data['message'];
+           } else {
+              errorMessage = e.response?.data.toString() ?? 'Error dari server';
+           }
+        }
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(errorMessage),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
     } catch (e) {
       if (mounted) {
         setState(() {
           _isSubmitting = false;
         });
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Terjadi kesalahan jaringan'),
+          SnackBar(
+            content: Text(e.toString()),
             backgroundColor: Colors.red,
           ),
         );
