@@ -184,7 +184,9 @@ class _DetailApprovalScreenState extends State<DetailApprovalScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final title = isCuti ? 'Detail Cuti' : 'Detail Lembur';
+    final title = widget.type == 'kunjungan'
+        ? 'Detail Kunjungan'
+        : (isCuti ? 'Detail Cuti' : 'Detail Lembur');
 
     return Scaffold(
       backgroundColor: const Color(0xFFF8FAFC),
@@ -412,7 +414,9 @@ class _DetailApprovalScreenState extends State<DetailApprovalScreen> {
         border: Border.all(color: Colors.grey.shade200),
       ),
       child: Column(
-        children: isCuti ? _buildCutiRows() : _buildLemburRows(),
+        children: widget.type == 'kunjungan'
+            ? _buildKunjunganRows()
+            : (isCuti ? _buildCutiRows() : _buildLemburRows()),
       ),
     );
   }
@@ -439,6 +443,20 @@ class _DetailApprovalScreenState extends State<DetailApprovalScreen> {
       _detailRow('Rencana Waktu', waktu),
       const SizedBox(height: 16),
       _detailRow('Total Durasi', durasi, valueColor: const Color(0xFF009688)),
+    ];
+  }
+
+  List<Widget> _buildKunjunganRows() {
+    final tglKunjungan = _formatDate(data['tanggal']);
+    final klien = data['nama_klien'] ?? '-';
+    final alamat = data['alamat_kunjungan'] ?? data['lokasi'] ?? '-';
+    
+    return [
+      _detailRow('Tanggal Kunjungan', tglKunjungan),
+      const SizedBox(height: 16),
+      _detailRow('Klien / Tempat', klien, valueColor: const Color(0xFF009688)),
+      const SizedBox(height: 16),
+      _detailRow('Alamat', alamat),
     ];
   }
 
@@ -490,8 +508,10 @@ class _DetailApprovalScreenState extends State<DetailApprovalScreen> {
   }
 
   Widget _buildAlasanCard() {
-    final title = isCuti ? 'ALASAN CUTI' : 'ALASAN LEMBUR';
-    final alasan = data['alasan']?.toString() ?? '-';
+    final title = widget.type == 'kunjungan'
+        ? 'TUJUAN & CATATAN KUNJUNGAN'
+        : (isCuti ? 'ALASAN CUTI' : 'ALASAN LEMBUR');
+    final alasan = data['alasan'] ?? data['catatan'] ?? '-';
     
     return Container(
       width: double.infinity,

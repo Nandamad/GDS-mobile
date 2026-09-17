@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:geolocator/geolocator.dart';
+import 'package:geocoding/geocoding.dart';
 import '../services/api_service.dart';
 
 class MulaiKunjunganScreen extends StatefulWidget {
@@ -21,6 +23,106 @@ class _MulaiKunjunganScreenState extends State<MulaiKunjunganScreen> {
 
   bool _isSubmitting = false;
 
+  double? _latitude;
+  double? _longitude;
+  String _locationName = 'Mendapatkan lokasi...';
+  String _locationAddress = 'Mohon tunggu sebentar';
+  bool _isLoadingLocation = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _getCurrentLocation();
+  }
+
+  Future<void> _getCurrentLocation() async {
+    bool serviceEnabled;
+    LocationPermission permission;
+
+    try {
+      serviceEnabled = await Geolocator.isLocationServiceEnabled();
+      if (!serviceEnabled) {
+        if (mounted) {
+          setState(() {
+            _locationName = 'Layanan lokasi tidak aktif';
+            _locationAddress = 'Mohon aktifkan GPS Anda';
+            _isLoadingLocation = false;
+          });
+        }
+        return;
+      }
+
+      permission = await Geolocator.checkPermission();
+      if (permission == LocationPermission.denied) {
+        permission = await Geolocator.requestPermission();
+        if (permission == LocationPermission.denied) {
+          if (mounted) {
+            setState(() {
+              _locationName = 'Izin lokasi ditolak';
+              _locationAddress = 'Aplikasi membutuhkan izin lokasi';
+              _isLoadingLocation = false;
+            });
+          }
+          return;
+        }
+      }
+
+      if (permission == LocationPermission.deniedForever) {
+        if (mounted) {
+          setState(() {
+            _locationName = 'Izin lokasi ditolak permanen';
+            _locationAddress = 'Silakan ubah pengaturan izin lokasi di sistem';
+            _isLoadingLocation = false;
+          });
+        }
+        return;
+      }
+
+      Position position = await Geolocator.getCurrentPosition();
+      if (mounted) {
+        setState(() {
+          _latitude = position.latitude;
+          _longitude = position.longitude;
+        });
+      }
+
+      List<Placemark> placemarks = await placemarkFromCoordinates(position.latitude, position.longitude);
+      if (mounted) {
+        if (placemarks.isNotEmpty) {
+          Placemark place = placemarks[0];
+          setState(() {
+            _locationName = place.name ?? 'Lokasi Terdeteksi';
+            List<String> addressParts = [];
+            if (place.street != null && place.street!.isNotEmpty) addressParts.add(place.street!);
+            if (place.subLocality != null && place.subLocality!.isNotEmpty) addressParts.add(place.subLocality!);
+            if (place.locality != null && place.locality!.isNotEmpty) addressParts.add(place.locality!);
+            if (place.administrativeArea != null && place.administrativeArea!.isNotEmpty) addressParts.add(place.administrativeArea!);
+            
+            _locationAddress = addressParts.join(', ');
+            if (_locationAddress.isEmpty) {
+              _locationAddress = '$_latitude, $_longitude';
+            }
+            _isLoadingLocation = false;
+          });
+        } else {
+          setState(() {
+            _locationName = 'Lokasi Terdeteksi';
+            _locationAddress = '$_latitude, $_longitude';
+            _isLoadingLocation = false;
+          });
+        }
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _locationName = 'Gagal mendapatkan lokasi';
+          _locationAddress = 'Terjadi kesalahan saat memuat lokasi';
+          _isLoadingLocation = false;
+        });
+      }
+    }
+  }
+
   @override
   void dispose() {
     _namaKlienController.dispose();
@@ -31,6 +133,18 @@ class _MulaiKunjunganScreenState extends State<MulaiKunjunganScreen> {
 
   void _submit() async {
     if (!_formKey.currentState!.validate()) return;
+    
+    // We can block submission if location is not loaded, but for now we just send what we have
+    if (_latitude == null || _longitude == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Lokasi belum didapatkan. Mohon tunggu atau periksa izin lokasi.'),
+          backgroundColor: Colors.orange,
+        ),
+      );
+      return;
+    }
+
     setState(() {
       _isSubmitting = true;
     });
@@ -41,7 +155,7 @@ class _MulaiKunjunganScreenState extends State<MulaiKunjunganScreen> {
         'alamat_kunjungan': _alamatController.text,
         'tujuan_kunjungan': _tujuanKunjungan,
         'catatan': _catatanController.text,
-        'lokasi_gps_mulai': '-6.2274,106.8055', // Mock GPS
+        'lokasi_gps_mulai': '$_latitude,$_longitude',
       });
 
       if (mounted) {
@@ -258,17 +372,25 @@ class _MulaiKunjunganScreenState extends State<MulaiKunjunganScreen> {
                 'Lokasi GPS Terdeteksi',
                 style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12, color: Color(0xFF0F172A)),
               ),
+              if (_isLoadingLocation) ...[
+                const Spacer(),
+                SizedBox(
+                  width: 14,
+                  height: 14,
+                  child: CircularProgressIndicator(strokeWidth: 2, color: primaryTeal),
+                ),
+              ],
             ],
           ),
           const SizedBox(height: 12),
-          const Text(
-            'SCBD Plaza Ground Floor',
-            style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: Color(0xFF0F172A)),
+          Text(
+            _locationName,
+            style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: Color(0xFF0F172A)),
           ),
           const SizedBox(height: 4),
-          const Text(
-            'Jl. Jenderal Sudirman Kav. 52-53, Senayan, Jakarta Selatan',
-            style: TextStyle(color: Colors.grey, fontSize: 11, height: 1.4),
+          Text(
+            _locationAddress,
+            style: const TextStyle(color: Colors.grey, fontSize: 11, height: 1.4),
           ),
           const SizedBox(height: 16),
           ClipRRect(
@@ -276,8 +398,8 @@ class _MulaiKunjunganScreenState extends State<MulaiKunjunganScreen> {
             child: Container(
               height: 120,
               width: double.infinity,
-              decoration: BoxDecoration(
-                color: const Color(0xFFE2E8F0),
+              decoration: const BoxDecoration(
+                color: Color(0xFFE2E8F0),
               ),
               child: Stack(
                 alignment: Alignment.center,

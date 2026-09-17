@@ -21,6 +21,7 @@ class _ApprovalScreenState extends State<ApprovalScreen>
   late TabController _tabController;
   List<Map<String, dynamic>> _cutiList = [];
   List<Map<String, dynamic>> _lemburList = [];
+  List<Map<String, dynamic>> _kunjunganList = [];
   bool _isLoading = true;
   String? _errorMessage;
 
@@ -28,7 +29,7 @@ class _ApprovalScreenState extends State<ApprovalScreen>
   void initState() {
     super.initState();
     _tabController = TabController(
-      length: 2,
+      length: 3,
       vsync: this,
       initialIndex: widget.initialTab,
     );
@@ -71,6 +72,7 @@ class _ApprovalScreenState extends State<ApprovalScreen>
 
         final cuti = <Map<String, dynamic>>[];
         final lembur = <Map<String, dynamic>>[];
+        final kunjungan = <Map<String, dynamic>>[];
 
         for (final item in data) {
           final map = Map<String, dynamic>.from(item);
@@ -80,6 +82,8 @@ class _ApprovalScreenState extends State<ApprovalScreen>
 
           if (type == 'lembur') {
             lembur.add(map);
+          } else if (type == 'kunjungan') {
+            kunjungan.add(map);
           } else {
             cuti.add(map);
           }
@@ -89,6 +93,7 @@ class _ApprovalScreenState extends State<ApprovalScreen>
           setState(() {
             _cutiList = cuti;
             _lemburList = lembur;
+            _kunjunganList = kunjungan;
             _isLoading = false;
           });
         }
@@ -216,6 +221,7 @@ class _ApprovalScreenState extends State<ApprovalScreen>
           tabs: [
             Tab(text: 'Cuti / Izin (${_cutiList.length})'),
             Tab(text: 'Lembur (${_lemburList.length})'),
+            Tab(text: 'Kunjungan (${_kunjunganList.length})'),
           ],
         ),
       ),
@@ -255,8 +261,161 @@ class _ApprovalScreenState extends State<ApprovalScreen>
               children: [
                 _buildList(_cutiList, isCuti: true),
                 _buildList(_lemburList, isCuti: false),
+                _buildKunjunganList(_kunjunganList),
               ],
             ),
+    );
+  }
+
+  Widget _buildKunjunganList(List<Map<String, dynamic>> items) {
+    if (items.isEmpty) {
+      return Center(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(
+              Icons.directions_car_outlined,
+              color: Colors.grey.shade300,
+              size: 56,
+            ),
+            const SizedBox(height: 12),
+            const Text(
+              'Tidak ada pengajuan kunjungan\nyang menunggu persetujuan.',
+              textAlign: TextAlign.center,
+              style: TextStyle(color: Colors.grey, fontSize: 13),
+            ),
+          ],
+        ),
+      );
+    }
+
+    return RefreshIndicator(
+      color: const Color(0xFF009688),
+      onRefresh: _fetchPendingApprovals,
+      child: ListView.builder(
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+        itemCount: items.length,
+        itemBuilder: (context, index) {
+          final item = items[index];
+          return _buildKunjunganCard(item);
+        },
+      ),
+    );
+  }
+
+  Widget _buildKunjunganCard(Map<String, dynamic> item) {
+    final nama = _getKaryawanName(item);
+    final klien = item['tujuan']?.toString() ?? 'Kunjungan';
+    final dateStr = _formatDate(item['tanggal']);
+    final alasan = item['alasan']?.toString() ?? '-';
+    final diajukan = _formatDate(item['created_at']);
+
+    return GestureDetector(
+      onTap: () async {
+        final result = await Navigator.push<bool>(
+          context,
+          MaterialPageRoute(
+            builder: (context) => DetailApprovalScreen(
+              data: item,
+              type: 'kunjungan',
+            ),
+          ),
+        );
+        if (result == true) {
+          _fetchPendingApprovals();
+        }
+      },
+      child: Container(
+        margin: const EdgeInsets.only(bottom: 10),
+        padding: const EdgeInsets.all(14),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(color: Colors.grey.shade200),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Expanded(
+                  child: Text(
+                    nama,
+                    style: const TextStyle(
+                      fontWeight: FontWeight.bold,
+                      fontSize: 13,
+                      color: Color(0xFF0F172A),
+                    ),
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFE0E7FF),
+                    borderRadius: BorderRadius.circular(6),
+                  ),
+                  child: const Text(
+                    'Kunjungan',
+                    style: TextStyle(
+                      color: Color(0xFF4F46E5),
+                      fontWeight: FontWeight.bold,
+                      fontSize: 10,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 8),
+            Row(
+              children: [
+                const Icon(Icons.business_outlined, size: 13, color: Colors.grey),
+                const SizedBox(width: 6),
+                Expanded(
+                  child: Text(
+                    klien,
+                    style: const TextStyle(fontSize: 11, color: Color(0xFF64748B)),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 4),
+            Row(
+              children: [
+                const Icon(Icons.calendar_today_outlined, size: 13, color: Colors.grey),
+                const SizedBox(width: 6),
+                Text(dateStr, style: const TextStyle(fontSize: 11, color: Color(0xFF64748B))),
+              ],
+            ),
+            const SizedBox(height: 4),
+            Row(
+              children: [
+                const Icon(Icons.notes_outlined, size: 13, color: Colors.grey),
+                const SizedBox(width: 6),
+                Expanded(
+                  child: Text(
+                    alasan,
+                    style: const TextStyle(fontSize: 11, color: Color(0xFF64748B)),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 6),
+            Align(
+              alignment: Alignment.centerRight,
+              child: Text(
+                'Diajukan: $diajukan',
+                style: const TextStyle(fontSize: 10, color: Colors.grey),
+              ),
+            ),
+          ],
+        ),
+      ),
     );
   }
 
