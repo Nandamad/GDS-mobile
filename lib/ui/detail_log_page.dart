@@ -388,18 +388,44 @@ class _DetailLogScreenState extends State<DetailLogScreen> {
           ClipRRect(
             borderRadius: BorderRadius.circular(16),
             child: imageUrl != null
-                ? Image.network(
-                    imageUrl,
-                    headers: _token != null ? {'Authorization': 'Bearer $_token'} : null,
-                    height: 160,
-                    width: double.infinity,
-                    fit: BoxFit.cover,
-                    errorBuilder: (context, error, stackTrace) => Container(
-                      height: 160,
-                      color: const Color(0xFFF1F5F9),
-                      child: const Icon(Icons.broken_image, color: Colors.grey, size: 32),
-                    ),
-                  )
+                ? (imageUrl.contains('/api/') && _token == null)
+                    ? Container(
+                        height: 160,
+                        color: const Color(0xFFF1F5F9),
+                        child: const Center(
+                          child: SizedBox(
+                            width: 24,
+                            height: 24,
+                            child: CircularProgressIndicator(strokeWidth: 2),
+                          ),
+                        ),
+                      )
+                    : Image.network(
+                        imageUrl,
+                        headers: _token != null ? {'Authorization': 'Bearer $_token'} : null,
+                        height: 160,
+                        width: double.infinity,
+                        fit: BoxFit.cover,
+                        loadingBuilder: (context, child, loadingProgress) {
+                          if (loadingProgress == null) return child;
+                          return Container(
+                            height: 160,
+                            color: const Color(0xFFF1F5F9),
+                            child: const Center(
+                              child: SizedBox(
+                                width: 24,
+                                height: 24,
+                                child: CircularProgressIndicator(strokeWidth: 2),
+                              ),
+                            ),
+                          );
+                        },
+                        errorBuilder: (context, error, stackTrace) => Container(
+                          height: 160,
+                          color: const Color(0xFFF1F5F9),
+                          child: const Icon(Icons.broken_image, color: Colors.grey, size: 32),
+                        ),
+                      )
                 : Container(
                     height: 160,
                     color: const Color(0xFFF1F5F9),

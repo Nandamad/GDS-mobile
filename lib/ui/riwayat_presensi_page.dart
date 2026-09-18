@@ -1,10 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
+import '../model/absensi.dart';
 import '../services/api_service.dart';
 import 'detail_log_page.dart';
 import 'detail_workflow_page.dart';
-import '../model/absensi.dart';
-import 'riwayat_kunjungan_page.dart';
+import 'detail_kunjungan_page.dart';
+import 'detail_koreksi_page.dart';
 
 class RiwayatPresensiScreen extends StatefulWidget {
   final bool showBackButton;
@@ -25,11 +26,11 @@ class _RiwayatPresensiScreenState extends State<RiwayatPresensiScreen> {
 
   final List<String> _filterOptions = [
     'Semua',
-    'Hadir',
-    'Terlambat',
-    'Izin',
+    'Presensi',
+    'Cuti & Izin',
     'Lembur',
-    'Alpha',
+    'Perjalanan Dinas',
+    'Pengajuan Koreksi',
   ];
 
   @override
@@ -85,13 +86,21 @@ class _RiwayatPresensiScreenState extends State<RiwayatPresensiScreen> {
         },
       );
 
-      // Fetch Lembur
+      // Fetch others
       final lemburRes = await dio.get('/lembur');
+      final kunjunganRes = await dio.get('/kunjungan');
+      final koreksiRes = await dio.get('/koreksi-presensi');
 
       if (historyRes.statusCode == 200) {
         final List<dynamic> historyData = historyRes.data['data'] ?? [];
         final List<dynamic> lemburData = lemburRes.statusCode == 200
             ? (lemburRes.data['data'] ?? [])
+            : [];
+        final List<dynamic> kunjunganData = kunjunganRes.statusCode == 200
+            ? (kunjunganRes.data['data'] ?? [])
+            : [];
+        final List<dynamic> koreksiData = koreksiRes.statusCode == 200
+            ? (koreksiRes.data['data'] ?? [])
             : [];
 
         // Map lembur by date (YYYY-MM-DD)
@@ -102,7 +111,10 @@ class _RiwayatPresensiScreenState extends State<RiwayatPresensiScreen> {
           }
         }
 
-        final parsedData = historyData.map((item) {
+        List<Map<String, dynamic>> parsedData = [];
+
+        // 1. Parse History
+        for (var item in historyData) {
           final absensiObj = Absensi.fromJson(item);
           final tipe = item['tipe'] as String? ?? 'Kehadiran';
           final rawStatus = (absensiObj.status ?? item['status'] ?? 'hadir')
@@ -152,7 +164,8 @@ class _RiwayatPresensiScreenState extends State<RiwayatPresensiScreen> {
             }
           }
 
-          return {
+          parsedData.add({
+            'type': 'history',
             'rawDate': tanggal,
             'statusText': statusTxt,
             'statusBgColor': bgColor,
@@ -167,8 +180,42 @@ class _RiwayatPresensiScreenState extends State<RiwayatPresensiScreen> {
             'raw_data': item,
             'tipe': tipe,
             'absensi': absensiObj,
-          };
-        }).toList();
+          });
+        }
+
+        // 2. Parse Kunjungan (Filter locally by month/year)
+        for (var k in kunjunganData) {
+          try {
+            final dtStr = k['tanggal']?.toString() ?? '';
+            if (dtStr.isNotEmpty) {
+              final dt = DateTime.parse(dtStr).toLocal();
+              if (dt.month == _selectedPeriod.month && dt.year == _selectedPeriod.year) {
+                parsedData.add({
+                  'type': 'kunjungan',
+                  'rawDate': dt,
+                  'raw_data': k,
+                });
+              }
+            }
+          } catch (_) {}
+        }
+
+        // 3. Parse Koreksi (Filter locally by month/year)
+        for (var k in koreksiData) {
+          try {
+            final dtStr = k['tanggal']?.toString() ?? '';
+            if (dtStr.isNotEmpty) {
+              final dt = DateTime.parse(dtStr).toLocal();
+              if (dt.month == _selectedPeriod.month && dt.year == _selectedPeriod.year) {
+                parsedData.add({
+                  'type': 'koreksi',
+                  'rawDate': dt,
+                  'raw_data': k,
+                });
+              }
+            }
+          } catch (_) {}
+        }
 
         // Sort descending
         parsedData.sort((a, b) {
@@ -180,11 +227,13 @@ class _RiwayatPresensiScreenState extends State<RiwayatPresensiScreen> {
           return db.compareTo(da);
         });
 
-        setState(() {
-          _allHistoryData = parsedData;
-          _isLoading = false;
-          _errorMessage = null;
-        });
+        if (mounted) {
+          setState(() {
+            _allHistoryData = parsedData;
+            _isLoading = false;
+            _errorMessage = null;
+          });
+        }
       }
     } catch (e) {
       if (mounted) {
@@ -224,31 +273,6 @@ class _RiwayatPresensiScreenState extends State<RiwayatPresensiScreen> {
             fontSize: 16,
           ),
         ),
-        actions: [
-          TextButton.icon(
-            onPressed: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (_) => const RiwayatKunjunganScreen(),
-                ),
-              );
-            },
-            icon: const Icon(
-              Icons.directions_car,
-              size: 16,
-              color: Color(0xFF009688),
-            ),
-            label: const Text(
-              'Perjalanan Dinas',
-              style: TextStyle(
-                color: Color(0xFF009688),
-                fontSize: 12,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-          ),
-        ],
       ),
       body: _isLoading
           ? const Center(
@@ -397,9 +421,22 @@ class _RiwayatPresensiScreenState extends State<RiwayatPresensiScreen> {
   Widget _buildHistoryList() {
     final filteredData = _allHistoryData.where((item) {
       if (_selectedStatus == 'Semua') return true;
-      if (_selectedStatus == 'Lembur')
-        return (item['lemburJam'] as String).isNotEmpty;
-      return item['statusText'] == _selectedStatus;
+      if (_selectedStatus == 'Lembur') {
+        return item['type'] == 'history' && (item['lemburJam'] as String?)?.isNotEmpty == true;
+      }
+      if (_selectedStatus == 'Presensi') {
+        return item['type'] == 'history' && (item['statusText'] == 'Hadir' || item['statusText'] == 'Terlambat' || item['statusText'] == 'Alpha' || item['statusText'] == 'Pending'); 
+      }
+      if (_selectedStatus == 'Cuti & Izin') {
+        return item['type'] == 'history' && (item['statusText'] == 'Cuti' || item['statusText'] == 'Izin');
+      }
+      if (_selectedStatus == 'Perjalanan Dinas') {
+        return item['type'] == 'kunjungan';
+      }
+      if (_selectedStatus == 'Pengajuan Koreksi') {
+        return item['type'] == 'koreksi';
+      }
+      return false;
     }).toList();
 
     if (filteredData.isEmpty) {
@@ -416,6 +453,153 @@ class _RiwayatPresensiScreenState extends State<RiwayatPresensiScreen> {
       itemCount: filteredData.length,
       itemBuilder: (context, index) {
         final item = filteredData[index];
+        final type = item['type'];
+
+        if (type == 'kunjungan') {
+            final raw = item['raw_data'];
+            final status = raw['status_final']?.toString().toLowerCase() ?? '';
+            Color badgeBg = Colors.grey.shade200;
+            Color badgeText = Colors.grey.shade800;
+            String badgeStr = 'Pending';
+            if (status == 'approved') {
+               badgeBg = const Color(0xFFD1FAE5);
+               badgeText = const Color(0xFF059669);
+               badgeStr = 'Disetujui';
+            } else if (status == 'rejected') {
+               badgeBg = const Color(0xFFFEE2E2);
+               badgeText = const Color(0xFFDC2626);
+               badgeStr = 'Ditolak';
+            }
+
+            return Container(
+                margin: const EdgeInsets.only(bottom: 12),
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: Colors.grey.shade100),
+                ),
+                child: Column(
+                   children: [
+                      Row(
+                         children: [
+                            Container(
+                               width: 48,
+                               height: 48,
+                               decoration: BoxDecoration(shape: BoxShape.circle, border: Border.all(color: Colors.grey.shade200)),
+                               child: const Icon(Icons.directions_car, color: Color(0xFF009688)),
+                            ),
+                            const SizedBox(width: 16),
+                            Expanded(
+                               child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                     Text(raw['judul'] ?? 'Perjalanan Dinas', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: Color(0xFF0F172A))),
+                                     const SizedBox(height: 4),
+                                     Text('Tujuan: ${raw['tujuan'] ?? '-'}', style: const TextStyle(fontSize: 11, color: Colors.grey)),
+                                  ]
+                               )
+                            ),
+                            Container(
+                               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                               decoration: BoxDecoration(color: badgeBg, borderRadius: BorderRadius.circular(6)),
+                               child: Text(badgeStr, style: TextStyle(fontSize: 11, color: badgeText, fontWeight: FontWeight.bold)),
+                            )
+                         ]
+                      ),
+                      const SizedBox(height: 12),
+                      SizedBox(
+                         width: double.infinity,
+                         child: OutlinedButton(
+                            onPressed: () {
+                               Navigator.push(context, MaterialPageRoute(builder: (context) => DetailKunjunganScreen(data: raw)));
+                            },
+                            style: OutlinedButton.styleFrom(
+                              foregroundColor: const Color(0xFF009688),
+                              side: const BorderSide(color: Color(0xFF009688)),
+                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                            ),
+                            child: const Text('Detail Perjalanan', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
+                         )
+                      )
+                   ]
+                )
+            );
+        }
+
+        if (type == 'koreksi') {
+            final raw = item['raw_data'];
+            final status = raw['status']?.toString().toLowerCase() ?? '';
+            Color badgeBg = const Color(0xFFFEF9C3);
+            Color badgeText = const Color(0xFFA16207);
+            String badgeStr = 'Pending';
+            if (status == 'approved' || status == 'disetujui') {
+               badgeBg = const Color(0xFFD1FAE5);
+               badgeText = const Color(0xFF059669);
+               badgeStr = 'Disetujui';
+            } else if (status == 'rejected' || status == 'ditolak') {
+               badgeBg = const Color(0xFFFEE2E2);
+               badgeText = const Color(0xFFDC2626);
+               badgeStr = 'Ditolak';
+            }
+
+            return Container(
+                margin: const EdgeInsets.only(bottom: 12),
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: Colors.grey.shade100),
+                ),
+                child: Column(
+                   children: [
+                      Row(
+                         children: [
+                            Container(
+                               width: 48,
+                               height: 48,
+                               decoration: BoxDecoration(shape: BoxShape.circle, border: Border.all(color: Colors.grey.shade200)),
+                               child: const Icon(Icons.edit_calendar, color: Color(0xFF009688)),
+                            ),
+                            const SizedBox(width: 16),
+                            Expanded(
+                               child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                     const Text('Koreksi Presensi', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: Color(0xFF0F172A))),
+                                     const SizedBox(height: 4),
+                                     Text('Masuk: ${raw['jam_masuk_baru'] ?? '-'} | Pulang: ${raw['jam_pulang_baru'] ?? '-'}', style: const TextStyle(fontSize: 11, color: Colors.grey)),
+                                  ]
+                               )
+                            ),
+                            Container(
+                               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                               decoration: BoxDecoration(color: badgeBg, borderRadius: BorderRadius.circular(6)),
+                               child: Text(badgeStr, style: TextStyle(fontSize: 11, color: badgeText, fontWeight: FontWeight.bold)),
+                            )
+                         ]
+                      ),
+                      const SizedBox(height: 12),
+                      SizedBox(
+                         width: double.infinity,
+                         child: OutlinedButton(
+                            onPressed: () {
+                               Navigator.push(context, MaterialPageRoute(builder: (context) => DetailKoreksiScreen(data: raw)));
+                            },
+                            style: OutlinedButton.styleFrom(
+                              foregroundColor: const Color(0xFF009688),
+                              side: const BorderSide(color: Color(0xFF009688)),
+                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                            ),
+                            child: const Text('Detail Koreksi', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
+                         )
+                      )
+                   ]
+                )
+            );
+        }
+
+        // History Type
         final date = item['rawDate'] as DateTime?;
         final hariStr = date != null
             ? ['MIN', 'SEN', 'SEL', 'RAB', 'KAM', 'JUM', 'SAB'][date.weekday %

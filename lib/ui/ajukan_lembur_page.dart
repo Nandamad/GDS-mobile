@@ -81,15 +81,20 @@ class _AjukanLemburScreenState extends State<AjukanLemburScreen> {
     try {
       final String tanggal = DateFormat('yyyy-MM-dd').format(_selectedDate);
       
-      // Default waktu mulai jam 17:00 jika tidak ada input jam (asumsi jam kerja selesai 17:00)
       final String jamMulaiStr = '17:00';
       int endHour = 17 + _selectedDuration;
       final String jamSelesaiStr = '${endHour.toString().padLeft(2, '0')}:00';
+
+      String alasanGabung = _alasanController.text.trim();
+      if (_catatanController.text.trim().isNotEmpty) {
+        alasanGabung += '\n\nCatatan: ' + _catatanController.text.trim();
+      }
 
       final payload = {
         'tanggal': tanggal,
         'jam_mulai_lembur': jamMulaiStr,
         'jam_selesai_lembur': jamSelesaiStr,
+        'alasan': alasanGabung,
         'foto': _fotoSelfieBase64,
       };
 
@@ -132,7 +137,7 @@ class _AjukanLemburScreenState extends State<AjukanLemburScreen> {
           onPressed: () => Navigator.pop(context),
         ),
         title: const Text(
-          'Mulai Lembur',
+          'Ajukan Lembur',
           style: TextStyle(
             color: Color(0xFF0F172A),
             fontWeight: FontWeight.bold,
