@@ -354,7 +354,7 @@ class _SelesaiLemburScreenState extends State<SelesaiLemburScreen> {
                       child: Column(
                         children: [
                           Text(
-                            timeUp ? 'WAKTU LEMBUR TELAH HABIS' : 'LEMBUR BERJALAN',
+                            timeUp ? 'WAKTU LEMBUR TELAH HABIS' : 'SISA WAKTU LEMBUR',
                             style: TextStyle(
                               color: timeUp ? const Color(0xFFEF4444) : const Color(0xFF64748B),
                               fontWeight: FontWeight.bold,

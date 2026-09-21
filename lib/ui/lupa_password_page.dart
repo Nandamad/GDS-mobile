@@ -23,7 +23,6 @@ class _LupaPasswordScreenState extends State<LupaPasswordScreen> {
   final List<FocusNode> _otpFocusNodes = List.generate(4, (_) => FocusNode());
   Timer? _timer;
   int _secondsRemaining = 59;
-  String? _serverToken;
 
   // Step 3: Password
   final _passwordController = TextEditingController();
@@ -82,16 +81,8 @@ class _LupaPasswordScreenState extends State<LupaPasswordScreen> {
       });
 
       if (response.statusCode == 200) {
-        final st = response.data['token'];
-        if (st != null) {
-          _serverToken = st.toString();
-          // Auto-fill OTP for testing
-          if (_serverToken!.length == 4) {
-            for (int i = 0; i < 4; i++) {
-              _otpControllers[i].text = _serverToken![i];
-            }
-          }
-        }
+        // Token dikirim ke email, bukan di respons API
+        // User harus memasukkan kode OTP secara manual dari email
         _startTimer();
         setState(() => _step = 2);
       }
@@ -114,12 +105,7 @@ class _LupaPasswordScreenState extends State<LupaPasswordScreen> {
       return;
     }
 
-    if (_serverToken != null && enteredOtp != _serverToken) {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-          content: Text('Kode OTP tidak valid'), backgroundColor: Colors.red));
-      return;
-    }
-
+    // Token akan diverifikasi oleh backend saat reset password
     setState(() => _step = 3);
   }
 
