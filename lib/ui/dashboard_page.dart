@@ -86,16 +86,18 @@ class _DashboardScreenState extends State<DashboardScreen> {
             final mulaiStr = _lemburData!['jam_mulai'];
             final selesaiStr = _lemburData!['jam_selesai'];
             if (mulaiStr != null && selesaiStr != null) {
-              if (_lemburActualStartTime != null) {
-                final int durasiMenit = hitungDurasiLemburMenit(_lemburData!);
-                final DateTime actualSelesai = _lemburActualStartTime!.add(Duration(minutes: durasiMenit));
+              final DateTime apiSelesai = DateTime.parse(selesaiStr);
+              // Gunakan waktu mulai dari SharedPreferences (actual start) atau dari API
+              final DateTime effectiveStart = _lemburActualStartTime ?? DateTime.parse(mulaiStr);
 
-                if (_serverTime!.isAfter(actualSelesai)) {
+              if (_lemburActualStartTime != null || _serverTime!.isAfter(effectiveStart)) {
+                // Lembur sudah dimulai
+                if (_serverTime!.isAfter(apiSelesai)) {
                   _lemburStatus = 'Selesai';
                   _lemburCountdown = 'Lembur Selesai';
                 } else {
                   _lemburStatus = 'Sedang Lembur';
-                  final diff = actualSelesai.difference(_serverTime!);
+                  final diff = apiSelesai.difference(_serverTime!);
                   final h = diff.inHours.toString().padLeft(2, '0');
                   final m = (diff.inMinutes % 60).toString().padLeft(2, '0');
                   final s = (diff.inSeconds % 60).toString().padLeft(2, '0');

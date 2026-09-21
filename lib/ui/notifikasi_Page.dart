@@ -4,6 +4,7 @@ import '../services/api_service.dart';
 import 'pengajuan_page.dart';
 import 'approval_page.dart';
 import 'riwayat_presensi_page.dart';
+import 'mulai_lembur_page.dart';
 
 class NotifikasiScreen extends StatefulWidget {
   const NotifikasiScreen({super.key});
@@ -245,6 +246,7 @@ class _NotifikasiScreenState extends State<NotifikasiScreen> {
             'iconColor': iconData['color'],
             'iconBgColor': iconData['bgColor'],
             'group': _getGroupCategory(e['created_at']),
+            'rawData': data,
           };
         }).toList();
       }
@@ -435,12 +437,42 @@ class _NotifikasiScreenState extends State<NotifikasiScreen> {
           if (!mounted) return;
           
           final title = item['title'].toString().toLowerCase();
+          final message = item['message'].toString().toLowerCase();
           
+          // Persetujuan (untuk atasan/HRD)
           if (title.contains('persetujuan')) {
              Navigator.push(context, MaterialPageRoute(builder: (context) => const ApprovalScreen(showBackButton: true)));
-          } else if (title.contains('pengajuan') || title.contains('cuti') || title.contains('lembur') || title.contains('izin')) {
+          }
+          // Pengajuan Lembur Disetujui → Halaman Mulai Lembur
+          else if ((title.contains('lembur') && title.contains('disetujui'))) {
+             // Fetch data lembur terbaru dari API
+             Map<String, dynamic>? lemburData;
+             try {
+               final todayRes = await ApiService().dio.get('/absensi/today');
+               if (todayRes.statusCode == 200 && todayRes.data['lembur'] != null) {
+                 lemburData = Map<String, dynamic>.from(todayRes.data['lembur']);
+               }
+             } catch (_) {}
+             if (!mounted) return;
+             Navigator.push(context, MaterialPageRoute(builder: (context) => MulaiLemburScreen(
+               lemburData: lemburData,
+               lemburStatus: 'Belum Dimulai',
+             )));
+          }
+          // Pengajuan Ditolak (lembur/cuti/izin) → Riwayat
+          else if (title.contains('ditolak')) {
+             Navigator.push(context, MaterialPageRoute(builder: (context) => const RiwayatPresensiScreen(showBackButton: true)));
+          }
+          // Peringatan Keterlambatan → Riwayat Absen
+          else if (title.contains('terlambat') || title.contains('keterlambatan') || title.contains('peringatan')) {
+             Navigator.push(context, MaterialPageRoute(builder: (context) => const RiwayatPresensiScreen(showBackButton: true)));
+          }
+          // Pengajuan Cuti / Izin → Halaman Pengajuan
+          else if (title.contains('pengajuan') || title.contains('cuti') || title.contains('izin')) {
              Navigator.push(context, MaterialPageRoute(builder: (context) => const PengajuanScreen(showBackButton: true)));
-          } else if (title.contains('absen') || title.contains('terlambat')) {
+          }
+          // Lainnya yang berhubungan dengan absen
+          else if (title.contains('absen')) {
              Navigator.push(context, MaterialPageRoute(builder: (context) => const RiwayatPresensiScreen(showBackButton: true)));
           }
         },
