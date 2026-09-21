@@ -120,9 +120,11 @@ class _PresensiHarianScreenState extends State<PresensiHarianScreen> {
     // Fetch current location to update LocationCubit state
     if (mounted) {
       await context.read<LocationCubit>().getCurrentLocation();
+      if (!mounted) return;
     }
 
     await Future.wait([_fetchDashboardAndToday(), _fetchRecentHistory()]);
+    if (!mounted) return;
   }
 
   Future<void> _fetchDashboardAndToday() async {
@@ -135,6 +137,7 @@ class _PresensiHarianScreenState extends State<PresensiHarianScreen> {
         queryParams = '?lat=${currentLoc.latitude}&lng=${currentLoc.longitude}';
       }
       final todayRes = await dio.get('/absensi/today$queryParams');
+      if (!mounted) return;
       if (todayRes.statusCode == 200) {
         final resData = todayRes.data;
         final data = resData['data'];
@@ -179,6 +182,7 @@ class _PresensiHarianScreenState extends State<PresensiHarianScreen> {
 
       // Fetch Dashboard Data (For Ringkasan Kehadiran)
       final dashRes = await dio.get('/dashboard');
+      if (!mounted) return;
       if (dashRes.statusCode == 200) {
         final payload = dashRes.data;
         Map<String, dynamic>? data;
@@ -210,6 +214,7 @@ class _PresensiHarianScreenState extends State<PresensiHarianScreen> {
         '/history',
         queryParameters: {'month': now.month, 'year': now.year},
       );
+      if (!mounted) return;
 
       if (response.statusCode == 200) {
         final List<dynamic> data = response.data['data'] ?? [];
@@ -403,6 +408,8 @@ class _PresensiHarianScreenState extends State<PresensiHarianScreen> {
         ),
       );
 
+      if (!mounted) return;
+
       if (resultImage == null || !mounted) return;
 
       final isConfirmed = await Navigator.push<bool>(
@@ -419,6 +426,8 @@ class _PresensiHarianScreenState extends State<PresensiHarianScreen> {
           ),
         ),
       );
+
+      if (!mounted) return;
 
       if (isConfirmed == true) {
         finalImage = resultImage;
@@ -439,9 +448,10 @@ class _PresensiHarianScreenState extends State<PresensiHarianScreen> {
 
     final errorMessage = await _submitAbsensi(
       tipe: tipe,
-      fotoBase64: finalImage,
+      fotoBase64: finalImage!,
       locState: locState,
     );
+    if (!mounted) return;
 
     // Hide loading
     if (mounted) Navigator.pop(context);
@@ -1041,6 +1051,7 @@ class _PresensiHarianScreenState extends State<PresensiHarianScreen> {
       final res = await ApiService().dio.get('/absensi/today');
       if (!mounted) return;
       Navigator.pop(context); // Close loading
+      if (!mounted) return;
 
       final payload = res.data;
       final lembur = payload['lembur'];
@@ -1058,6 +1069,7 @@ class _PresensiHarianScreenState extends State<PresensiHarianScreen> {
           final selesai = DateTime.parse(lembur['jam_selesai']);
 
           final prefs = await SharedPreferences.getInstance();
+          if (!mounted) return;
           final lemburId =
               lembur['id']?.toString() ??
               lembur['tanggal']?.toString() ??
