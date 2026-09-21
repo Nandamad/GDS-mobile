@@ -1064,10 +1064,16 @@ class _PresensiHarianScreenState extends State<PresensiHarianScreen> {
               'today';
           final actualStartStr = prefs.getString('lembur_start_time_$lemburId');
 
-          if (serverTime.isAfter(selesai)) {
-            status = 'Selesai';
-          } else if (actualStartStr != null || serverTime.isAfter(mulai)) {
-            status = 'Sedang Lembur';
+          if (actualStartStr != null) {
+            final actualStart = DateTime.parse(actualStartStr);
+            final int durasiMenit = hitungDurasiLemburMenit(lembur);
+            final actualSelesai = actualStart.add(Duration(minutes: durasiMenit));
+
+            if (serverTime.isAfter(actualSelesai)) {
+              status = 'Selesai';
+            } else {
+              status = 'Sedang Lembur';
+            }
           }
         }
       }

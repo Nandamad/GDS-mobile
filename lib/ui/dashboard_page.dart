@@ -86,19 +86,21 @@ class _DashboardScreenState extends State<DashboardScreen> {
             final mulaiStr = _lemburData!['jam_mulai'];
             final selesaiStr = _lemburData!['jam_selesai'];
             if (mulaiStr != null && selesaiStr != null) {
-              final mulai = DateTime.parse(mulaiStr);
-              final selesai = DateTime.parse(selesaiStr);
+              if (_lemburActualStartTime != null) {
+                final int durasiMenit = hitungDurasiLemburMenit(_lemburData!);
+                final DateTime actualSelesai = _lemburActualStartTime!.add(Duration(minutes: durasiMenit));
 
-              if (_serverTime!.isAfter(selesai)) {
-                _lemburStatus = 'Selesai';
-                _lemburCountdown = 'Lembur Selesai';
-              } else if (_lemburActualStartTime != null || _serverTime!.isAfter(mulai)) {
-                _lemburStatus = 'Sedang Lembur';
-                final diff = selesai.difference(_serverTime!);
-                final h = diff.inHours.toString().padLeft(2, '0');
-                final m = (diff.inMinutes % 60).toString().padLeft(2, '0');
-                final s = (diff.inSeconds % 60).toString().padLeft(2, '0');
-                _lemburCountdown = '$h:$m:$s';
+                if (_serverTime!.isAfter(actualSelesai)) {
+                  _lemburStatus = 'Selesai';
+                  _lemburCountdown = 'Lembur Selesai';
+                } else {
+                  _lemburStatus = 'Sedang Lembur';
+                  final diff = actualSelesai.difference(_serverTime!);
+                  final h = diff.inHours.toString().padLeft(2, '0');
+                  final m = (diff.inMinutes % 60).toString().padLeft(2, '0');
+                  final s = (diff.inSeconds % 60).toString().padLeft(2, '0');
+                  _lemburCountdown = '$h:$m:$s';
+                }
               } else {
                 _lemburStatus = 'Belum Dimulai';
                 _lemburCountdown = '';
