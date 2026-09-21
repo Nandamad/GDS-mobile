@@ -126,8 +126,18 @@ class _MulaiLemburScreenState extends State<MulaiLemburScreen> {
     final actualStartTime = DateTime.now().toIso8601String();
     await prefs.setString('lembur_start_time_$lemburId', actualStartTime);
 
-    // Status lembur berjalan sepenuhnya ditrack melalui penyimpanan lokal 
-    // dan akan dikirim ke server ketika tombol Selesai Lembur ditekan.
+    // Kirim API ke backend agar status lembur berjalan sinkron dengan dashboard admin
+    try {
+      final response = await ApiService().dio.post('/lembur/mulai');
+      if (response.statusCode != 200 && response.statusCode != 201) {
+        throw Exception('Gagal di server');
+      }
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Peringatan: Gagal menghubungi server saat memulai lembur.')),
+      );
+    }
 
     if (!mounted) return;
     setState(() {
