@@ -100,9 +100,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 canLembur = false;
               }
 
-              if (canLembur &&
-                  (_lemburActualStartTime != null ||
-                      _serverTime!.isAfter(effectiveStart))) {
+              if (canLembur && _lemburActualStartTime != null) {
                 // Lembur sudah dimulai
                 if (_serverTime!.isAfter(apiSelesai)) {
                   _lemburStatus = 'Selesai';
@@ -1461,41 +1459,45 @@ class _DashboardScreenState extends State<DashboardScreen> {
             dotColor: _isSudahAbsenKeluar ? const Color(0xFF009688) : Colors.grey,
           ),
           // Lembur
-          _buildTimelineItem(
-            title: 'Mulai Lembur',
-            time: jamMulaiLembur,
-            badgeText: _lemburStatus == 'Selesai'
-                ? 'Selesai'
-                : 'Sedang Berlangsung',
-            badgeColor: _lemburStatus == 'Selesai'
-                ? const Color(0xFF009688)
-                : const Color(
-                    0xFFE65100,
-                  ), // Teal text for Selesai, Orange for Sedang Berlangsung
-            badgeBg: _lemburStatus == 'Selesai'
-                ? const Color(0xFFE0F2F1)
-                : const Color(
-                    0xFFFFF3E0,
-                  ), // Teal bg for Selesai, Orange for Sedang Berlangsung
-            isFirst: false,
-            isLast: _lemburStatus != 'Selesai',
-            dotColor: _lemburStatus == 'Selesai'
-                ? const Color(0xFF009688)
-                : const Color(
-                    0xFFF57C00,
-                  ), // Teal dot for Selesai, Orange for Sedang Berlangsung
-          ),
-          if (_lemburStatus == 'Selesai')
+          if (_lemburData != null) ...[
             _buildTimelineItem(
-              title: 'Selesai Lembur',
-              time: jamSelesaiLembur,
-              badgeText: 'Selesai',
-              badgeColor: const Color(0xFF009688), // Teal text
-              badgeBg: const Color(0xFFE0F2F1), // Teal bg
+              title: 'Mulai Lembur',
+              time: jamMulaiLembur,
+              badgeText: _lemburStatus == 'Selesai'
+                  ? 'Selesai'
+                  : _lemburStatus == 'Sedang Lembur'
+                      ? 'Sedang Berlangsung'
+                      : 'Belum Mulai',
+              badgeColor: _lemburStatus == 'Selesai'
+                  ? const Color(0xFF009688)
+                  : _lemburStatus == 'Sedang Lembur'
+                      ? const Color(0xFFE65100)
+                      : Colors.grey,
+              badgeBg: _lemburStatus == 'Selesai'
+                  ? const Color(0xFFE0F2F1)
+                  : _lemburStatus == 'Sedang Lembur'
+                      ? const Color(0xFFFFF3E0)
+                      : const Color(0xFFF1F5F9),
               isFirst: false,
-              isLast: true,
-              dotColor: const Color(0xFF009688), // Teal dot
+              isLast: _lemburStatus != 'Selesai',
+              dotColor: _lemburStatus == 'Selesai'
+                  ? const Color(0xFF009688)
+                  : _lemburStatus == 'Sedang Lembur'
+                      ? const Color(0xFFF57C00)
+                      : Colors.grey,
             ),
+            if (_lemburStatus == 'Selesai')
+              _buildTimelineItem(
+                title: 'Selesai Lembur',
+                time: jamSelesaiLembur,
+                badgeText: 'Selesai',
+                badgeColor: const Color(0xFF009688), // Teal text
+                badgeBg: const Color(0xFFE0F2F1), // Teal bg
+                isFirst: false,
+                isLast: true,
+                dotColor: const Color(0xFF009688), // Teal dot
+              ),
+          ],
         ],
       ),
     );

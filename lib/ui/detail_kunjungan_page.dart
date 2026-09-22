@@ -429,6 +429,7 @@ class DetailKunjunganScreen extends StatelessWidget {
                 children: [
                   TileLayer(
                     urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+                    userAgentPackageName: 'com.gds.presensi_plus',
                   ),
                   MarkerLayer(
                     markers: [
