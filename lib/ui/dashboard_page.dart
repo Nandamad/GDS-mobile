@@ -66,8 +66,12 @@ class _DashboardScreenState extends State<DashboardScreen> {
       const Duration(seconds: 1),
       (timer) => _updateTime(),
     );
-    _determinePosition();
-    _fetchAllData();
+    _initializeData();
+  }
+
+  Future<void> _initializeData() async {
+    setState(() => _isLoading = true);
+    await _determinePositionAndFetch();
   }
 
   void _updateTime() {
@@ -88,9 +92,17 @@ class _DashboardScreenState extends State<DashboardScreen> {
             if (mulaiStr != null && selesaiStr != null) {
               final DateTime apiSelesai = DateTime.parse(selesaiStr);
               // Gunakan waktu mulai dari SharedPreferences (actual start) atau dari API
-              final DateTime effectiveStart = _lemburActualStartTime ?? DateTime.parse(mulaiStr);
+              final DateTime effectiveStart =
+                  _lemburActualStartTime ?? DateTime.parse(mulaiStr);
 
-              if (_lemburActualStartTime != null || _serverTime!.isAfter(effectiveStart)) {
+              bool canLembur = true;
+              if (_isWorkingDay == true && !_isSudahAbsenKeluar) {
+                canLembur = false;
+              }
+
+              if (canLembur &&
+                  (_lemburActualStartTime != null ||
+                      _serverTime!.isAfter(effectiveStart))) {
                 // Lembur sudah dimulai
                 if (_serverTime!.isAfter(apiSelesai)) {
                   _lemburStatus = 'Selesai';
@@ -104,7 +116,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   _lemburCountdown = '$h:$m:$s';
                 }
               } else {
-                _lemburStatus = 'Belum Dimulai';
+                _lemburStatus = '';
                 _lemburCountdown = '';
               }
             }
@@ -142,8 +154,15 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
       final dio = ApiService().dio;
 
+      String queryParams = '';
+      if (_currentLocation.latitude != -7.7279 &&
+          _currentLocation.longitude != 109.0089) {
+        queryParams =
+            '?lat=${_currentLocation.latitude}&lng=${_currentLocation.longitude}';
+      }
+
       // 1. Fetch Today (Absensi Status)
-      final todayRes = await dio.get('/absensi/today');
+      final todayRes = await dio.get('/absensi/today$queryParams');
       if (todayRes.statusCode == 200) {
         final resData = todayRes.data;
         final data = resData['data'];
@@ -165,12 +184,17 @@ class _DashboardScreenState extends State<DashboardScreen> {
           _serverTime = DateTime.parse(resData['server_time']);
         }
         _lemburData = resData['lembur'];
-        
-        _isWorkingDay = resData['jam_kerja'] != null ? (resData['jam_kerja']['is_working_day'] ?? false) : false;
+
+        _isWorkingDay = resData['jam_kerja'] != null
+            ? (resData['jam_kerja']['is_working_day'] ?? false)
+            : false;
 
         if (_lemburData != null) {
           final prefs = await SharedPreferences.getInstance();
-          final lemburId = _lemburData!['id']?.toString() ?? _lemburData!['tanggal']?.toString() ?? 'today';
+          final lemburId =
+              _lemburData!['id']?.toString() ??
+              _lemburData!['tanggal']?.toString() ??
+              'today';
           final actualStartStr = prefs.getString('lembur_start_time_$lemburId');
           if (actualStartStr != null) {
             _lemburActualStartTime = DateTime.parse(actualStartStr);
@@ -323,17 +347,43 @@ class _DashboardScreenState extends State<DashboardScreen> {
   }
 
   // GPS & Location Methods
-  Future<void> _determinePosition() async {
+  Future<void> _determinePositionAndFetch() async {
     bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
-    if (!serviceEnabled) return;
+    if (!serviceEnabled) {
+      _fetchAllData();
+      return;
+    }
 
     LocationPermission permission = await Geolocator.checkPermission();
     if (permission == LocationPermission.denied) {
       permission = await Geolocator.requestPermission();
-      if (permission == LocationPermission.denied) return;
+      if (permission == LocationPermission.denied) {
+        _fetchAllData();
+        return;
+      }
     }
-    if (permission == LocationPermission.deniedForever) return;
+    if (permission == LocationPermission.deniedForever) {
+      _fetchAllData();
+      return;
+    }
 
+    try {
+      final position = await Geolocator.getCurrentPosition(
+        desiredAccuracy: LocationAccuracy.high,
+        timeLimit: const Duration(seconds: 5),
+      );
+      if (mounted) {
+        setState(() {
+          _currentLocation = LatLng(position.latitude, position.longitude);
+          _gpsAccuracy = position.accuracy;
+          _isMocked = position.isMocked;
+        });
+      }
+    } catch (e) {
+      // Ignore timeout, just fallback
+    }
+
+    _fetchAllData();
     _startLocationStream();
   }
 
@@ -533,7 +583,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
                       const SizedBox(height: 16),
                       _buildRadiusBadge(),
                       _buildStatusHariIniCard(),
-                      if (_lemburStatus == 'Sedang Lembur' || _lemburStatus == 'Selesai') ...[
+                      if (_lemburStatus == 'Sedang Lembur' ||
+                          _lemburStatus == 'Selesai') ...[
                         const SizedBox(height: 24),
                         _buildRiwayatHariIni(),
                       ] else if (_isSudahAbsenMasuk) ...[
@@ -872,11 +923,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
           const SizedBox(height: 16),
           const Text(
             'Hari ini adalah jadwal libur Anda',
-            style: TextStyle(
-              color: Colors.grey,
-              fontWeight: FontWeight.bold,
-            ),
-          )
+            style: TextStyle(color: Colors.grey, fontWeight: FontWeight.bold),
+          ),
         ],
       );
     }
@@ -901,9 +949,15 @@ class _DashboardScreenState extends State<DashboardScreen> {
     }
 
     return GestureDetector(
-      onTap: ((_isSudahAbsenMasuk && _isSudahAbsenKeluar && btnText != 'Mulai Lembur') || (!_isInRadius && btnText != 'Mulai Lembur'))
+      onTap:
+          ((_isSudahAbsenMasuk &&
+                  _isSudahAbsenKeluar &&
+                  btnText != 'Mulai Lembur') ||
+              (!_isInRadius && btnText != 'Mulai Lembur'))
           ? null
-          : (btnText == 'Mulai Lembur' ? _handleMulaiLemburButton : _handleAbsenProcess),
+          : (btnText == 'Mulai Lembur'
+                ? _handleMulaiLemburButton
+                : _handleAbsenProcess),
       child: Container(
         width: 180,
         height: 180,
@@ -969,8 +1023,12 @@ class _DashboardScreenState extends State<DashboardScreen> {
     }
 
     final bool isDone = _lemburStatus == 'Selesai';
-    final Color ringColor = isDone ? const Color(0xFF009688) : const Color(0xFF009688);
-    final Color innerColor = isDone ? const Color(0xFF009688) : const Color(0xFF009688);
+    final Color ringColor = isDone
+        ? const Color(0xFF009688)
+        : const Color(0xFF009688);
+    final Color innerColor = isDone
+        ? const Color(0xFF009688)
+        : const Color(0xFF009688);
 
     return GestureDetector(
       onTap: isDone ? _handleSelesaiLembur : _handleSelesaiLembur,
@@ -1014,7 +1072,11 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
                   if (isDone) ...[
-                    const Icon(Icons.check_circle_outline, color: Colors.white, size: 28),
+                    const Icon(
+                      Icons.check_circle_outline,
+                      color: Colors.white,
+                      size: 28,
+                    ),
                     const SizedBox(height: 8),
                     const Text(
                       'Lembur\nSelesai',
@@ -1048,22 +1110,27 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
   void _handleMulaiLemburButton() {
     Navigator.push(
-      context, 
+      context,
       MaterialPageRoute(
         builder: (_) => MulaiLemburScreen(
           lemburData: _lemburData,
           lemburStatus: _lemburStatus,
-        )
-      )
+        ),
+      ),
     );
   }
 
   void _handleSelesaiLembur() {
     Map<String, dynamic> data = _lemburData ?? {};
-    
+
     final lemburDataForScreen = {
-      'jam_mulai_lembur': _lemburActualStartTime?.toIso8601String() ?? data['jam_mulai'] ?? DateTime.now().toIso8601String(),
-      'jam_selesai_lembur': data['jam_selesai'] ?? DateTime.now().add(const Duration(hours: 2)).toIso8601String(),
+      'jam_mulai_lembur':
+          _lemburActualStartTime?.toIso8601String() ??
+          data['jam_mulai'] ??
+          DateTime.now().toIso8601String(),
+      'jam_selesai_lembur':
+          data['jam_selesai'] ??
+          DateTime.now().add(const Duration(hours: 2)).toIso8601String(),
       'alasan': data['alasan'] ?? data['keterangan'] ?? 'Lembur',
       'durasi_lembur_menit': hitungDurasiLemburMenit(data),
     };
@@ -1071,9 +1138,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
     Navigator.push(
       context,
       MaterialPageRoute(
-        builder: (context) => SelesaiLemburScreen(
-          lemburData: lemburDataForScreen,
-        ),
+        builder: (context) =>
+            SelesaiLemburScreen(lemburData: lemburDataForScreen),
       ),
     );
   }
@@ -1094,13 +1160,27 @@ class _DashboardScreenState extends State<DashboardScreen> {
             color: _isInRadius ? const Color(0xFF009688) : Colors.red,
           ),
           const SizedBox(width: 6),
-          Text(
-            _isInRadius ? 'Dalam radius kantor' : 'Di luar radius kantor',
-            style: TextStyle(
-              color: _isInRadius ? const Color(0xFF009688) : Colors.red,
-              fontSize: 12,
-              fontWeight: FontWeight.bold,
-            ),
+          Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                _isInRadius ? 'Dalam radius kantor' : 'Di luar radius kantor',
+                style: TextStyle(
+                  color: _isInRadius ? const Color(0xFF009688) : Colors.red,
+                  fontSize: 12,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              if (!_isInRadius)
+                Padding(
+                  padding: const EdgeInsets.only(top: 2),
+                  child: Text(
+                    'Anda berada ${_radiusMeters.toStringAsFixed(0)}m dari titik ${_namaKantor}',
+                    style: const TextStyle(color: Colors.red, fontSize: 10),
+                  ),
+                ),
+            ],
           ),
         ],
       ),
@@ -1149,14 +1229,13 @@ class _DashboardScreenState extends State<DashboardScreen> {
         final diffHrs = selesai.difference(mulai).inHours;
         final diffMins = selesai.difference(mulai).inMinutes % 60;
         if (diffMins > 0) {
-           durasiStr = '$diffHrs Jam $diffMins menit';
+          durasiStr = '$diffHrs Jam $diffMins menit';
         } else {
-           durasiStr = '$diffHrs Jam';
+          durasiStr = '$diffHrs Jam';
         }
       }
 
-      descText =
-          'Sesi lembur selesai pukul $jamSelesai. Durasi: $durasiStr.';
+      descText = 'Sesi lembur selesai pukul $jamSelesai. Durasi: $durasiStr.';
       badgeBg = const Color(0xFFE0F2F1); // Teal bg
       badgeTxt = const Color(0xFF009688); // Teal text
     } else if (_isSudahAbsenMasuk && !_isSudahAbsenKeluar) {
@@ -1251,7 +1330,11 @@ class _DashboardScreenState extends State<DashboardScreen> {
     Color masukBadgeColor = const Color(0xFF009688);
     Color masukBadgeBg = const Color(0xFFE0F2F1);
 
-    if (_dashboardData != null) {
+    if (!_isSudahAbsenMasuk) {
+      statusMasukBadge = 'Belum Absen';
+      masukBadgeColor = Colors.grey;
+      masukBadgeBg = Colors.grey.withOpacity(0.2);
+    } else if (_dashboardData != null) {
       final dataAbsen = _dashboardData!['data'];
       if (dataAbsen != null && dataAbsen is Map) {
         if (dataAbsen['jam_masuk'] != null) {
@@ -1275,7 +1358,11 @@ class _DashboardScreenState extends State<DashboardScreen> {
     Color keluarBadgeColor = const Color(0xFF009688);
     Color keluarBadgeBg = const Color(0xFFE0F2F1);
 
-    if (_dashboardData != null) {
+    if (!_isSudahAbsenKeluar) {
+      statusKeluarBadge = 'Belum Pulang';
+      keluarBadgeColor = Colors.grey;
+      keluarBadgeBg = Colors.grey.withOpacity(0.2);
+    } else if (_dashboardData != null) {
       final dataAbsen = _dashboardData!['data'];
       if (dataAbsen != null && dataAbsen is Map) {
         if (dataAbsen['jam_keluar'] != null) {
@@ -1346,7 +1433,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
             badgeBg: masukBadgeBg,
             isFirst: true,
             isLast: false,
-            dotColor: const Color(0xFF009688),
+            dotColor: _isSudahAbsenMasuk ? const Color(0xFF009688) : Colors.grey,
           ),
           // Keluar
           _buildTimelineItem(
@@ -1357,18 +1444,32 @@ class _DashboardScreenState extends State<DashboardScreen> {
             badgeBg: keluarBadgeBg,
             isFirst: false,
             isLast: false,
-            dotColor: const Color(0xFF009688),
+            dotColor: _isSudahAbsenKeluar ? const Color(0xFF009688) : Colors.grey,
           ),
           // Lembur
           _buildTimelineItem(
             title: 'Mulai Lembur',
             time: jamMulaiLembur,
-            badgeText: _lemburStatus == 'Selesai' ? 'Selesai' : 'Sedang Berlangsung',
-            badgeColor: _lemburStatus == 'Selesai' ? const Color(0xFF009688) : const Color(0xFFE65100), // Teal text for Selesai, Orange for Sedang Berlangsung
-            badgeBg: _lemburStatus == 'Selesai' ? const Color(0xFFE0F2F1) : const Color(0xFFFFF3E0), // Teal bg for Selesai, Orange for Sedang Berlangsung
+            badgeText: _lemburStatus == 'Selesai'
+                ? 'Selesai'
+                : 'Sedang Berlangsung',
+            badgeColor: _lemburStatus == 'Selesai'
+                ? const Color(0xFF009688)
+                : const Color(
+                    0xFFE65100,
+                  ), // Teal text for Selesai, Orange for Sedang Berlangsung
+            badgeBg: _lemburStatus == 'Selesai'
+                ? const Color(0xFFE0F2F1)
+                : const Color(
+                    0xFFFFF3E0,
+                  ), // Teal bg for Selesai, Orange for Sedang Berlangsung
             isFirst: false,
             isLast: _lemburStatus != 'Selesai',
-            dotColor: _lemburStatus == 'Selesai' ? const Color(0xFF009688) : const Color(0xFFF57C00), // Teal dot for Selesai, Orange for Sedang Berlangsung
+            dotColor: _lemburStatus == 'Selesai'
+                ? const Color(0xFF009688)
+                : const Color(
+                    0xFFF57C00,
+                  ), // Teal dot for Selesai, Orange for Sedang Berlangsung
           ),
           if (_lemburStatus == 'Selesai')
             _buildTimelineItem(
@@ -1586,7 +1687,11 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   width: double.infinity,
                   child: RichText(
                     text: TextSpan(
-                      style: const TextStyle(fontSize: 11, color: Color(0xFF64748B), fontFamily: 'Inter'), // Assuming default font, but Flutter's RichText needs explicit style if no DefaultTextStyle
+                      style: const TextStyle(
+                        fontSize: 11,
+                        color: Color(0xFF64748B),
+                        fontFamily: 'Inter',
+                      ), // Assuming default font, but Flutter's RichText needs explicit style if no DefaultTextStyle
                       children: [
                         const TextSpan(text: 'Persetujuan: Atasan: '),
                         TextSpan(
