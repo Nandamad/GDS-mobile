@@ -1064,9 +1064,9 @@ class _PresensiHarianScreenState extends State<PresensiHarianScreen> {
         dataForScreen = lembur;
 
         if (status == 'Disetujui' && payload['server_time'] != null) {
-          final serverTime = DateTime.parse(payload['server_time']);
-          final mulai = DateTime.parse(lembur['jam_mulai']);
-          final selesai = DateTime.parse(lembur['jam_selesai']);
+          final serverTime = DateTime.parse(payload['server_time']).toLocal();
+          final mulai = DateTime.parse(lembur['jam_mulai']).toLocal();
+          final selesai = DateTime.parse(lembur['jam_selesai']).toLocal();
 
           final prefs = await SharedPreferences.getInstance();
           if (!mounted) return;
@@ -1077,7 +1077,7 @@ class _PresensiHarianScreenState extends State<PresensiHarianScreen> {
           final actualStartStr = prefs.getString('lembur_start_time_$lemburId');
 
           if (actualStartStr != null) {
-            final actualStart = DateTime.parse(actualStartStr);
+            final actualStart = DateTime.parse(actualStartStr).toLocal();
             final int durasiMenit = hitungDurasiLemburMenit(lembur);
             final actualSelesai = actualStart.add(Duration(minutes: durasiMenit));
 
@@ -1173,7 +1173,7 @@ class _PresensiHarianScreenState extends State<PresensiHarianScreen> {
   DateTime? _parseFlexibleTime(String timeStr) {
     try {
       if (timeStr.contains('T') || timeStr.contains('-')) {
-        return DateTime.parse(timeStr);
+        return DateTime.parse(timeStr).toLocal();
       } else {
         final parts = timeStr.split(':');
         final now = DateTime.now();

@@ -1339,7 +1339,14 @@ class _DashboardScreenState extends State<DashboardScreen> {
       if (dataAbsen != null && dataAbsen is Map) {
         if (dataAbsen['jam_masuk'] != null) {
           final time = dataAbsen['jam_masuk'].toString();
-          if (time.length >= 5) jamMasuk = '${time.substring(0, 5)} WIB';
+          if (time.contains('T') || time.contains('-')) {
+            try {
+              final dt = DateTime.parse(time).toLocal();
+              jamMasuk = '${dt.hour.toString().padLeft(2, '0')}:${dt.minute.toString().padLeft(2, '0')} WIB';
+            } catch (_) {}
+          } else if (time.length >= 5) {
+            jamMasuk = '${time.substring(0, 5)} WIB';
+          }
         }
         final rawStatus = (dataAbsen['status'] ?? '').toString().toLowerCase();
         if (rawStatus.contains('terlambat') || rawStatus.contains('late')) {
@@ -1367,7 +1374,14 @@ class _DashboardScreenState extends State<DashboardScreen> {
       if (dataAbsen != null && dataAbsen is Map) {
         if (dataAbsen['jam_keluar'] != null) {
           final time = dataAbsen['jam_keluar'].toString();
-          if (time.length >= 5) jamKeluar = '${time.substring(0, 5)} WIB';
+          if (time.contains('T') || time.contains('-')) {
+            try {
+              final dt = DateTime.parse(time).toLocal();
+              jamKeluar = '${dt.hour.toString().padLeft(2, '0')}:${dt.minute.toString().padLeft(2, '0')} WIB';
+            } catch (_) {}
+          } else if (time.length >= 5) {
+            jamKeluar = '${time.substring(0, 5)} WIB';
+          }
         }
         final rawStatus = (dataAbsen['status'] ?? '').toString().toLowerCase();
         if (rawStatus.contains('pulang_awal')) {
