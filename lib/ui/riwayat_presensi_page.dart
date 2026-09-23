@@ -125,7 +125,11 @@ class _RiwayatPresensiScreenState extends State<RiwayatPresensiScreen> {
           Color txtColor = const Color(0xFF059669);
           String statusTxt = 'Hadir';
 
-          if (tipe != 'Kehadiran') {
+          if (tipe == 'Lembur') {
+            statusTxt = 'Lembur';
+            bgColor = const Color(0xFFF3E8FF);
+            txtColor = const Color(0xFF7E22CE);
+          } else if (tipe != 'Kehadiran') {
             statusTxt = 'Izin';
             bgColor = const Color(0xFFDBEAFE);
             txtColor = const Color(0xFF2563EB);
@@ -461,11 +465,11 @@ class _RiwayatPresensiScreenState extends State<RiwayatPresensiScreen> {
             Color badgeBg = Colors.grey.shade200;
             Color badgeText = Colors.grey.shade800;
             String badgeStr = 'Pending';
-            if (status == 'approved') {
+            if (status == 'approved' || status == 'disetujui') {
                badgeBg = const Color(0xFFD1FAE5);
                badgeText = const Color(0xFF059669);
                badgeStr = 'Disetujui';
-            } else if (status == 'rejected') {
+            } else if (status == 'rejected' || status == 'ditolak') {
                badgeBg = const Color(0xFFFEE2E2);
                badgeText = const Color(0xFFDC2626);
                badgeStr = 'Ditolak';
@@ -747,7 +751,9 @@ class _RiwayatPresensiScreenState extends State<RiwayatPresensiScreen> {
                       );
                     } else if (item['tipe'] == 'Cuti' ||
                         item['statusText'] == 'Cuti' ||
-                        item['statusText'] == 'Izin') {
+                        item['statusText'] == 'Izin' ||
+                        item['tipe'] == 'Lembur' ||
+                        item['statusText'] == 'Lembur') {
                       Navigator.push(
                         context,
                         MaterialPageRoute(
