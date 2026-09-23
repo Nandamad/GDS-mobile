@@ -690,18 +690,23 @@ class _DetailApprovalScreenState extends State<DetailApprovalScreen> {
 
   Widget _detailRow(String label, String value, {Color? valueColor}) {
     return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
         Text(
           label,
           style: const TextStyle(fontSize: 12, color: Colors.grey),
         ),
-        Text(
-          value,
-          style: TextStyle(
-            fontSize: 12,
-            color: valueColor ?? const Color(0xFF0F172A),
-            fontWeight: FontWeight.bold,
+        const SizedBox(width: 16),
+        Expanded(
+          child: Text(
+            value,
+            textAlign: TextAlign.right,
+            style: TextStyle(
+              fontSize: 12,
+              color: valueColor ?? const Color(0xFF0F172A),
+              fontWeight: FontWeight.bold,
+            ),
           ),
         ),
       ],
