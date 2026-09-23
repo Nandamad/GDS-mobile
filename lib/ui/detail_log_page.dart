@@ -153,14 +153,23 @@ class _DetailLogScreenState extends State<DetailLogScreen> {
 
   Widget _buildHeaderCard() {
     final status = (widget.absensi?.status ?? 'hadir').toLowerCase();
-    final isLate = status.contains('terlambat') || status == 'pulang_awal';
+    final isLateIn = status.contains('terlambat');
+    final isEarlyOut = status.contains('pulang_awal');
 
     String statusText = 'Tepat Waktu';
     Color bgColor = const Color(0xFFDCFCE7);
     Color txtColor = const Color(0xFF15803D);
 
-    if (isLate) {
+    if (isLateIn && isEarlyOut) {
+      statusText = 'Terlambat & Pulang Cepat';
+      bgColor = const Color(0xFFFFEDD5);
+      txtColor = const Color(0xFFC2410C);
+    } else if (isLateIn) {
       statusText = 'Terlambat';
+      bgColor = const Color(0xFFFFEDD5);
+      txtColor = const Color(0xFFC2410C);
+    } else if (isEarlyOut) {
+      statusText = 'Pulang Cepat';
       bgColor = const Color(0xFFFFEDD5);
       txtColor = const Color(0xFFC2410C);
     }
@@ -194,7 +203,8 @@ class _DetailLogScreenState extends State<DetailLogScreen> {
 
   Widget _buildRekapWaktuRow() {
     final status = (widget.absensi?.status ?? 'hadir').toLowerCase();
-    final isLate = status.contains('terlambat') || status == 'pulang_awal';
+    final isLateIn = status.contains('terlambat');
+    final isEarlyOut = status.contains('pulang_awal');
 
     return Row(
       children: [
@@ -216,14 +226,14 @@ class _DetailLogScreenState extends State<DetailLogScreen> {
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                   decoration: BoxDecoration(
-                    color: isLate ? const Color(0xFFFFEDD5) : const Color(0xFFDCFCE7),
+                    color: isLateIn ? const Color(0xFFFFEDD5) : const Color(0xFFDCFCE7),
                     borderRadius: BorderRadius.circular(6),
                   ),
                   child: Text(
-                    isLate ? 'Terlambat' : 'Tepat Waktu',
+                    isLateIn ? 'Terlambat' : 'Tepat Waktu',
                     style: TextStyle(
                       fontSize: 9,
-                      color: isLate ? const Color(0xFFC2410C) : const Color(0xFF15803D),
+                      color: isLateIn ? const Color(0xFFC2410C) : const Color(0xFF15803D),
                       fontWeight: FontWeight.bold,
                     ),
                   ),
@@ -248,21 +258,38 @@ class _DetailLogScreenState extends State<DetailLogScreen> {
                 const SizedBox(height: 6),
                 Text(_formatTime(widget.absensi?.jamPulang), style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Color(0xFF0F172A))),
                 const SizedBox(height: 8),
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFFDCFCE7),
-                    borderRadius: BorderRadius.circular(6),
-                  ),
-                  child: const Text(
-                    'Normal',
-                    style: TextStyle(
-                      fontSize: 9,
-                      color: Color(0xFF15803D),
-                      fontWeight: FontWeight.bold,
+                if (widget.absensi?.jamPulang != null)
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                    decoration: BoxDecoration(
+                      color: isEarlyOut ? const Color(0xFFFFEDD5) : const Color(0xFFDCFCE7),
+                      borderRadius: BorderRadius.circular(6),
+                    ),
+                    child: Text(
+                      isEarlyOut ? 'Pulang Cepat' : 'Tepat Waktu',
+                      style: TextStyle(
+                        fontSize: 9,
+                        color: isEarlyOut ? const Color(0xFFC2410C) : const Color(0xFF15803D),
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  )
+                else
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                    decoration: BoxDecoration(
+                      color: Colors.grey.shade100,
+                      borderRadius: BorderRadius.circular(6),
+                    ),
+                    child: const Text(
+                      'Belum Absen',
+                      style: TextStyle(
+                        fontSize: 9,
+                        color: Colors.grey,
+                        fontWeight: FontWeight.bold,
+                      ),
                     ),
                   ),
-                ),
               ],
             ),
           ),

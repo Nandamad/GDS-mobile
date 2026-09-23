@@ -368,7 +368,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
     try {
       final position = await Geolocator.getCurrentPosition(
         desiredAccuracy: LocationAccuracy.high,
-        timeLimit: const Duration(seconds: 5),
+        timeLimit: const Duration(seconds: 10),
       );
       if (mounted) {
         setState(() {
@@ -378,7 +378,18 @@ class _DashboardScreenState extends State<DashboardScreen> {
         });
       }
     } catch (e) {
-      // Ignore timeout, just fallback
+      try {
+        final lastPosition = await Geolocator.getLastKnownPosition();
+        if (lastPosition != null && mounted) {
+          setState(() {
+            _currentLocation = LatLng(lastPosition.latitude, lastPosition.longitude);
+            _gpsAccuracy = lastPosition.accuracy;
+            _isMocked = lastPosition.isMocked;
+          });
+        }
+      } catch (e2) {
+        debugPrint('Dashboard GPS fallback error: $e2');
+      }
     }
 
     _fetchAllData();
@@ -1444,20 +1455,21 @@ class _DashboardScreenState extends State<DashboardScreen> {
             badgeColor: masukBadgeColor,
             badgeBg: masukBadgeBg,
             isFirst: true,
-            isLast: false,
+            isLast: !_isSudahAbsenMasuk && _lemburData == null,
             dotColor: _isSudahAbsenMasuk ? const Color(0xFF009688) : Colors.grey,
           ),
           // Keluar
-          _buildTimelineItem(
-            title: 'Absen Pulang',
-            time: jamKeluar,
-            badgeText: statusKeluarBadge,
-            badgeColor: keluarBadgeColor,
-            badgeBg: keluarBadgeBg,
-            isFirst: false,
-            isLast: false,
-            dotColor: _isSudahAbsenKeluar ? const Color(0xFF009688) : Colors.grey,
-          ),
+          if (_isSudahAbsenMasuk)
+            _buildTimelineItem(
+              title: 'Absen Pulang',
+              time: jamKeluar,
+              badgeText: statusKeluarBadge,
+              badgeColor: keluarBadgeColor,
+              badgeBg: keluarBadgeBg,
+              isFirst: false,
+              isLast: _lemburData == null,
+              dotColor: _isSudahAbsenKeluar ? const Color(0xFF009688) : Colors.grey,
+            ),
           // Lembur
           if (_lemburData != null) ...[
             _buildTimelineItem(

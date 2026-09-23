@@ -123,8 +123,15 @@ class _PresensiHarianScreenState extends State<PresensiHarianScreen> {
       if (!mounted) return;
     }
 
-    await Future.wait([_fetchDashboardAndToday(), _fetchRecentHistory()]);
-    if (!mounted) return;
+    try {
+      await Future.wait([_fetchDashboardAndToday(), _fetchRecentHistory()]);
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+      }
+    }
   }
 
   Future<void> _fetchDashboardAndToday() async {
@@ -202,8 +209,6 @@ class _PresensiHarianScreenState extends State<PresensiHarianScreen> {
     } catch (e) {
       debugPrint('PRESENSI DATA FETCH ERROR: $e');
     }
-
-    if (mounted) setState(() => _isLoading = false);
   }
 
   Future<void> _fetchRecentHistory() async {
@@ -1062,8 +1067,10 @@ class _PresensiHarianScreenState extends State<PresensiHarianScreen> {
       if (lembur != null) {
         status = lembur['status'] ?? 'Menunggu';
         dataForScreen = lembur;
+        
+        final String lowerStatus = status.toLowerCase();
 
-        if (status == 'Disetujui' && payload['server_time'] != null) {
+        if (lowerStatus == 'disetujui' && payload['server_time'] != null) {
           final serverTime = DateTime.parse(payload['server_time']).toLocal();
           final mulai = DateTime.parse(lembur['jam_mulai']).toLocal();
           final selesai = DateTime.parse(lembur['jam_selesai']).toLocal();
@@ -1112,10 +1119,11 @@ class _PresensiHarianScreenState extends State<PresensiHarianScreen> {
           );
         }
       } else {
+        final String lowerStatus = status.toLowerCase();
         if (lembur == null ||
-            status == 'Belum ada' ||
-            status == 'Menunggu' ||
-            status == 'Disetujui') {
+            lowerStatus == 'belum ada' ||
+            lowerStatus == 'menunggu' ||
+            lowerStatus == 'disetujui') {
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(content: Text('Anda belum memulai lembur!')),
           );

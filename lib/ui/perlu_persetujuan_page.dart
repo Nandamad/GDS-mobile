@@ -402,6 +402,98 @@ class _PerluPersetujuanScreenState extends State<PerluPersetujuanScreen> {
     );
   }
 
+  Widget _buildKunjunganCard(Map<String, dynamic> item) {
+    final nama = _getKaryawanName(item);
+    final inisial = nama.isNotEmpty ? nama.substring(0, 1).toUpperCase() : '?';
+    final posisi = _getPosisi(item);
+    final klien = item['nama_klien']?.toString() ?? '-';
+    final tanggal = _formatDate(item['tanggal']);
+    final tujuan = item['tujuan_kunjungan']?.toString() ?? '-';
+    
+    return Container(
+      margin: const EdgeInsets.only(bottom: 16, left: 16, right: 16),
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: Colors.grey.shade200),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              CircleAvatar(
+                backgroundColor: const Color(0xFFE0F2F1),
+                radius: 20,
+                child: Text(
+                  inisial,
+                  style: const TextStyle(color: Color(0xFF009688), fontWeight: FontWeight.bold),
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      nama,
+                      style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14, color: Color(0xFF0F172A)),
+                    ),
+                    Text(
+                      posisi,
+                      style: const TextStyle(fontSize: 11, color: Colors.grey),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              const Text('Klien', style: TextStyle(fontSize: 12, color: Colors.grey)),
+              Text(klien, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Color(0xFF0F172A))),
+            ],
+          ),
+          const SizedBox(height: 8),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              const Text('Tanggal', style: TextStyle(fontSize: 12, color: Colors.grey)),
+              Text(tanggal, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Color(0xFF009688))),
+            ],
+          ),
+          const SizedBox(height: 12),
+          const Text('Tujuan', style: TextStyle(fontSize: 12, color: Colors.grey)),
+          const SizedBox(height: 4),
+          Text(tujuan, style: const TextStyle(fontSize: 12, color: Color(0xFF0F172A))),
+          const SizedBox(height: 16),
+          SizedBox(
+            width: double.infinity,
+            child: OutlinedButton(
+              onPressed: () async {
+                final result = await Navigator.push<bool>(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => DetailApprovalScreen(data: item, type: 'kunjungan'),
+                  ),
+                );
+                if (result == true) _fetchPendingApprovals();
+              },
+              style: OutlinedButton.styleFrom(
+                side: BorderSide(color: Colors.grey.shade300),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+              ),
+              child: const Text('Detail', style: TextStyle(color: Color(0xFF0F172A), fontWeight: FontWeight.bold)),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   Widget _buildList(List<Map<String, dynamic>> list, Widget Function(Map<String, dynamic>) builder, String emptyMessage, IconData emptyIcon) {
     if (list.isEmpty) {
       return _buildEmptyState(emptyMessage, emptyIcon);
@@ -472,10 +564,10 @@ class _PerluPersetujuanScreenState extends State<PerluPersetujuanScreen> {
                         'Tidak ada pengajuan lembur\nyang menunggu persetujuan.',
                         Icons.access_time,
                       ),
-                      // Kunjungan (Placeholder builder)
+                      // Kunjungan
                       _buildList(
                         _kunjunganList,
-                        (item) => const SizedBox(), 
+                        _buildKunjunganCard, 
                         'Tidak ada pengajuan kunjungan\nyang menunggu persetujuan.',
                         Icons.map_outlined,
                       ),

@@ -79,6 +79,18 @@ class _AjukanCutiScreenState extends State<AjukanCutiScreen> {
     } catch (_) {}
   }
 
+  int _countWorkingDays(DateTime start, DateTime end) {
+    int count = 0;
+    DateTime current = start;
+    while (!current.isAfter(end)) {
+      if (current.weekday != DateTime.saturday && current.weekday != DateTime.sunday) {
+        count++;
+      }
+      current = current.add(const Duration(days: 1));
+    }
+    return count;
+  }
+
   Future<void> _submitCuti() async {
     if (_alasanController.text.trim().isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -87,11 +99,14 @@ class _AjukanCutiScreenState extends State<AjukanCutiScreen> {
       return;
     }
 
-    if (_tipePengajuan.toLowerCase() == 'cuti' && (_tanggalSelesai.difference(_tanggalMulai).inDays + 1) > _sisaCuti) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Durasi cuti melebihi sisa kuota!')),
-      );
-      return;
+    if (_tipePengajuan.toLowerCase() == 'cuti') {
+      final int workingDays = _countWorkingDays(_tanggalMulai, _tanggalSelesai);
+      if (workingDays > _sisaCuti) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Durasi cuti melebihi sisa kuota!')),
+        );
+        return;
+      }
     }
 
     setState(() => _isSubmitting = true);

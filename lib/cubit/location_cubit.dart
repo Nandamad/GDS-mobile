@@ -6,6 +6,8 @@ import 'location_state.dart';
 class LocationCubit extends Cubit<LocationState> {
   LocationCubit() : super(LocationState());
 
+  static const int locationTimeoutSeconds = 10;
+
   Future<void> getCurrentLocation() async {
     try {
       final hasPermission = await _checkLocationPermission();
@@ -18,8 +20,14 @@ class LocationCubit extends Cubit<LocationState> {
         locationSettings: const LocationSettings(
           accuracy: LocationAccuracy.best,
           distanceFilter: 10,
+          timeLimit: Duration(seconds: locationTimeoutSeconds),
         ),
-      );
+      ).catchError((_) async {
+        // Fallback to last known position if timeout or error
+        final lastKnown = await Geolocator.getLastKnownPosition();
+        if (lastKnown != null) return lastKnown;
+        throw Exception('Location request timed out');
+      });
 
       final currentLocation = LatLng(position.latitude, position.longitude);
       _calculateRadius(currentLocation);

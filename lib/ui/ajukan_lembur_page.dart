@@ -1,12 +1,7 @@
-import 'dart:io';
-import 'dart:ui';
-import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
-import 'package:image_picker/image_picker.dart';
 import '../services/api_service.dart';
 import '../services/notification_service.dart';
-import 'kamera_page.dart';
 
 class AjukanLemburScreen extends StatefulWidget {
   const AjukanLemburScreen({super.key});
@@ -23,7 +18,7 @@ class _AjukanLemburScreenState extends State<AjukanLemburScreen> {
   DateTime _selectedDate = DateTime.now();
   int _selectedDuration = 2; // Default 2 jam
 
-  String? _fotoSelfieBase64;
+  String _jamMulaiStr = '17:00';
 
   @override
   void dispose() {
@@ -46,16 +41,29 @@ class _AjukanLemburScreenState extends State<AjukanLemburScreen> {
     }
   }
 
-  Future<void> _ambilFoto() async {
-    final result = await Navigator.push(
-      context,
-      MaterialPageRoute(builder: (context) => const KameraScreen(namaKantor: 'Verifikasi Lembur')),
-    );
+  @override
+  void initState() {
+    super.initState();
+    _fetchShiftData();
+  }
 
-    if (result != null && result is String) {
-      setState(() {
-        _fotoSelfieBase64 = result;
-      });
+  Future<void> _fetchShiftData() async {
+    try {
+      final res = await ApiService().dio.get('/absensi/today');
+      final payload = res.data;
+      if (payload['jam_kerja'] != null && payload['jam_kerja']['jam_pulang'] != null) {
+        final jamPulang = payload['jam_kerja']['jam_pulang'].toString();
+        // format expected: HH:mm
+        if (jamPulang.length >= 5) {
+          if (mounted) {
+            setState(() {
+              _jamMulaiStr = jamPulang.substring(0, 5);
+            });
+          }
+        }
+      }
+    } catch (e) {
+      debugPrint('Gagal fetch shift: $e');
     }
   }
 
@@ -67,13 +75,6 @@ class _AjukanLemburScreenState extends State<AjukanLemburScreen> {
       return;
     }
 
-    if (_fotoSelfieBase64 == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Foto verifikasi wajib diambil!')),
-      );
-      return;
-    }
-
     setState(() {
       _isSubmitting = true;
     });
@@ -81,8 +82,12 @@ class _AjukanLemburScreenState extends State<AjukanLemburScreen> {
     try {
       final String tanggal = DateFormat('yyyy-MM-dd').format(_selectedDate);
       
-      final String jamMulaiStr = '17:00';
-      int endHour = 17 + _selectedDuration;
+      final List<String> parts = _jamMulaiStr.split(':');
+      int startHour = 17;
+      if (parts.isNotEmpty) {
+        startHour = int.tryParse(parts[0]) ?? 17;
+      }
+      int endHour = startHour + _selectedDuration;
       final String jamSelesaiStr = '${endHour.toString().padLeft(2, '0')}:00';
 
       String alasanGabung = _alasanController.text.trim();
@@ -92,10 +97,9 @@ class _AjukanLemburScreenState extends State<AjukanLemburScreen> {
 
       final payload = {
         'tanggal': tanggal,
-        'jam_mulai_lembur': jamMulaiStr,
+        'jam_mulai_lembur': _jamMulaiStr,
         'jam_selesai_lembur': jamSelesaiStr,
         'alasan': alasanGabung,
-        'foto': _fotoSelfieBase64,
       };
 
       final response = await ApiService().dio.post('/lembur', data: payload);
@@ -277,56 +281,6 @@ class _AjukanLemburScreenState extends State<AjukanLemburScreen> {
             ),
             const SizedBox(height: 24),
 
-            // Foto Selfie
-            _buildLabel('Foto Selfie Verifikasi'),
-            GestureDetector(
-              onTap: _ambilFoto,
-              child: CustomPaint(
-                painter: DashedRectPainter(color: Colors.grey.shade400, strokeWidth: 1, gap: 5),
-                child: Container(
-                  width: double.infinity,
-                  height: 180,
-                  decoration: BoxDecoration(
-                    color: const Color(0xFFF8FAFC),
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: _fotoSelfieBase64 != null
-                      ? ClipRRect(
-                          borderRadius: BorderRadius.circular(12),
-                          child: Image.memory(
-                            base64Decode(_fotoSelfieBase64!.split(',').last),
-                            fit: BoxFit.cover,
-                          ),
-                        )
-                      : Column(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            Container(
-                              padding: const EdgeInsets.all(12),
-                              decoration: BoxDecoration(
-                                color: Colors.white,
-                                shape: BoxShape.circle,
-                                border: Border.all(color: Colors.grey.shade200),
-                              ),
-                              child: const Icon(Icons.camera_alt_outlined, color: Color(0xFF009688), size: 28),
-                            ),
-                            const SizedBox(height: 12),
-                            const Text(
-                              'Ambil Foto Selfie',
-                              style: TextStyle(color: Color(0xFF009688), fontWeight: FontWeight.bold, fontSize: 13),
-                            ),
-                            const SizedBox(height: 6),
-                            const Text(
-                              'Foto wajah diperlukan untuk verifikasi lembur',
-                              style: TextStyle(color: Colors.grey, fontSize: 11),
-                            ),
-                          ],
-                        ),
-                ),
-              ),
-            ),
-            const SizedBox(height: 24),
-
             const Center(
               child: Text(
                 'Maksimal lembur dalam sebulan adalah 72 jam',
@@ -410,35 +364,4 @@ class _AjukanLemburScreenState extends State<AjukanLemburScreen> {
       ),
     );
   }
-}
-
-class DashedRectPainter extends CustomPainter {
-  final Color color;
-  final double strokeWidth;
-  final double gap;
-
-  DashedRectPainter({required this.color, required this.strokeWidth, required this.gap});
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    final Paint paint = Paint()
-      ..color = color
-      ..strokeWidth = strokeWidth
-      ..style = PaintingStyle.stroke;
-
-    final Path path = Path()
-      ..addRRect(RRect.fromRectAndRadius(Rect.fromLTWH(0, 0, size.width, size.height), const Radius.circular(12)));
-
-    final PathMetrics pathMetrics = path.computeMetrics();
-    for (PathMetric pathMetric in pathMetrics) {
-      double distance = 0.0;
-      while (distance < pathMetric.length) {
-        canvas.drawPath(pathMetric.extractPath(distance, distance + gap), paint);
-        distance += gap * 2;
-      }
-    }
-  }
-
-  @override
-  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
 }

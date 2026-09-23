@@ -6,6 +6,8 @@ import 'package:geolocator/geolocator.dart';
 import '../services/api_service.dart';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:flutter_map/flutter_map.dart';
+import 'package:latlong2/latlong.dart' hide Path;
 
 class SelesaiKunjunganScreen extends StatefulWidget {
   const SelesaiKunjunganScreen({super.key});
@@ -37,6 +39,8 @@ class _SelesaiKunjunganScreenState extends State<SelesaiKunjunganScreen> {
   Timer? _timer;
 
   String _lokasiGps = 'Mendapatkan lokasi...';
+  double? _latitude;
+  double? _longitude;
 
   @override
   void initState() {
@@ -146,6 +150,8 @@ class _SelesaiKunjunganScreenState extends State<SelesaiKunjunganScreen> {
       if (mounted) {
         setState(() {
           _lokasiGps = '${position.latitude},${position.longitude}';
+          _latitude = position.latitude;
+          _longitude = position.longitude;
         });
       }
     } catch (e) {
@@ -533,17 +539,46 @@ class _SelesaiKunjunganScreenState extends State<SelesaiKunjunganScreen> {
               decoration: const BoxDecoration(
                 color: Color(0xFFE2E8F0),
               ),
-              child: Stack(
-                alignment: Alignment.center,
-                children: [
-                  Positioned.fill(
-                    child: CustomPaint(
-                      painter: MapPlaceholderPainter(),
+              child: _latitude != null && _longitude != null
+                  ? FlutterMap(
+                      key: ValueKey('$_latitude-$_longitude'),
+                      options: MapOptions(
+                        initialCenter: LatLng(_latitude!, _longitude!),
+                        initialZoom: 15.0,
+                        interactionOptions: const InteractionOptions(flags: InteractiveFlag.none),
+                      ),
+                      children: [
+                        TileLayer(
+                          urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+                          userAgentPackageName: 'com.gds.presensi_plus',
+                        ),
+                        MarkerLayer(
+                          markers: [
+                            Marker(
+                              point: LatLng(_latitude!, _longitude!),
+                              width: 40,
+                              height: 40,
+                              child: const Icon(
+                                Icons.location_on,
+                                color: Colors.red,
+                                size: 32,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
+                    )
+                  : Stack(
+                      alignment: Alignment.center,
+                      children: [
+                        Positioned.fill(
+                          child: CustomPaint(
+                            painter: MapPlaceholderPainter(),
+                          ),
+                        ),
+                        const Icon(Icons.location_off, color: Colors.grey, size: 40),
+                      ],
                     ),
-                  ),
-                  const Icon(Icons.location_on, color: Colors.red, size: 40),
-                ],
-              ),
             ),
           )
         ],
