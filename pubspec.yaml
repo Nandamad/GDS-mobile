@@ -42,6 +42,7 @@ flutter:
     - assets/.env
     - assets/logo.png
     - assets/sounds/
+    - shorebird.yaml
 
 flutter_launcher_icons:
   android: true
