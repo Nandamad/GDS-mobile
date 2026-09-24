@@ -75,7 +75,7 @@ class _PengaturanNotifikasiScreenState extends State<PengaturanNotifikasiScreen>
             ),
             const SizedBox(height: 6),
             const Text(
-              'Kelola bagaimana dan kapan Anda menerima pemberitahuan dari PresensiKu.',
+              'Kelola bagaimana dan kapan Anda menerima pemberitahuan dari PresensiPlus.',
               style: TextStyle(
                 fontSize: 12,
                 color: Color(0xFF64748B),

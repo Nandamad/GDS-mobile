@@ -56,7 +56,7 @@ class TentangAplikasiScreen extends StatelessWidget {
             
             // Description
             const Text(
-              'PresensiKu adalah solusi Employee Self-Service (ESS) terintegrasi untuk memudahkan kehadiran, pengajuan cuti, serta pengelolaan data kepegawaian Anda dalam satu genggaman tangan secara real-time dan transparan.',
+              'PresensiPlus adalah solusi Employee Self-Service (ESS) terintegrasi untuk memudahkan kehadiran, pengajuan cuti, serta pengelolaan data kepegawaian Anda dalam satu genggaman tangan secara real-time dan transparan.',
               textAlign: TextAlign.center,
               style: TextStyle(
                 fontSize: 12,
@@ -78,9 +78,9 @@ class TentangAplikasiScreen extends StatelessWidget {
                 children: [
                   _buildInfoRow('Dibuat oleh', namaPerusahaan),
                   const Divider(height: 24),
-                  _buildInfoRow('Email', 'admin@gds.com'),
+                  _buildInfoRow('Email', 'presensiplus.id@gmail.com'),
                   const Divider(height: 24),
-                  _buildInfoRow('Website', 'www.gds.com'),
+                  _buildInfoRow('Website', 'https://devabs.yukliat.com'),
                 ],
               ),
             ),
@@ -98,7 +98,7 @@ class TentangAplikasiScreen extends StatelessWidget {
             const SizedBox(height: 40),
             // Copyright
             const Text(
-              '© 2026 PresensiKu. All rights reserved.',
+              '© 2026 PresensiPlus. All rights reserved.',
               style: TextStyle(
                 fontSize: 11,
                 color: Color(0xFF94A3B8),

@@ -260,7 +260,7 @@ class _LoginScreenState extends State<LoginScreen> {
                             ),
                             const SizedBox(height: 8),
                             const Text(
-                              'Masuk ke akun PresensiKu Anda',
+                              'Masuk ke akun PresensiPlus Anda',
                               style: TextStyle(
                                 fontSize: 13,
                                 color: Colors.grey,

@@ -24,7 +24,7 @@ class MyApp extends StatelessWidget {
     return BlocProvider(
       create: (context) => LocationCubit(),
       child: MaterialApp(
-        title: 'PresensiKu',
+        title: 'PresensiPlus',
         debugShowCheckedModeBanner: false,
         navigatorKey: navigatorKey,
         theme: ThemeData(

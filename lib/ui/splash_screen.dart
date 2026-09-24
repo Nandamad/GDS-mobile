@@ -55,7 +55,7 @@ class _SplashScreenState extends State<SplashScreen> {
             ),
             const SizedBox(height: 24),
             const Text(
-              'PresensiKu',
+              'PresensiPlus',
               style: TextStyle(
                 color: Color(0xFF0F172A),
                 fontSize: 32,
