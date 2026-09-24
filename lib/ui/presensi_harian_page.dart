@@ -1096,7 +1096,7 @@ class _PresensiHarianScreenState extends State<PresensiHarianScreen> {
       }
 
       if (isMulai) {
-        if (status == 'Sedang Lembur') {
+        if (lowerStatus == 'sedang lembur') {
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(
               content: Text(
@@ -1104,7 +1104,7 @@ class _PresensiHarianScreenState extends State<PresensiHarianScreen> {
               ),
             ),
           );
-        } else if (status == 'Selesai') {
+        } else if (lowerStatus == 'selesai') {
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(content: Text('Anda sudah menyelesaikan lembur hari ini.')),
           );
@@ -1129,11 +1129,11 @@ class _PresensiHarianScreenState extends State<PresensiHarianScreen> {
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(content: Text('Anda belum memulai lembur!')),
           );
-        } else if (status == 'Selesai') {
+        } else if (lowerStatus == 'selesai') {
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(content: Text('Anda sudah menyelesaikan lembur hari ini.')),
           );
-        } else if (status == 'Sedang Lembur') {
+        } else if (lowerStatus == 'sedang lembur') {
           final prefs = await SharedPreferences.getInstance();
           final lemburId =
               dataForScreen?['id']?.toString() ??

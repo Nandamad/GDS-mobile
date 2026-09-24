@@ -82,16 +82,15 @@ class _AjukanLemburScreenState extends State<AjukanLemburScreen> {
     try {
       final String tanggal = DateFormat('yyyy-MM-dd').format(_selectedDate);
       
-      final List<String> parts = _jamMulaiStr.split(':');
-      int startHour = 17;
-      int startMinute = 0;
-      if (parts.length >= 2) {
-        startHour = int.tryParse(parts[0]) ?? 17;
-        startMinute = int.tryParse(parts[1]) ?? 0;
-      } else if (parts.isNotEmpty) {
-        startHour = int.tryParse(parts[0]) ?? 17;
-      }
+      final DateTime now = DateTime.now();
+      final int startHour = now.hour;
+      final int startMinute = now.minute;
+      
       int endHour = startHour + _selectedDuration;
+      if (endHour >= 24) {
+        endHour = endHour % 24;
+      }
+      final String jamMulaiStr = '${startHour.toString().padLeft(2, '0')}:${startMinute.toString().padLeft(2, '0')}';
       final String jamSelesaiStr = '${endHour.toString().padLeft(2, '0')}:${startMinute.toString().padLeft(2, '0')}';
 
       String alasanGabung = _alasanController.text.trim();
@@ -101,7 +100,7 @@ class _AjukanLemburScreenState extends State<AjukanLemburScreen> {
 
       final payload = {
         'tanggal': tanggal,
-        'jam_mulai_lembur': _jamMulaiStr,
+        'jam_mulai_lembur': jamMulaiStr,
         'jam_selesai_lembur': jamSelesaiStr,
         'alasan': alasanGabung,
       };
