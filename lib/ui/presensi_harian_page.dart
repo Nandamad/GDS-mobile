@@ -1085,10 +1085,8 @@ class _PresensiHarianScreenState extends State<PresensiHarianScreen> {
 
           if (actualStartStr != null) {
             final actualStart = DateTime.parse(actualStartStr).toLocal();
-            final int durasiMenit = hitungDurasiLemburMenit(lembur);
-            final actualSelesai = actualStart.add(Duration(minutes: durasiMenit));
 
-            if (serverTime.isAfter(actualSelesai)) {
+            if (serverTime.isAfter(selesai)) {
               status = 'Selesai';
             } else {
               status = 'Sedang Lembur';

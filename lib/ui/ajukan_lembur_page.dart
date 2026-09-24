@@ -84,11 +84,15 @@ class _AjukanLemburScreenState extends State<AjukanLemburScreen> {
       
       final List<String> parts = _jamMulaiStr.split(':');
       int startHour = 17;
-      if (parts.isNotEmpty) {
+      int startMinute = 0;
+      if (parts.length >= 2) {
+        startHour = int.tryParse(parts[0]) ?? 17;
+        startMinute = int.tryParse(parts[1]) ?? 0;
+      } else if (parts.isNotEmpty) {
         startHour = int.tryParse(parts[0]) ?? 17;
       }
       int endHour = startHour + _selectedDuration;
-      final String jamSelesaiStr = '${endHour.toString().padLeft(2, '0')}:00';
+      final String jamSelesaiStr = '${endHour.toString().padLeft(2, '0')}:${startMinute.toString().padLeft(2, '0')}';
 
       String alasanGabung = _alasanController.text.trim();
       if (_catatanController.text.trim().isNotEmpty) {

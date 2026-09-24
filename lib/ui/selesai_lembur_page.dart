@@ -220,7 +220,7 @@ class _SelesaiLemburScreenState extends State<SelesaiLemburScreen> {
       if (!mounted) return;
       if (response.statusCode == 200) {
         _notificationService.stopAlarmSound();
-        Navigator.popUntil(context, (route) => route.isFirst);
+        Navigator.pop(context);
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
             content: Text('Lembur berhasil diakhiri!'),
