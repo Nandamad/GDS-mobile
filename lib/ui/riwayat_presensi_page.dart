@@ -116,7 +116,7 @@ class _RiwayatPresensiScreenState extends State<RiwayatPresensiScreen> {
         // 1. Parse History
         for (var item in historyData) {
           final absensiObj = Absensi.fromJson(item);
-          final tipe = item['tipe'] as String? ?? 'Kehadiran';
+          final tipe = (item['tipe'] as String? ?? 'Kehadiran').trim();
           final rawStatus = (absensiObj.status ?? item['status'] ?? 'hadir')
               .toString()
               .toLowerCase();
@@ -125,11 +125,11 @@ class _RiwayatPresensiScreenState extends State<RiwayatPresensiScreen> {
           Color txtColor = const Color(0xFF059669);
           String statusTxt = 'Hadir';
 
-          if (tipe == 'Lembur') {
+          if (tipe.toLowerCase() == 'lembur') {
             statusTxt = 'Lembur';
             bgColor = const Color(0xFFF3E8FF);
             txtColor = const Color(0xFF7E22CE);
-          } else if (tipe != 'Kehadiran') {
+          } else if (tipe.toLowerCase() != 'kehadiran') {
             statusTxt = 'Izin';
             bgColor = const Color(0xFFDBEAFE);
             txtColor = const Color(0xFF2563EB);
@@ -468,7 +468,11 @@ class _RiwayatPresensiScreenState extends State<RiwayatPresensiScreen> {
             if (status == 'approved' || status == 'disetujui') {
                badgeBg = const Color(0xFFD1FAE5);
                badgeText = const Color(0xFF059669);
-               badgeStr = 'Disetujui';
+               badgeStr = (raw['jam_selesai_kunjungan'] != null) ? 'Selesai' : 'Disetujui';
+               if (badgeStr == 'Selesai') {
+                   badgeBg = const Color(0xFFE0E7FF);
+                   badgeText = const Color(0xFF4338CA);
+               }
             } else if (status == 'rejected' || status == 'ditolak') {
                badgeBg = const Color(0xFFFEE2E2);
                badgeText = const Color(0xFFDC2626);

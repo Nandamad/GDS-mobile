@@ -307,8 +307,8 @@ class DetailWorkflowScreen extends StatelessWidget {
           last: false,
         ),
         _step(
-          title: 'Persetujuan Atasan (L1)',
-          subtitle: _approvalInfo(level1: true),
+          title: 'Persetujuan ${_getApproverName(level1: true)}',
+          subtitle: _approvalInfo(level1: true, overallRejected: rejected),
           note: _approvalNote(level1: true),
           badge: _getStepBadgeText(l1, rejected, l1Approved),
           statusType: _getStepStatusType(l1, rejected, l1Approved, false),
@@ -316,8 +316,8 @@ class DetailWorkflowScreen extends StatelessWidget {
           last: false,
         ),
         _step(
-          title: 'Persetujuan HRD (L2)',
-          subtitle: _approvalInfo(level1: false),
+          title: 'Persetujuan ${_getApproverName(level1: false)}',
+          subtitle: _approvalInfo(level1: false, overallRejected: rejected),
           note: _approvalNote(level1: false),
           badge: _getStepBadgeText(l2, rejected, l2Approved),
           statusType: _getStepStatusType(l2, rejected, l2Approved, l1Approved),
@@ -357,8 +357,8 @@ class DetailWorkflowScreen extends StatelessWidget {
           last: false,
         ),
         _step(
-          title: 'Persetujuan Atasan (L1)',
-          subtitle: _approvalInfo(level1: true),
+          title: 'Persetujuan ${_getApproverName(level1: true)}',
+          subtitle: _approvalInfo(level1: true, overallRejected: rejected),
           note: _approvalNote(level1: true),
           badge: _getStepBadgeText(l1, rejected, l1Approved),
           statusType: _getStepStatusType(l1, rejected, l1Approved, false),
@@ -366,8 +366,8 @@ class DetailWorkflowScreen extends StatelessWidget {
           last: false,
         ),
         _step(
-          title: 'Persetujuan HRD (L2)',
-          subtitle: _approvalInfo(level1: false),
+          title: 'Persetujuan ${_getApproverName(level1: false)}',
+          subtitle: _approvalInfo(level1: false, overallRejected: rejected),
           note: _approvalNote(level1: false),
           badge: _getStepBadgeText(l2, rejected, l2Approved),
           statusType: _getStepStatusType(l2, rejected, l2Approved, l1Approved),
@@ -401,7 +401,15 @@ class DetailWorkflowScreen extends StatelessWidget {
     return 'waiting';
   }
 
-  String _approvalInfo({required bool level1}) {
+  String _getApproverName({required bool level1}) {
+    if (level1) {
+      return data['approved_by_l1']?['name'] ?? data['approved_by_atasan_name'] ?? data['nama_atasan'] ?? 'Atasan (L1)';
+    } else {
+      return data['approved_by_l2']?['name'] ?? data['approved_by_hrd_name'] ?? data['nama_hrd'] ?? 'HRD (L2)';
+    }
+  }
+
+  String _approvalInfo({required bool level1, bool overallRejected = false}) {
     dynamic nama;
     dynamic tanggal;
     if (level1) {
@@ -411,7 +419,10 @@ class DetailWorkflowScreen extends StatelessWidget {
       nama = data['approved_by_l2']?['name'] ?? data['approved_by_hrd_name'] ?? data['nama_hrd'];
       tanggal = data['approved_at_l2'] ?? data['approved_at_hrd'] ?? data['tanggal_verifikasi_hrd'];
     }
-    if (nama == null && tanggal == null) return level1 ? 'Menunggu persetujuan atasan' : 'Menunggu persetujuan HRD';
+    if (nama == null && tanggal == null) {
+      if (overallRejected) return 'Proses dibatalkan';
+      return level1 ? 'Menunggu persetujuan atasan' : 'Menunggu persetujuan HRD';
+    }
     return '${_value(nama)} \u2022 ${_formatDateTime(tanggal)}';
   }
 
