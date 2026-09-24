@@ -167,7 +167,10 @@ class _SelesaiLemburScreenState extends State<SelesaiLemburScreen> {
                 child: ElevatedButton(
                   onPressed: () {
                     _notificationService.stopAlarmSound();
-                    Navigator.pop(context);
+                    Navigator.pop(context); // close dialog
+                    if (!_isSubmitting) {
+                      _akhiriLembur();
+                    }
                   },
                   style: ElevatedButton.styleFrom(
                     backgroundColor: const Color(0xFFEF4444),

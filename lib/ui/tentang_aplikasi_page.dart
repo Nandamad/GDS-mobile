@@ -76,11 +76,11 @@ class TentangAplikasiScreen extends StatelessWidget {
               ),
               child: Column(
                 children: [
-                  _buildInfoRow('Dibuat oleh', namaPerusahaan),
+                  _buildInfoRow('Dibuat oleh', 'PT. Generasi Digital Sinergi'),
                   const Divider(height: 24),
                   _buildInfoRow('Email', 'presensiplus.id@gmail.com'),
                   const Divider(height: 24),
-                  _buildInfoRow('Website', 'https://devabs.yukliat.com'),
+                  _buildInfoRow('Website', 'https:example.com'),
                 ],
               ),
             ),
