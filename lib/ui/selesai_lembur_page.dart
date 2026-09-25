@@ -218,7 +218,7 @@ class _SelesaiLemburScreenState extends State<SelesaiLemburScreen> {
   Future<void> _akhiriLembur() async {
     setState(() => _isSubmitting = true);
     try {
-      final response = await ApiService().dio.post('/lembur/selesai');
+      final response = await ApiService().dio.post('/lembur/selesai', data: {});
       
       if (!mounted) return;
       if (response.statusCode == 200) {

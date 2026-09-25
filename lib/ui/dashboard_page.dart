@@ -952,7 +952,12 @@ class _DashboardScreenState extends State<DashboardScreen> {
       btnText = 'Mulai Lembur';
     }
 
-    if (!_isInRadius && !(_isSudahAbsenMasuk && _isSudahAbsenKeluar)) {
+    bool isDefaultLocation = _currentLocation.latitude == -7.7279 && _currentLocation.longitude == 109.0089;
+
+    if (isDefaultLocation && !(_isSudahAbsenMasuk && _isSudahAbsenKeluar)) {
+      btnColor = Colors.grey;
+      btnText = 'Mencari Lokasi';
+    } else if (!_isInRadius && !(_isSudahAbsenMasuk && _isSudahAbsenKeluar)) {
       btnColor = Colors.grey;
       btnText = 'Luar Radius';
     }
@@ -1154,6 +1159,37 @@ class _DashboardScreenState extends State<DashboardScreen> {
   }
 
   Widget _buildRadiusBadge() {
+    final isDefaultLocation = _currentLocation.latitude == -7.7279 && _currentLocation.longitude == 109.0089;
+
+    if (isDefaultLocation) {
+      return Container(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+        decoration: BoxDecoration(
+          color: const Color(0xFFFFF3E0),
+          borderRadius: BorderRadius.circular(20),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: const [
+            Icon(
+              Icons.location_searching,
+              size: 16,
+              color: Color(0xFFE65100),
+            ),
+            SizedBox(width: 6),
+            Text(
+              'Sedang mencari lokasi GPS Anda...',
+              style: TextStyle(
+                color: Color(0xFFE65100),
+                fontSize: 12,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
       decoration: BoxDecoration(

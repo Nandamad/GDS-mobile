@@ -1068,7 +1068,9 @@ class _PresensiHarianScreenState extends State<PresensiHarianScreen> {
         status = lembur['status'] ?? 'Menunggu';
         dataForScreen = lembur;
         
-        if (status.toLowerCase() == 'disetujui' && payload['server_time'] != null) {
+        if (status.toLowerCase() == 'berjalan') {
+          status = 'Sedang Lembur';
+        } else if (status.toLowerCase() == 'disetujui' && payload['server_time'] != null) {
           final serverTime = DateTime.parse(payload['server_time']).toLocal();
           final selesai = DateTime.parse(lembur['jam_selesai']).toLocal();
 
@@ -1081,7 +1083,6 @@ class _PresensiHarianScreenState extends State<PresensiHarianScreen> {
           final actualStartStr = prefs.getString('lembur_start_time_$lemburId');
 
           if (actualStartStr != null) {
-
             if (serverTime.isAfter(selesai)) {
               status = 'Selesai';
             } else {
@@ -1129,7 +1130,7 @@ class _PresensiHarianScreenState extends State<PresensiHarianScreen> {
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(content: Text('Anda sudah menyelesaikan lembur hari ini.')),
           );
-        } else if (lowerStatus == 'sedang lembur') {
+        } else if (lowerStatus == 'sedang lembur' || lowerStatus == 'berjalan') {
           final prefs = await SharedPreferences.getInstance();
           final lemburId =
               dataForScreen?['id']?.toString() ??

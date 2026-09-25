@@ -128,7 +128,7 @@ class _MulaiLemburScreenState extends State<MulaiLemburScreen> {
 
     // Kirim API ke backend agar status lembur berjalan sinkron dengan dashboard admin
     try {
-      final response = await ApiService().dio.post('/lembur/mulai');
+      final response = await ApiService().dio.post('/lembur/mulai', data: {});
       if (response.statusCode != 200 && response.statusCode != 201) {
         throw Exception('Gagal di server');
       }
@@ -275,9 +275,9 @@ class _MulaiLemburScreenState extends State<MulaiLemburScreen> {
                                     borderRadius: BorderRadius.circular(20),
                                     border: Border.all(color: const Color(0xFF009688)),
                                   ),
-                                  child: const Text(
-                                    'Disetujui',
-                                    style: TextStyle(
+                                  child: Text(
+                                    widget.lemburStatus.isEmpty ? 'Disetujui' : widget.lemburStatus[0].toUpperCase() + widget.lemburStatus.substring(1).toLowerCase(),
+                                    style: const TextStyle(
                                       color: Color(0xFF009688),
                                       fontSize: 11,
                                       fontWeight: FontWeight.bold,

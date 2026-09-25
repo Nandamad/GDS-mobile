@@ -128,7 +128,7 @@ class _ProfilPageState extends State<ProfilPage> {
 
     // Call backend to invalidate token
     try {
-      await ApiService().dio.post('/logout');
+      await ApiService().dio.post('/logout', data: {});
     } catch (e) {
       debugPrint('Logout API Error: $e');
     }
