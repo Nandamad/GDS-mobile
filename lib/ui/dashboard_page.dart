@@ -100,7 +100,12 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 canLembur = false;
               }
 
-              if (canLembur && _lemburActualStartTime != null) {
+              String statusLemburAPI = _lemburData!['status'] ?? '';
+
+              if (statusLemburAPI == 'selesai') {
+                _lemburStatus = 'Sudah Selesai';
+                _lemburCountdown = 'Lembur Selesai';
+              } else if (canLembur && _lemburActualStartTime != null) {
                 // Lembur sudah dimulai
                 if (_serverTime!.isAfter(apiSelesai)) {
                   _lemburStatus = 'Selesai';
@@ -885,7 +890,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
               letterSpacing: 0.5,
             ),
           ),
-        ] else if (_lemburStatus == 'Selesai') ...[
+        ] else if (_lemburStatus == 'Selesai' || _lemburStatus == 'Sudah Selesai') ...[
           const Text(
             'SELESAI LEMBUR',
             style: TextStyle(
@@ -910,6 +915,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
   }
 
   Widget _buildAbsenButton() {
+    if (_lemburStatus == 'Sudah Selesai') {
+      return _buildSudahSelesaiLemburButton();
+    }
     if (_lemburStatus == 'Sedang Lembur' || _lemburStatus == 'Selesai') {
       return _buildLemburButton();
     }
@@ -1013,6 +1021,44 @@ class _DashboardScreenState extends State<DashboardScreen> {
             ),
           ],
         ),
+      ),
+    );
+  }
+
+  Widget _buildSudahSelesaiLemburButton() {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.symmetric(vertical: 20),
+      decoration: BoxDecoration(
+        color: const Color(0xFFF8FAFC),
+        borderRadius: BorderRadius.circular(24),
+        border: Border.all(color: const Color(0xFFE2E8F0)),
+      ),
+      child: Column(
+        children: [
+          Container(
+            padding: const EdgeInsets.all(16),
+            decoration: const BoxDecoration(
+              color: Color(0xFFE0F2F1),
+              shape: BoxShape.circle,
+            ),
+            child: const Icon(Icons.check, color: Color(0xFF009688), size: 32),
+          ),
+          const SizedBox(height: 16),
+          const Text(
+            'Lembur Selesai',
+            style: TextStyle(
+              fontSize: 18,
+              fontWeight: FontWeight.bold,
+              color: Color(0xFF0F172A),
+            ),
+          ),
+          const SizedBox(height: 4),
+          const Text(
+            'Sesi lembur Anda telah selesai.',
+            style: TextStyle(fontSize: 14, color: Color(0xFF64748B)),
+          ),
+        ],
       ),
     );
   }
@@ -1511,30 +1557,30 @@ class _DashboardScreenState extends State<DashboardScreen> {
             _buildTimelineItem(
               title: 'Mulai Lembur',
               time: jamMulaiLembur,
-              badgeText: _lemburStatus == 'Selesai'
+              badgeText: (_lemburStatus == 'Selesai' || _lemburStatus == 'Sudah Selesai')
                   ? 'Selesai'
                   : _lemburStatus == 'Sedang Lembur'
                       ? 'Sedang Berlangsung'
                       : 'Belum Mulai',
-              badgeColor: _lemburStatus == 'Selesai'
+              badgeColor: (_lemburStatus == 'Selesai' || _lemburStatus == 'Sudah Selesai')
                   ? const Color(0xFF009688)
                   : _lemburStatus == 'Sedang Lembur'
                       ? const Color(0xFFE65100)
                       : Colors.grey,
-              badgeBg: _lemburStatus == 'Selesai'
+              badgeBg: (_lemburStatus == 'Selesai' || _lemburStatus == 'Sudah Selesai')
                   ? const Color(0xFFE0F2F1)
                   : _lemburStatus == 'Sedang Lembur'
                       ? const Color(0xFFFFF3E0)
                       : const Color(0xFFF1F5F9),
               isFirst: false,
-              isLast: _lemburStatus != 'Selesai',
-              dotColor: _lemburStatus == 'Selesai'
+              isLast: (_lemburStatus != 'Selesai' && _lemburStatus != 'Sudah Selesai'),
+              dotColor: (_lemburStatus == 'Selesai' || _lemburStatus == 'Sudah Selesai')
                   ? const Color(0xFF009688)
                   : _lemburStatus == 'Sedang Lembur'
                       ? const Color(0xFFF57C00)
                       : Colors.grey,
             ),
-            if (_lemburStatus == 'Selesai')
+            if (_lemburStatus == 'Selesai' || _lemburStatus == 'Sudah Selesai')
               _buildTimelineItem(
                 title: 'Selesai Lembur',
                 time: jamSelesaiLembur,
