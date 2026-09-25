@@ -117,14 +117,27 @@ class _PresensiHarianScreenState extends State<PresensiHarianScreen> {
       _isLoading = true;
     });
 
-    // Fetch current location to update LocationCubit state
-    if (mounted) {
-      await context.read<LocationCubit>().getCurrentLocation();
-      if (!mounted) return;
-    }
-
     try {
-      await Future.wait([_fetchDashboardAndToday(), _fetchRecentHistory()]);
+      // Fetch current location to update LocationCubit state
+      if (mounted) {
+        try {
+          await context.read<LocationCubit>().getCurrentLocation().timeout(
+            const Duration(seconds: 10),
+          );
+        } catch (e) {
+          debugPrint('Location fetch timed out or failed: $e');
+        }
+      }
+      
+      if (!mounted) return;
+
+      try {
+        await Future.wait([_fetchDashboardAndToday(), _fetchRecentHistory()]).timeout(
+          const Duration(seconds: 15),
+        );
+      } catch (e) {
+        debugPrint('API fetch timed out or failed: $e');
+      }
     } finally {
       if (mounted) {
         setState(() {
