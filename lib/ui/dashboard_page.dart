@@ -100,7 +100,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 canLembur = false;
               }
 
-              String statusLemburAPI = _lemburData!['status'] ?? '';
+              String statusLemburAPI = _lemburData!['status']?.toString().toLowerCase() ?? '';
 
               if (statusLemburAPI == 'selesai') {
                 _lemburStatus = 'Sudah Selesai';
@@ -420,7 +420,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
   }
 
   void _calculateOfficeDistance() {
-    if (_officeLocation == null || _maxRadiusMeters <= 0) return;
+    if (_officeLocation == null) return;
     final distance = Geolocator.distanceBetween(
       _currentLocation.latitude,
       _currentLocation.longitude,
@@ -1026,39 +1026,74 @@ class _DashboardScreenState extends State<DashboardScreen> {
   }
 
   Widget _buildSudahSelesaiLemburButton() {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.symmetric(vertical: 20),
-      decoration: BoxDecoration(
-        color: const Color(0xFFF8FAFC),
-        borderRadius: BorderRadius.circular(24),
-        border: Border.all(color: const Color(0xFFE2E8F0)),
-      ),
-      child: Column(
-        children: [
-          Container(
-            padding: const EdgeInsets.all(16),
-            decoration: const BoxDecoration(
-              color: Color(0xFFE0F2F1),
-              shape: BoxShape.circle,
+    return GestureDetector(
+      onTap: () {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Anda sudah menyelesaikan lembur hari ini.')),
+        );
+      },
+      child: Container(
+        width: 180,
+        height: 180,
+        decoration: BoxDecoration(
+          color: Colors.white,
+          shape: BoxShape.circle,
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.05),
+              blurRadius: 24,
+              spreadRadius: 2,
+              offset: const Offset(0, 10),
             ),
-            child: const Icon(Icons.check, color: Color(0xFF009688), size: 32),
-          ),
-          const SizedBox(height: 16),
-          const Text(
-            'Lembur Selesai',
-            style: TextStyle(
-              fontSize: 18,
-              fontWeight: FontWeight.bold,
-              color: Color(0xFF0F172A),
+          ],
+        ),
+        child: Stack(
+          alignment: Alignment.center,
+          children: [
+            SizedBox(
+              width: 180,
+              height: 180,
+              child: CircularProgressIndicator(
+                value: 1.0,
+                strokeWidth: 8,
+                backgroundColor: const Color(0xFFE2E8F0),
+                valueColor: AlwaysStoppedAnimation<Color>(const Color(0xFF009688)),
+              ),
             ),
-          ),
-          const SizedBox(height: 4),
-          const Text(
-            'Sesi lembur Anda telah selesai.',
-            style: TextStyle(fontSize: 14, color: Color(0xFF64748B)),
-          ),
-        ],
+            Container(
+              width: 140,
+              height: 140,
+              decoration: BoxDecoration(
+                color: const Color(0xFF009688),
+                shape: BoxShape.circle,
+                boxShadow: [
+                  BoxShadow(
+                    color: const Color(0xFF009688).withOpacity(0.3),
+                    blurRadius: 16,
+                    spreadRadius: 4,
+                  ),
+                ],
+              ),
+              child: const Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(Icons.check_circle_outline, color: Colors.white, size: 40),
+                  SizedBox(height: 8),
+                  Text(
+                    'Lembur\nSelesai',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontWeight: FontWeight.bold,
+                      fontSize: 16,
+                      height: 1.2,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }

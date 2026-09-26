@@ -623,11 +623,11 @@ class _PresensiHarianScreenState extends State<PresensiHarianScreen> {
     }
 
     bool canAbsenMasuk =
-        !_isSudahAbsenMasuk && (locState.maxRadius <= 0 || locState.isInRadius);
+        !_isSudahAbsenMasuk && locState.isInRadius;
     bool canAbsenKeluar =
         _isSudahAbsenMasuk &&
         !_isSudahAbsenKeluar &&
-        (locState.maxRadius <= 0 || locState.isInRadius);
+        locState.isInRadius;
 
     return Row(
       children: [
