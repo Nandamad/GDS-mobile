@@ -334,16 +334,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
       debugPrint('GET /notifikasi COUNT ERROR: $e');
     }
 
-    try {
-      final response = await ApiService().dio.get('/approval/pending');
-      dynamic list = response.data is Map
-          ? (response.data['data'] ?? response.data['items'] ?? [])
-          : response.data;
-      if (list is List) unreadCount += list.length;
-    } catch (e) {
-      debugPrint('GET /approval/pending COUNT ERROR: $e');
-    }
-
     if (mounted) {
       setState(() => _unreadNotificationCount = unreadCount);
     }
