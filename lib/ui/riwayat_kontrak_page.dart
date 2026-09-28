@@ -1,7 +1,68 @@
 import 'package:flutter/material.dart';
+import 'package:dio/dio.dart';
+import '../services/api_service.dart';
 
-class RiwayatKontrakScreen extends StatelessWidget {
+class RiwayatKontrakScreen extends StatefulWidget {
   const RiwayatKontrakScreen({super.key});
+
+  @override
+  State<RiwayatKontrakScreen> createState() => _RiwayatKontrakScreenState();
+}
+
+class _RiwayatKontrakScreenState extends State<RiwayatKontrakScreen> {
+  bool _isLoading = true;
+  String? _errorMessage;
+  Map<String, dynamic>? _kontrakAktif;
+  List<dynamic> _kontrakSebelumnya = [];
+
+  @override
+  void initState() {
+    super.initState();
+    _fetchData();
+  }
+
+  Future<void> _fetchData() async {
+    setState(() {
+      _isLoading = true;
+      _errorMessage = null;
+    });
+
+    try {
+      final response = await ApiService().dio.get('/kontrak');
+      
+      if (response.statusCode == 200 && response.data['status'] == 'success') {
+        final data = response.data['data'];
+        if (mounted) {
+          setState(() {
+            _kontrakAktif = data['kontrak_aktif'];
+            _kontrakSebelumnya = data['kontrak_sebelumnya'] ?? [];
+            _isLoading = false;
+          });
+        }
+      } else {
+        if (mounted) {
+          setState(() {
+            _errorMessage = 'Gagal memuat data kontrak.';
+            _isLoading = false;
+          });
+        }
+      }
+    } on DioException catch (e) {
+      if (mounted) {
+        setState(() {
+          _errorMessage = e.response?.data['message'] ?? 'Terjadi kesalahan koneksi.';
+          _isLoading = false;
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _errorMessage = 'Terjadi kesalahan sistem.';
+          _isLoading = false;
+        });
+      }
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -24,31 +85,67 @@ class RiwayatKontrakScreen extends StatelessWidget {
         ),
         centerTitle: true,
       ),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 16.0),
+      body: _buildBody(),
+    );
+  }
+
+  Widget _buildBody() {
+    if (_isLoading) {
+      return const Center(child: CircularProgressIndicator(color: Color(0xFF009688)));
+    }
+
+    if (_errorMessage != null) {
+      return Center(
         child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            const Text(
-              'KONTRAK AKTIF',
-              style: TextStyle(
-                fontSize: 11,
-                fontWeight: FontWeight.bold,
-                color: Color(0xFF64748B),
-                letterSpacing: 0.5,
+            Text(_errorMessage!, style: const TextStyle(color: Colors.red)),
+            const SizedBox(height: 16),
+            ElevatedButton(
+              onPressed: _fetchData,
+              style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF009688)),
+              child: const Text('Coba Lagi', style: TextStyle(color: Colors.white)),
+            ),
+          ],
+        ),
+      );
+    }
+
+    return SingleChildScrollView(
+      padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 16.0),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text(
+            'KONTRAK AKTIF',
+            style: TextStyle(
+              fontSize: 11,
+              fontWeight: FontWeight.bold,
+              color: Color(0xFF64748B),
+              letterSpacing: 0.5,
+            ),
+          ),
+          const SizedBox(height: 12),
+          if (_kontrakAktif != null)
+            _buildKontrakCard(_kontrakAktif!)
+          else
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(color: Colors.grey.shade200),
+              ),
+              child: const Text(
+                'Belum ada data kontrak aktif',
+                style: TextStyle(color: Color(0xFF64748B), fontSize: 14),
+                textAlign: TextAlign.center,
               ),
             ),
-            const SizedBox(height: 12),
-            _buildKontrakCard(
-              title: 'Kontrak Kerja Utama',
-              jenis: 'Karyawan Tetap',
-              periode: '1 Jan 2023 - Sekarang',
-              departemen: 'IT',
-              statusText: 'Aktif',
-              isActive: true,
-            ),
-            const SizedBox(height: 24),
-            
+          const SizedBox(height: 24),
+          
+          if (_kontrakSebelumnya.isNotEmpty) ...[
             const Text(
               'KONTRAK SEBELUMNYA',
               style: TextStyle(
@@ -59,38 +156,48 @@ class RiwayatKontrakScreen extends StatelessWidget {
               ),
             ),
             const SizedBox(height: 12),
-            _buildKontrakCard(
-              title: 'Kontrak Kerja 2',
-              jenis: 'Karyawan Kontrak',
-              periode: '1 Jan 2021 - 31 Des 2022',
-              departemen: 'IT',
-              statusText: 'Selesai',
-              isActive: false,
-            ),
-            const SizedBox(height: 12),
-            _buildKontrakCard(
-              title: 'Kontrak Kerja 1',
-              jenis: 'Karyawan Kontrak',
-              periode: '1 Jan 2020 - 31 Des 2020',
-              departemen: 'IT',
-              statusText: 'Selesai',
-              isActive: false,
-            ),
+            ..._kontrakSebelumnya.map((kontrak) {
+              return Padding(
+                padding: const EdgeInsets.only(bottom: 12.0),
+                child: _buildKontrakCard(kontrak as Map<String, dynamic>),
+              );
+            }),
             const SizedBox(height: 24),
           ],
-        ),
+        ],
       ),
     );
   }
 
-  Widget _buildKontrakCard({
-    required String title,
-    required String jenis,
-    required String periode,
-    required String departemen,
-    required String statusText,
-    required bool isActive,
-  }) {
+  Widget _buildKontrakCard(Map<String, dynamic> kontrak) {
+    final title = kontrak['judul']?.toString() ?? 'Kontrak Kerja';
+    final jenis = kontrak['jenis_kontrak']?.toString() ?? '-';
+    final periodeMulai = kontrak['periode_mulai']?.toString() ?? '-';
+    final periodeSelesai = kontrak['periode_selesai']?.toString() ?? '-';
+    final periode = '$periodeMulai - $periodeSelesai';
+    final departemen = kontrak['departemen']?.toString() ?? '-';
+    
+    String statusText = kontrak['status_teks']?.toString() ?? '';
+    if (statusText.toLowerCase() == 'berakhir') {
+      statusText = 'Selesai';
+    }
+    
+    final bool isActive = (kontrak['is_aktif'] == true) || (statusText.toLowerCase() == 'aktif');
+
+    Color badgeBgColor;
+    Color badgeTextColor;
+
+    if (statusText.toLowerCase() == 'aktif') {
+      badgeBgColor = const Color(0xFFE0F2F1);
+      badgeTextColor = const Color(0xFF009688);
+    } else if (statusText.toLowerCase() == 'perpanjangan') {
+      badgeBgColor = const Color(0xFFFEF3C7); // Kuning/Abu bg
+      badgeTextColor = const Color(0xFFD97706);
+    } else {
+      badgeBgColor = const Color(0xFFF1F5F9);
+      badgeTextColor = const Color(0xFF4B5563);
+    }
+
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
@@ -127,7 +234,7 @@ class RiwayatKontrakScreen extends StatelessWidget {
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                 decoration: BoxDecoration(
-                  color: isActive ? const Color(0xFFE0F2F1) : const Color(0xFFF1F5F9),
+                  color: badgeBgColor,
                   borderRadius: BorderRadius.circular(20),
                 ),
                 child: Text(
@@ -135,7 +242,7 @@ class RiwayatKontrakScreen extends StatelessWidget {
                   style: TextStyle(
                     fontSize: 10,
                     fontWeight: FontWeight.bold,
-                    color: isActive ? const Color(0xFF009688) : const Color(0xFF64748B),
+                    color: badgeTextColor,
                   ),
                 ),
               ),
