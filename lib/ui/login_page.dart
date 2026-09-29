@@ -18,13 +18,13 @@ class _LoginScreenState extends State<LoginScreen> {
   String _version = '';
   final TextEditingController _nipController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
-
   @override
   void initState() {
     super.initState();
-    _loadVersion();
+    // Set manual version string
+    _version = 'v1.2.2';
+    // _loadVersion(); // disabled for manual version input
   }
-
   @override
   void dispose() {
     _nipController.dispose();
