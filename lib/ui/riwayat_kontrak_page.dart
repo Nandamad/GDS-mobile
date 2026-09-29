@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:dio/dio.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../services/api_service.dart';
 
 class RiwayatKontrakScreen extends StatefulWidget {
@@ -111,9 +112,13 @@ class _RiwayatKontrakScreenState extends State<RiwayatKontrakScreen> {
       );
     }
 
-    return SingleChildScrollView(
-      padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 16.0),
-      child: Column(
+    return RefreshIndicator(
+      onRefresh: _fetchData,
+      color: const Color(0xFF009688),
+      child: SingleChildScrollView(
+        physics: const AlwaysScrollableScrollPhysics(),
+        padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 16.0),
+        child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           const Text(
@@ -166,6 +171,7 @@ class _RiwayatKontrakScreenState extends State<RiwayatKontrakScreen> {
           ],
         ],
       ),
+      ),
     );
   }
 
@@ -176,26 +182,32 @@ class _RiwayatKontrakScreenState extends State<RiwayatKontrakScreen> {
     final periodeSelesai = kontrak['periode_selesai']?.toString() ?? '-';
     final periode = '$periodeMulai - $periodeSelesai';
     final departemen = kontrak['departemen']?.toString() ?? '-';
+    final dokumenUrl = kontrak['dokumen_url']?.toString();
     
-    String statusText = kontrak['status_teks']?.toString() ?? '';
-    if (statusText.toLowerCase() == 'berakhir') {
-      statusText = 'Selesai';
-    }
+    final statusText = kontrak['status_teks']?.toString() ?? '';
     
-    final bool isActive = (kontrak['is_aktif'] == true) || (statusText.toLowerCase() == 'aktif');
+    final bool isAktifBoolean = kontrak['is_aktif'] == true;
 
     Color badgeBgColor;
     Color badgeTextColor;
+    Border? badgeBorder;
 
     if (statusText.toLowerCase() == 'aktif') {
-      badgeBgColor = const Color(0xFFE0F2F1);
-      badgeTextColor = const Color(0xFF009688);
+      badgeBgColor = const Color(0xFFEFF6FF); // bg-blue-50
+      badgeTextColor = const Color(0xFF2563EB); // text-blue-600
     } else if (statusText.toLowerCase() == 'perpanjangan') {
-      badgeBgColor = const Color(0xFFFEF3C7); // Kuning/Abu bg
-      badgeTextColor = const Color(0xFFD97706);
+      badgeBgColor = const Color(0xFFF1F5F9); // bg-slate-100
+      badgeTextColor = const Color(0xFF475569); // text-slate-600
+    } else if (statusText.toLowerCase() == 'berakhir') {
+      badgeBgColor = const Color(0xFFFFF7ED); // bg-orange-50
+      badgeTextColor = const Color(0xFFEA580C); // text-orange-600
+    } else if (statusText.toLowerCase() == 'non-aktif') {
+      badgeBgColor = const Color(0xFFF1F5F9); // bg-slate-100
+      badgeTextColor = const Color(0xFF64748B); // text-slate-500
+      badgeBorder = Border.all(color: const Color(0xFFCBD5E1)); // border-slate-300
     } else {
       badgeBgColor = const Color(0xFFF1F5F9);
-      badgeTextColor = const Color(0xFF4B5563);
+      badgeTextColor = const Color(0xFF64748B);
     }
 
     return Container(
@@ -204,10 +216,10 @@ class _RiwayatKontrakScreenState extends State<RiwayatKontrakScreen> {
         color: Colors.white,
         borderRadius: BorderRadius.circular(16),
         border: Border.all(
-          color: isActive ? const Color(0xFF009688) : Colors.grey.shade200,
-          width: isActive ? 1.5 : 1.0,
+          color: isAktifBoolean ? const Color(0xFF009688) : Colors.grey.shade200,
+          width: isAktifBoolean ? 1.5 : 1.0,
         ),
-        boxShadow: isActive
+        boxShadow: isAktifBoolean
             ? [
                 BoxShadow(
                   color: const Color(0xFF009688).withValues(alpha: 0.05),
@@ -236,6 +248,7 @@ class _RiwayatKontrakScreenState extends State<RiwayatKontrakScreen> {
                 decoration: BoxDecoration(
                   color: badgeBgColor,
                   borderRadius: BorderRadius.circular(20),
+                  border: badgeBorder,
                 ),
                 child: Text(
                   statusText,
@@ -254,6 +267,52 @@ class _RiwayatKontrakScreenState extends State<RiwayatKontrakScreen> {
           _buildInfoRow('Periode', periode),
           const SizedBox(height: 8),
           _buildInfoRow('Departemen', departemen),
+          const SizedBox(height: 16),
+          SizedBox(
+            width: double.infinity,
+            child: OutlinedButton.icon(
+              onPressed: () async {
+                if (dokumenUrl != null && dokumenUrl.isNotEmpty) {
+                  final uri = Uri.parse(dokumenUrl);
+                  if (await canLaunchUrl(uri)) {
+                    await launchUrl(uri, mode: LaunchMode.externalApplication);
+                  } else {
+                    if (mounted) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(content: Text('Tidak dapat membuka dokumen')),
+                      );
+                    }
+                  }
+                } else {
+                  if (mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(content: Text('Tidak ada dokumen')),
+                    );
+                  }
+                }
+              },
+              icon: Icon(
+                Icons.description_outlined,
+                size: 16,
+                color: (dokumenUrl != null && dokumenUrl.isNotEmpty) ? const Color(0xFF009688) : Colors.grey,
+              ),
+              label: Text(
+                'Lihat Dokumen',
+                style: TextStyle(
+                  color: (dokumenUrl != null && dokumenUrl.isNotEmpty) ? const Color(0xFF009688) : Colors.grey,
+                  fontSize: 12,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+              style: OutlinedButton.styleFrom(
+                padding: const EdgeInsets.symmetric(vertical: 8),
+                side: BorderSide(color: (dokumenUrl != null && dokumenUrl.isNotEmpty) ? const Color(0xFF009688) : Colors.grey.shade300),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(8),
+                ),
+              ),
+            ),
+          ),
         ],
       ),
     );
