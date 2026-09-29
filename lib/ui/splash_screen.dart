@@ -20,11 +20,9 @@ class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderSt
     super.initState();
     _controller = AnimationController(
       vsync: this,
-      duration: const Duration(seconds: 4),
+      duration: const Duration(seconds: 3),
     );
-    // Animate from 0 to 20 (which represents 20 hours). 
-    // 20 % 12 = 8, so it will stop at 8:00.
-    _animation = Tween<double>(begin: 0, end: 20).animate(
+    _animation = Tween<double>(begin: 0, end: 10).animate(
       CurvedAnimation(parent: _controller, curve: Curves.easeInOutCubic),
     );
     _controller.forward();
@@ -39,7 +37,7 @@ class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderSt
 
   Future<void> _checkSession() async {
     // Memberikan waktu minimal untuk splash screen (UX)
-    await Future.delayed(const Duration(seconds: 5));
+    await Future.delayed(const Duration(seconds: 3));
 
     final token = await ApiService().getToken();
 
@@ -111,7 +109,7 @@ class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderSt
             const Padding(
               padding: EdgeInsets.only(bottom: 12.0),
               child: Text(
-                'v1.2.2',
+                'v1.2.3',
                 style: TextStyle(fontSize: 10, color: Colors.grey),
               ),
             ),
