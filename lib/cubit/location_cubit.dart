@@ -10,24 +10,24 @@ class LocationCubit extends Cubit<LocationState> {
 
   Future<void> getCurrentLocation() async {
     try {
+      final serviceEnabled = await Geolocator.isLocationServiceEnabled();
+      if (!serviceEnabled) {
+        emit(state.copyWith(errorMessage: 'GPS/Lokasi perangkat belum aktif.'));
+        return;
+      }
+
       final hasPermission = await _checkLocationPermission();
       if (!hasPermission) {
         emit(state.copyWith(errorMessage: 'Location permission denied'));
         return;
       }
 
+      // Get accurate location without distanceFilter to ensure it returns immediately
       final position = await Geolocator.getCurrentPosition(
         locationSettings: const LocationSettings(
           accuracy: LocationAccuracy.best,
-          distanceFilter: 10,
-          timeLimit: Duration(seconds: locationTimeoutSeconds),
         ),
-      ).catchError((_) async {
-        // Fallback to last known position if timeout or error
-        final lastKnown = await Geolocator.getLastKnownPosition();
-        if (lastKnown != null) return lastKnown;
-        throw Exception('Location request timed out');
-      });
+      );
 
       final currentLocation = LatLng(position.latitude, position.longitude);
       _calculateRadius(currentLocation);
@@ -37,10 +37,11 @@ class LocationCubit extends Cubit<LocationState> {
           currentLocation: currentLocation,
           gpsAccuracy: position.accuracy,
           isMocked: position.isMocked,
+          errorMessage: null, // clear previous error
         ),
       );
     } catch (e) {
-      emit(state.copyWith(errorMessage: 'Failed to get location: $e'));
+      emit(state.copyWith(errorMessage: 'Gagal mendapatkan lokasi: $e'));
     }
   }
 

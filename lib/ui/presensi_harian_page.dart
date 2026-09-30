@@ -979,28 +979,14 @@ class _PresensiHarianScreenState extends State<PresensiHarianScreen> {
                 icon: Icons.person_outline,
                 iconColor: const Color(0xFF3B82F6),
                 title: 'Mulai Kunjungan Klien',
-                onTap: () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (_) => const MulaiKunjunganScreen(),
-                    ),
-                  );
-                },
+                onTap: () => _handleMenuKunjungan(true),
               ),
               _buildMenuDivider(),
               _buildMenuItem(
                 icon: Icons.person_outline,
                 iconColor: const Color(0xFF3B82F6),
                 title: 'Selesai Kunjungan Klien',
-                onTap: () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (_) => const SelesaiKunjunganScreen(),
-                    ),
-                  );
-                },
+                onTap: () => _handleMenuKunjungan(false),
               ),
             ],
           ),
@@ -1181,6 +1167,70 @@ class _PresensiHarianScreenState extends State<PresensiHarianScreen> {
       Navigator.pop(context);
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Gagal memuat data lembur.')),
+      );
+    }
+  }
+
+  Future<void> _handleMenuKunjungan(bool isMulai) async {
+    if (_jamMasuk == null || _jamMasuk!.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text(
+            'Anda harus Absen Masuk terlebih dahulu sebelum bisa melakukan aktivitas kunjungan klien.',
+          ),
+        ),
+      );
+      return;
+    }
+
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (_) => const Center(child: CircularProgressIndicator()),
+    );
+
+    try {
+      final res = await ApiService().dio.get('/kunjungan/active');
+      if (!mounted) return;
+      Navigator.pop(context); // pop loading
+
+      if (res.statusCode == 200) {
+        final data = res.data['data'];
+        
+        if (isMulai) {
+          if (data != null && data['jam_mulai_kunjungan'] != null) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(content: Text('Anda sudah memulai kunjungan. Silakan gunakan menu Selesai Kunjungan.')),
+            );
+            return;
+          }
+          
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (_) => MulaiKunjunganScreen(kunjunganData: data),
+            ),
+          );
+        } else {
+          if (data == null || data['jam_mulai_kunjungan'] == null) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(content: Text('Anda belum memulai kunjungan klien apa pun!')),
+            );
+            return;
+          }
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (_) => const SelesaiKunjunganScreen(),
+            ),
+          );
+        }
+      }
+    } catch (e) {
+      if (!mounted) return;
+      Navigator.pop(context);
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Gagal mengecek status kunjungan.')),
       );
     }
   }

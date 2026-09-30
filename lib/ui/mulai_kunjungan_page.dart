@@ -1,452 +1,469 @@
+import 'dart:convert';
+import 'dart:ui';
 import 'package:flutter/material.dart';
-import 'dart:async';
-import 'package:geocoding/geocoding.dart';
-import 'package:dio/dio.dart';
-import 'package:flutter_map/flutter_map.dart';
-import 'package:latlong2/latlong.dart' hide Path;
+import 'package:shared_preferences/shared_preferences.dart';
+import 'ajukan_kunjungan_page.dart';
+import 'kamera_page.dart';
+import 'selesai_kunjungan_page.dart';
 import '../services/api_service.dart';
 
 class MulaiKunjunganScreen extends StatefulWidget {
-  const MulaiKunjunganScreen({super.key});
+  final Map<String, dynamic>? kunjunganData;
+
+  const MulaiKunjunganScreen({
+    super.key,
+    required this.kunjunganData,
+  });
 
   @override
   State<MulaiKunjunganScreen> createState() => _MulaiKunjunganScreenState();
 }
 
 class _MulaiKunjunganScreenState extends State<MulaiKunjunganScreen> {
-  final Color primaryTeal = const Color(0xFF009688);
-  final GlobalKey<FormState> _formKey = GlobalKey<FormState>();
+  String? _fotoSelfieBase64;
+  bool _isStarting = false;
 
-  final TextEditingController _namaKlienController = TextEditingController();
-  final TextEditingController _alamatController = TextEditingController();
-  final TextEditingController _catatanController = TextEditingController();
+  Future<void> _ambilFoto() async {
+    final result = await Navigator.push(
+      context,
+      MaterialPageRoute(builder: (context) => const KameraScreen(namaKantor: 'Verifikasi Kunjungan')),
+    );
 
-  String? _tujuanKunjungan;
-  final List<String> _tujuanOptions = ['Meeting', 'Maintenance', 'Sales', 'Lainnya'];
-
-  bool _isSubmitting = false;
-
-  double? _latitude;
-  double? _longitude;
-  String _locationName = 'Lokasi Kunjungan';
-  String _locationAddress = 'Ketik alamat di atas untuk melihat peta';
-  bool _isLoadingLocation = false;
-  Timer? _debounce;
-
-  @override
-  void initState() {
-    super.initState();
-    _alamatController.addListener(_onAlamatChanged);
-  }
-
-  void _onAlamatChanged() {
-    if (_debounce?.isActive ?? false) _debounce!.cancel();
-    _debounce = Timer(const Duration(milliseconds: 1500), () {
-      final address = _alamatController.text.trim();
-      if (address.isNotEmpty) {
-        _geocodeAddress(address);
-      }
-    });
-  }
-
-  Future<void> _geocodeAddress(String address) async {
-    setState(() {
-      _isLoadingLocation = true;
-      _locationAddress = 'Mencari lokasi...';
-    });
-
-    try {
-      List<Location> locations = await locationFromAddress(address);
-      if (locations.isNotEmpty) {
-        final loc = locations.first;
-        if (mounted) {
-          setState(() {
-            _latitude = loc.latitude;
-            _longitude = loc.longitude;
-            _locationName = 'Lokasi Ditemukan';
-            _locationAddress = address;
-            _isLoadingLocation = false;
-          });
-        }
-      }
-    } catch (e) {
-      if (mounted) {
-        setState(() {
-          _locationName = 'Lokasi tidak ditemukan';
-          _locationAddress = 'Alamat belum terbaca di peta';
-          _isLoadingLocation = false;
-        });
-      }
+    if (result != null && result is String) {
+      setState(() {
+        _fotoSelfieBase64 = result;
+      });
     }
   }
 
-  @override
-  void dispose() {
-    _debounce?.cancel();
-    _namaKlienController.dispose();
-    _alamatController.dispose();
-    _catatanController.dispose();
-    super.dispose();
-  }
-
-  void _submit() async {
-    if (!_formKey.currentState!.validate()) return;
-    
-    if (_latitude == null || _longitude == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Lokasi peta belum ditemukan. Mohon ketikkan alamat kunjungan yang lebih jelas.'),
-          backgroundColor: Colors.orange,
+  Future<void> _mulaiKunjungan() async {
+    if (widget.kunjunganData == null) {
+      showDialog(
+        context: context,
+        builder: (context) => Dialog(
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          child: Padding(
+            padding: const EdgeInsets.all(24),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color: Colors.red.shade50,
+                    shape: BoxShape.circle,
+                  ),
+                  child: const Icon(Icons.info_outline, color: Colors.red, size: 32),
+                ),
+                const SizedBox(height: 16),
+                const Text(
+                  'Pengajuan Kunjungan',
+                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: Color(0xFF0F172A)),
+                ),
+                const SizedBox(height: 8),
+                const Text(
+                  'Ajukan kunjungan terlebih dahulu untuk memulai kunjungan.',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(color: Colors.grey, fontSize: 12, height: 1.5),
+                ),
+                const SizedBox(height: 24),
+                Row(
+                  children: [
+                    Expanded(
+                      child: OutlinedButton(
+                        onPressed: () => Navigator.pop(context),
+                        style: OutlinedButton.styleFrom(
+                          side: BorderSide(color: Colors.grey.shade300),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                          padding: const EdgeInsets.symmetric(vertical: 12),
+                        ),
+                        child: const Text('Kembali', style: TextStyle(color: Colors.grey, fontSize: 13)),
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: ElevatedButton(
+                        onPressed: () {
+                          Navigator.pop(context);
+                          Navigator.pushReplacement(context, MaterialPageRoute(builder: (_) => const AjukanKunjunganScreen()));
+                        },
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: const Color(0xFF009688),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                          padding: const EdgeInsets.symmetric(vertical: 12),
+                          elevation: 0,
+                        ),
+                        child: const Text('Ajukan', style: TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.bold)),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
         ),
       );
       return;
     }
 
+    if (_fotoSelfieBase64 == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Foto verifikasi wajib diambil!')),
+      );
+      return;
+    }
+
     setState(() {
-      _isSubmitting = true;
+      _isStarting = true;
     });
 
     try {
       final response = await ApiService().dio.post('/kunjungan/mulai', data: {
-        'nama_klien': _namaKlienController.text,
-        'alamat_kunjungan': _alamatController.text,
-        'tujuan_kunjungan': _tujuanKunjungan,
-        'catatan': _catatanController.text,
-        'lokasi_gps_mulai': '$_latitude,$_longitude',
+        'kunjungan_id': widget.kunjunganData!['id'], // Kirim ID Kunjungan
+        'foto_selfie_mulai': _fotoSelfieBase64,
       });
 
-      if (mounted) {
-        setState(() {
-          _isSubmitting = false;
-        });
-        if (response.statusCode == 201 || response.statusCode == 200) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('Kunjungan berhasil dimulai!'),
-              backgroundColor: Colors.green,
-            ),
-          );
-          Navigator.pop(context, true);
-        } else {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text(response.data['message'] ?? 'Gagal memulai kunjungan'),
-              backgroundColor: Colors.red,
-            ),
-          );
-        }
+      if (response.statusCode != 200 && response.statusCode != 201) {
+        throw Exception('Gagal di server');
       }
-    } on DioException catch (e) {
-      if (mounted) {
-        setState(() {
-          _isSubmitting = false;
-        });
-        String errorMessage = 'Terjadi kesalahan jaringan';
-        if (e.response != null && e.response?.data != null) {
-           if (e.response?.data['message'] != null) {
-              errorMessage = e.response?.data['message'];
-           } else {
-              errorMessage = e.response?.data.toString() ?? 'Error dari server';
-           }
-        }
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(errorMessage),
-            backgroundColor: Colors.red,
-          ),
-        );
-      }
+
+      if (!mounted) return;
+      setState(() {
+        _isStarting = false;
+      });
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Kunjungan berhasil dimulai!'),
+          backgroundColor: Colors.green,
+        ),
+      );
+      Navigator.pop(context, true); // Return true to refresh parent
     } catch (e) {
-      if (mounted) {
-        setState(() {
-          _isSubmitting = false;
-        });
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(e.toString()),
-            backgroundColor: Colors.red,
-          ),
-        );
-      }
+      if (!mounted) return;
+      setState(() {
+        _isStarting = false;
+      });
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Gagal memulai kunjungan: $e'),
+          backgroundColor: Colors.red,
+        ),
+      );
     }
   }
 
   @override
   Widget build(BuildContext context) {
+    final data = widget.kunjunganData;
+    final bool hasKunjungan = data != null;
+
+    // --- Helper functions ---
+    String formatTanggal(String isoString) {
+      try {
+        final date = DateTime.parse(isoString).toLocal();
+        const months = ['Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni', 'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'];
+        final dayStr = date.day.toString().padLeft(2, '0');
+        return '$dayStr ${months[date.month - 1]} ${date.year}';
+      } catch (_) {
+        return '-';
+      }
+    }
+
+    // --- Computed values ---
+    String tanggal = '-';
+    String namaKlien = '-';
+    String tujuanKunjungan = '-';
+    String alamat = '-';
+    String approvedByName = 'Manager HRD';
+
+    if (hasKunjungan) {
+      tanggal = data['tanggal'] != null ? formatTanggal(data['tanggal']) : '-';
+      namaKlien = data['nama_klien'] ?? '-';
+      tujuanKunjungan = data['tujuan_kunjungan'] ?? '-';
+      alamat = data['alamat_kunjungan'] ?? '-';
+      approvedByName = data['approvedByL1']?['name'] ?? data['approvedByL2']?['name'] ?? 'Manager HRD';
+    }
+
     return Scaffold(
-      backgroundColor: Colors.white,
+      backgroundColor: const Color(0xFFF8FAFC),
       appBar: AppBar(
         backgroundColor: Colors.white,
         elevation: 0,
-        centerTitle: false,
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back_ios_new, color: Color(0xFF0F172A), size: 18),
-          onPressed: () => Navigator.pop(context),
+        leading: Padding(
+          padding: const EdgeInsets.all(8.0),
+          child: InkWell(
+            onTap: () => Navigator.pop(context),
+            borderRadius: BorderRadius.circular(20),
+            child: Container(
+              decoration: BoxDecoration(color: Colors.grey.shade100, shape: BoxShape.circle),
+              child: const Icon(Icons.arrow_back, size: 18, color: Color(0xFF0F172A)),
+            ),
+          ),
         ),
         title: const Text(
           'Mulai Kunjungan',
-          style: TextStyle(
-            color: Color(0xFF0F172A),
-            fontWeight: FontWeight.bold,
-            fontSize: 16,
-          ),
+          style: TextStyle(color: Color(0xFF0F172A), fontWeight: FontWeight.bold, fontSize: 16),
         ),
+        centerTitle: true,
       ),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(20.0),
-        child: Form(
-          key: _formKey,
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              _buildLabel('Nama Klien *'),
-              _buildTextField(
-                controller: _namaKlienController,
-                hint: 'Masukkan nama klien',
-                validator: (val) => val == null || val.isEmpty ? 'Nama klien wajib diisi' : null,
+      body: SafeArea(
+        child: Column(
+          children: [
+            Expanded(
+              child: SingleChildScrollView(
+                padding: const EdgeInsets.all(16),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    // ===== Detail Kunjungan Card =====
+                    Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.all(16),
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(
+                          color: hasKunjungan ? const Color(0xFF009688) : Colors.grey.shade300,
+                          width: hasKunjungan ? 1.5 : 1,
+                        ),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withOpacity(0.02),
+                            blurRadius: 10,
+                            offset: const Offset(0, 4),
+                          )
+                        ],
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            children: [
+                              Container(
+                                padding: const EdgeInsets.all(8),
+                                decoration: BoxDecoration(
+                                  color: hasKunjungan ? const Color(0xFFE0F2F1) : Colors.grey.shade100,
+                                  borderRadius: BorderRadius.circular(8),
+                                ),
+                                child: Icon(
+                                  Icons.location_on,
+                                  color: hasKunjungan ? const Color(0xFF009688) : Colors.grey,
+                                  size: 20,
+                                ),
+                              ),
+                              const SizedBox(width: 12),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    const Text('Status Pengajuan', style: TextStyle(color: Colors.grey, fontSize: 11)),
+                                    const SizedBox(height: 2),
+                                    Text(
+                                      hasKunjungan ? 'Disetujui' : 'Belum Ada',
+                                      style: TextStyle(
+                                        fontWeight: FontWeight.bold,
+                                        fontSize: 14,
+                                        color: hasKunjungan ? const Color(0xFF009688) : Colors.grey,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ],
+                          ),
+                          if (hasKunjungan) ...[
+                            const SizedBox(height: 20),
+                            const Divider(height: 1, color: Color(0xFFF1F5F9)),
+                            const SizedBox(height: 16),
+                            
+                            const Text('Tanggal', style: TextStyle(color: Colors.grey, fontSize: 11)),
+                            const SizedBox(height: 4),
+                            Text(tanggal, style: const TextStyle(fontSize: 13, color: Color(0xFF0F172A))),
+                            const SizedBox(height: 12),
+                            
+                            const Text('Nama Klien', style: TextStyle(color: Colors.grey, fontSize: 11)),
+                            const SizedBox(height: 4),
+                            Text(namaKlien, style: const TextStyle(fontSize: 13, color: Color(0xFF0F172A))),
+                            const SizedBox(height: 12),
+                            
+                            const Text('Tujuan', style: TextStyle(color: Colors.grey, fontSize: 11)),
+                            const SizedBox(height: 4),
+                            Text(tujuanKunjungan, style: const TextStyle(fontSize: 13, color: Color(0xFF0F172A))),
+                            const SizedBox(height: 12),
+
+                            const Text('Alamat', style: TextStyle(color: Colors.grey, fontSize: 11)),
+                            const SizedBox(height: 4),
+                            Text(alamat, style: const TextStyle(fontSize: 13, color: Color(0xFF0F172A))),
+                            const SizedBox(height: 12),
+                            
+                            const Text('Disetujui oleh', style: TextStyle(color: Colors.grey, fontSize: 11)),
+                            const SizedBox(height: 4),
+                            Text(approvedByName, style: const TextStyle(fontSize: 13, color: Color(0xFF0F172A))),
+                          ] else ...[
+                            const SizedBox(height: 24),
+                            Center(
+                              child: Column(
+                                children: [
+                                  Icon(Icons.assignment_outlined, size: 40, color: Colors.grey.shade300),
+                                  const SizedBox(height: 8),
+                                  Text(
+                                    'Belum ada pengajuan kunjungan',
+                                    style: TextStyle(color: Colors.grey.shade400, fontSize: 13),
+                                  ),
+                                ],
+                              ),
+                            ),
+                            const SizedBox(height: 16),
+                          ],
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 24),
+        
+                    // ===== Kirim Foto =====
+                    const Text(
+                      'Kirim Foto Kunjungan',
+                      style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: Color(0xFF0F172A)),
+                    ),
+                    const SizedBox(height: 12),
+                    GestureDetector(
+                      onTap: _ambilFoto,
+                      child: CustomPaint(
+                        painter: DashedRectPainter(color: Colors.grey.shade400, strokeWidth: 1, gap: 5),
+                        child: Container(
+                          width: double.infinity,
+                          height: 180,
+                          decoration: BoxDecoration(
+                            color: const Color(0xFFF8FAFC),
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: _fotoSelfieBase64 != null
+                              ? ClipRRect(
+                                  borderRadius: BorderRadius.circular(12),
+                                  child: Image.memory(
+                                    base64Decode(_fotoSelfieBase64!.split(',').last),
+                                    fit: BoxFit.cover,
+                                  ),
+                                )
+                              : Column(
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  children: [
+                                    Container(
+                                      padding: const EdgeInsets.all(12),
+                                      decoration: BoxDecoration(
+                                        color: Colors.white,
+                                        shape: BoxShape.circle,
+                                        border: Border.all(color: Colors.grey.shade200),
+                                      ),
+                                      child: const Icon(Icons.camera_alt_outlined, color: Color(0xFF009688), size: 28),
+                                    ),
+                                    const SizedBox(height: 12),
+                                    const Text(
+                                      'Ambil Foto Kunjungan',
+                                      style: TextStyle(color: Color(0xFF009688), fontWeight: FontWeight.bold, fontSize: 13),
+                                    ),
+                                    const SizedBox(height: 6),
+                                    const Text(
+                                      'Foto diperlukan sebagai bukti kehadiran',
+                                      style: TextStyle(color: Colors.grey, fontSize: 11),
+                                    ),
+                                  ],
+                                ),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
               ),
-              const SizedBox(height: 16),
+            ),
 
-              _buildLabel('Alamat Kunjungan *'),
-              _buildTextField(
-                controller: _alamatController,
-                hint: 'Masukkan alamat kunjungan',
-                validator: (val) => val == null || val.isEmpty ? 'Alamat wajib diisi' : null,
+            // ===== Bottom Button =====
+            Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withOpacity(0.05),
+                    blurRadius: 10,
+                    offset: const Offset(0, -4),
+                  )
+                ]
               ),
-              const SizedBox(height: 16),
-
-              _buildLabel('Tujuan Kunjungan *'),
-              DropdownButtonFormField<String>(
-                value: _tujuanKunjungan,
-                decoration: _inputDecoration('Pilih tujuan kunjungan'),
-                icon: const Icon(Icons.keyboard_arrow_down, color: Color(0xFF64748B)),
-                items: _tujuanOptions
-                    .map((t) => DropdownMenuItem(
-                          value: t,
-                          child: Text(t, style: const TextStyle(fontSize: 13, color: Color(0xFF1E293B))),
-                        ))
-                    .toList(),
-                onChanged: (val) => setState(() => _tujuanKunjungan = val),
-                validator: (val) => val == null ? 'Tujuan wajib dipilih' : null,
-              ),
-              const SizedBox(height: 16),
-
-              _buildLabel('Catatan Kunjungan'),
-              _buildTextField(
-                controller: _catatanController,
-                hint: 'Tuliskan agenda atau poin penting meeting di sini...',
-                maxLines: 3,
-              ),
-              const SizedBox(height: 24),
-
-              _buildLokasiGPSCard(),
-              const SizedBox(height: 32),
-
-              SizedBox(
+              child: SizedBox(
                 width: double.infinity,
                 height: 48,
                 child: ElevatedButton(
+                  onPressed: _isStarting ? null : _mulaiKunjungan,
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: primaryTeal,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(8),
-                    ),
+                    backgroundColor: const Color(0xFF009688),
+                    disabledBackgroundColor: Colors.grey.shade300,
                     elevation: 0,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
                   ),
-                  onPressed: _isSubmitting ? null : _submit,
-                  child: _isSubmitting
+                  child: _isStarting
                       ? const SizedBox(
                           width: 20,
                           height: 20,
                           child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
                         )
                       : const Text(
-                          'Mulai Kunjungan Sekarang',
-                          style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 13),
-                        ),
-                ),
-              ),
-              const SizedBox(height: 20),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildLabel(String text) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 8.0),
-      child: Text(
-        text,
-        style: const TextStyle(
-          fontSize: 12,
-          fontWeight: FontWeight.bold,
-          color: Color(0xFF0F172A),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildTextField({
-    required TextEditingController controller,
-    required String hint,
-    int maxLines = 1,
-    String? Function(String?)? validator,
-  }) {
-    return TextFormField(
-      controller: controller,
-      maxLines: maxLines,
-      style: const TextStyle(fontSize: 13),
-      decoration: _inputDecoration(hint),
-      validator: validator,
-    );
-  }
-
-  InputDecoration _inputDecoration(String hint) {
-    return InputDecoration(
-      hintText: hint,
-      hintStyle: const TextStyle(color: Color(0xFF94A3B8), fontSize: 13),
-      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-      border: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(8),
-        borderSide: BorderSide(color: Colors.grey.shade300),
-      ),
-      enabledBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(8),
-        borderSide: BorderSide(color: Colors.grey.shade300),
-      ),
-      focusedBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(8),
-        borderSide: BorderSide(color: primaryTeal),
-      ),
-    );
-  }
-
-  Widget _buildLokasiGPSCard() {
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: Colors.grey.shade200),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.02),
-            blurRadius: 10,
-            offset: const Offset(0, 4),
-          )
-        ],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Icon(Icons.location_on_outlined, color: primaryTeal, size: 18),
-              const SizedBox(width: 8),
-              const Text(
-                'Lokasi Peta (Berdasarkan Alamat)',
-                style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12, color: Color(0xFF0F172A)),
-              ),
-              if (_isLoadingLocation) ...[
-                const Spacer(),
-                SizedBox(
-                  width: 14,
-                  height: 14,
-                  child: CircularProgressIndicator(strokeWidth: 2, color: primaryTeal),
-                ),
-              ],
-            ],
-          ),
-          const SizedBox(height: 12),
-          Text(
-            _locationName,
-            style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: Color(0xFF0F172A)),
-          ),
-          const SizedBox(height: 4),
-          Text(
-            _locationAddress,
-            style: const TextStyle(color: Colors.grey, fontSize: 11, height: 1.4),
-          ),
-          const SizedBox(height: 16),
-          ClipRRect(
-            borderRadius: BorderRadius.circular(8),
-            child: Container(
-              height: 120,
-              width: double.infinity,
-              decoration: const BoxDecoration(
-                color: Color(0xFFE2E8F0),
-              ),
-              child: _latitude != null && _longitude != null
-                  ? FlutterMap(
-                      key: ValueKey('$_latitude-$_longitude'),
-                      options: MapOptions(
-                        initialCenter: LatLng(_latitude!, _longitude!),
-                        initialZoom: 15.0,
-                        interactionOptions: const InteractionOptions(flags: InteractiveFlag.none),
-                      ),
-                      children: [
-                        TileLayer(
-                          urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
-                          userAgentPackageName: 'com.gds.presensi_plus',
-                        ),
-                        MarkerLayer(
-                          markers: [
-                            Marker(
-                              point: LatLng(_latitude!, _longitude!),
-                              width: 40,
-                              height: 40,
-                              child: const Icon(
-                                Icons.location_on,
-                                color: Colors.red,
-                                size: 32,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ],
-                    )
-                  : Stack(
-                      alignment: Alignment.center,
-                      children: [
-                        Positioned.fill(
-                          child: CustomPaint(
-                            painter: MapPlaceholderPainter(),
+                          'Mulai Kunjungan',
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontSize: 14,
+                            fontWeight: FontWeight.bold,
                           ),
                         ),
-                        const Icon(Icons.location_off, color: Colors.grey, size: 30),
-                      ],
-                    ),
-            ),
-          )
-        ],
+                ),
+              ),
+            )
+          ],
+        ),
       ),
     );
   }
 }
 
-class MapPlaceholderPainter extends CustomPainter {
+// Painter for Dashed Border
+class DashedRectPainter extends CustomPainter {
+  final Color color;
+  final double strokeWidth;
+  final double gap;
+
+  DashedRectPainter({required this.color, required this.strokeWidth, required this.gap});
+
   @override
   void paint(Canvas canvas, Size size) {
-    final paint = Paint()
-      ..color = const Color(0xFFCBD5E1)
-      ..strokeWidth = 2
+    final Paint paint = Paint()
+      ..color = color
+      ..strokeWidth = strokeWidth
       ..style = PaintingStyle.stroke;
 
-    final path = Path();
-    double step = 20;
-    for (double i = 0; i < size.width; i += step) {
-      path.moveTo(i, 0);
-      path.lineTo(i, size.height);
+    final Path path = Path();
+    path.addRRect(RRect.fromRectAndRadius(Rect.fromLTWH(0, 0, size.width, size.height), const Radius.circular(12)));
+
+    final Path dashedPath = _createDashedPath(path, gap);
+    canvas.drawPath(dashedPath, paint);
+  }
+
+  Path _createDashedPath(Path source, double gap) {
+    Path dashedPath = Path();
+    for (PathMetric metric in source.computeMetrics()) {
+      double distance = 0.0;
+      while (distance < metric.length) {
+        double len = gap; // length of dash
+        if (distance + len > metric.length) len = metric.length - distance;
+        dashedPath.addPath(metric.extractPath(distance, distance + len), Offset.zero);
+        distance += len + gap; // length of gap
+      }
     }
-    for (double i = 0; i < size.height; i += step) {
-      path.moveTo(0, i);
-      path.lineTo(size.width, i);
-    }
-    canvas.drawPath(path, paint);
+    return dashedPath;
   }
 
   @override
-  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
+  bool shouldRepaint(CustomPainter oldDelegate) => false;
 }

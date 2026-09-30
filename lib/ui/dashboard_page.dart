@@ -343,6 +343,14 @@ class _DashboardScreenState extends State<DashboardScreen> {
   Future<void> _determinePositionAndFetch() async {
     bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
     if (!serviceEnabled) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('GPS/Lokasi perangkat belum aktif. Harap nyalakan GPS Anda.'),
+            backgroundColor: Colors.redAccent,
+          ),
+        );
+      }
       _fetchAllData();
       return;
     }
@@ -362,8 +370,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
     try {
       final position = await Geolocator.getCurrentPosition(
-        desiredAccuracy: LocationAccuracy.high,
-        timeLimit: const Duration(seconds: 10),
+        desiredAccuracy: LocationAccuracy.high, // No time limit to force fresh location
       );
       if (mounted) {
         setState(() {
@@ -373,18 +380,16 @@ class _DashboardScreenState extends State<DashboardScreen> {
         });
       }
     } catch (e) {
-      try {
-        final lastPosition = await Geolocator.getLastKnownPosition();
-        if (lastPosition != null && mounted) {
-          setState(() {
-            _currentLocation = LatLng(lastPosition.latitude, lastPosition.longitude);
-            _gpsAccuracy = lastPosition.accuracy;
-            _isMocked = lastPosition.isMocked;
-          });
-        }
-      } catch (e2) {
-        debugPrint('Dashboard GPS fallback error: $e2');
+      debugPrint('Dashboard GPS error: $e');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Gagal mendapatkan lokasi akurat. Pastikan GPS stabil.'),
+            backgroundColor: Colors.orange,
+          ),
+        );
       }
+      // No longer falling back to getLastKnownPosition to prevent spoofing!
     }
 
     _fetchAllData();

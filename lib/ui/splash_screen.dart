@@ -22,7 +22,7 @@ class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderSt
       vsync: this,
       duration: const Duration(seconds: 3),
     );
-    _animation = Tween<double>(begin: 0, end: 10).animate(
+    _animation = Tween<double>(begin: -4, end: 8).animate(
       CurvedAnimation(parent: _controller, curve: Curves.easeInOutCubic),
     );
     _controller.forward();
@@ -130,54 +130,75 @@ class ClockPainter extends CustomPainter {
     final center = Offset(size.width / 2, size.height / 2);
     final radius = size.width / 2;
 
-    final paintCircle = Paint()
+    // Draw background squircle
+    final paintBg = Paint()
       ..color = const Color(0xFF009688)
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = 3;
+      ..style = PaintingStyle.fill;
+    
+    final rrect = RRect.fromRectAndRadius(
+      Rect.fromCenter(center: center, width: size.width, height: size.height),
+      const Radius.circular(12),
+    );
+    canvas.drawRRect(rrect, paintBg);
 
-    final paintHour = Paint()
-      ..color = const Color(0xFF0F172A)
+    // Inner clock circle
+    final innerRadius = radius * 0.55;
+    
+    final paintWhite = Paint()
+      ..color = Colors.white
       ..style = PaintingStyle.stroke
       ..strokeCap = StrokeCap.round
-      ..strokeWidth = 4;
-
-    final paintMinute = Paint()
-      ..color = const Color(0xFF009688)
-      ..style = PaintingStyle.stroke
-      ..strokeCap = StrokeCap.round
-      ..strokeWidth = 3;
+      ..strokeWidth = 2.5;
 
     // Draw clock circle
-    canvas.drawCircle(center, radius, paintCircle);
+    canvas.drawCircle(center, innerRadius, paintWhite);
+
+    final checkCenter = Offset(center.dx + innerRadius * 0.75, center.dy + innerRadius * 0.75);
+    // Draw green circle to cut out the clock border for the checkmark
+    canvas.drawCircle(checkCenter, 8, paintBg);
 
     // Calculate angles (-pi/2 is 12 o'clock / top)
     final hourAngle = -math.pi / 2 + (time / 12) * 2 * math.pi;
     final minuteAngle = -math.pi / 2 + (time % 1) * 2 * math.pi;
 
     // Draw hour hand
-    final hourLength = radius * 0.5;
+    final hourLength = innerRadius * 0.45;
     canvas.drawLine(
       center,
       Offset(
         center.dx + math.cos(hourAngle) * hourLength,
         center.dy + math.sin(hourAngle) * hourLength,
       ),
-      paintHour,
+      paintWhite,
     );
 
     // Draw minute hand
-    final minuteLength = radius * 0.75;
+    final minuteLength = innerRadius * 0.65;
     canvas.drawLine(
       center,
       Offset(
         center.dx + math.cos(minuteAngle) * minuteLength,
         center.dy + math.sin(minuteAngle) * minuteLength,
       ),
-      paintMinute,
+      paintWhite,
     );
 
     // Draw center dot
-    canvas.drawCircle(center, 4, Paint()..color = const Color(0xFF0F172A));
+    canvas.drawCircle(center, 2.5, Paint()..color = Colors.white);
+
+    // Draw checkmark
+    final checkPaint = Paint()
+      ..color = Colors.white
+      ..style = PaintingStyle.stroke
+      ..strokeCap = StrokeCap.round
+      ..strokeJoin = StrokeJoin.round
+      ..strokeWidth = 2.5;
+      
+    final path = Path();
+    path.moveTo(checkCenter.dx - 3.5, checkCenter.dy);
+    path.lineTo(checkCenter.dx - 1, checkCenter.dy + 3.5);
+    path.lineTo(checkCenter.dx + 4.5, checkCenter.dy - 3);
+    canvas.drawPath(path, checkPaint);
   }
 
   @override
