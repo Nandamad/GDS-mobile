@@ -70,10 +70,17 @@ class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderSt
                 child: Column(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    Image.asset(
-                      'assets/logo.png',
-                      width: 80,
-                      height: 80,
+                    AnimatedBuilder(
+                      animation: _animation,
+                      builder: (context, child) {
+                        return SizedBox(
+                          width: 80,
+                          height: 80,
+                          child: CustomPaint(
+                            painter: ClockPainter(_animation.value),
+                          ),
+                        );
+                      },
                     ),
                     const SizedBox(height: 24),
                     const Text(
@@ -88,19 +95,6 @@ class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderSt
                     const Text(
                       'Sistem Absensi Digital',
                       style: TextStyle(color: Colors.grey, fontSize: 14),
-                    ),
-                    const SizedBox(height: 64),
-                    AnimatedBuilder(
-                      animation: _animation,
-                      builder: (context, child) {
-                        return SizedBox(
-                          width: 48,
-                          height: 48,
-                          child: CustomPaint(
-                            painter: ClockPainter(_animation.value),
-                          ),
-                        );
-                      },
                     ),
                   ],
                 ),

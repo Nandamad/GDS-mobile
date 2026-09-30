@@ -4,6 +4,7 @@ import '../ui/ajukan_cuti_page.dart';
 import '../ui/ajukan_lembur_page.dart';
 import '../ui/ajukan_koreksi_presensi_page.dart';
 import '../ui/perlu_persetujuan_page.dart';
+import '../ui/ajukan_kunjungan_page.dart';
 
 class PengajuanScreen extends StatefulWidget {
   final bool showBackButton;
@@ -148,6 +149,17 @@ class _PengajuanScreenState extends State<PengajuanScreen> {
                   );
                 },
               ),
+              // Card Ajukan Kunjungan Klien
+              _buildMenuCard(
+                title: 'Ajukan Kunjungan Klien',
+                subtitle: 'Pengajuan kunjungan luar kantor',
+                onTap: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (context) => const AjukanKunjunganScreen()),
+                  );
+                },
+              ),
               _buildMenuCard(
                 title: 'Daftar Persetujuan',
                 subtitle: 'Persetujuan pengajuan dari bawahan',
@@ -187,6 +199,17 @@ class _PengajuanScreenState extends State<PengajuanScreen> {
                   Navigator.push(
                     context,
                     MaterialPageRoute(builder: (context) => const AjukanKoreksiPresensiScreen()),
+                  );
+                },
+              ),
+              // Card Ajukan Kunjungan Klien
+              _buildMenuCard(
+                title: 'Ajukan Kunjungan Klien',
+                subtitle: 'Pengajuan kunjungan luar kantor',
+                onTap: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (context) => const AjukanKunjunganScreen()),
                   );
                 },
               ),
