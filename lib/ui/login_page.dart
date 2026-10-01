@@ -203,6 +203,8 @@ class _LoginScreenState extends State<LoginScreen> {
           } else {
             errorMsg = 'Kredensial tidak valid atau akun dinonaktifkan.';
           }
+        } else if (e.response!.statusCode == 403) {
+          errorMsg = 'Anda Tidak Bisa Masuk';
         } else {
           errorMsg = 'Error server: ${e.response!.statusCode}';
         }
