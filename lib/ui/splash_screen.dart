@@ -22,7 +22,7 @@ class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderSt
       vsync: this,
       duration: const Duration(seconds: 3),
     );
-    _animation = Tween<double>(begin: -4, end: 8).animate(
+    _animation = Tween<double>(begin: 0, end: 1).animate(
       CurvedAnimation(parent: _controller, curve: Curves.easeInOutCubic),
     );
     _controller.forward();
@@ -115,9 +115,9 @@ class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderSt
 }
 
 class ClockPainter extends CustomPainter {
-  final double time; // in hours
+  final double progress; // 0.0 to 1.0
 
-  ClockPainter(this.time);
+  ClockPainter(this.progress);
 
   @override
   void paint(Canvas canvas, Size size) {
@@ -152,8 +152,13 @@ class ClockPainter extends CustomPainter {
     canvas.drawCircle(checkCenter, 8, paintBg);
 
     // Calculate angles (-pi/2 is 12 o'clock / top)
-    final hourAngle = -math.pi / 2 + (time / 12) * 2 * math.pi;
-    final minuteAngle = -math.pi / 2 + (time % 1) * 2 * math.pi;
+    // 8 o'clock is 8/12 of a circle
+    final baseHourAngle = -math.pi / 2 + (8 / 12) * 2 * math.pi;
+    final hourAngle = baseHourAngle + (progress * 2 * math.pi);
+    
+    // Minute hand starts at 12 o'clock
+    final baseMinuteAngle = -math.pi / 2;
+    final minuteAngle = baseMinuteAngle + (progress * 2 * math.pi);
 
     // Draw hour hand
     final hourLength = innerRadius * 0.45;
@@ -197,6 +202,6 @@ class ClockPainter extends CustomPainter {
 
   @override
   bool shouldRepaint(covariant ClockPainter oldDelegate) {
-    return oldDelegate.time != time;
+    return oldDelegate.progress != progress;
   }
 }
