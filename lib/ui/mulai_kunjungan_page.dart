@@ -139,6 +139,25 @@ class _MulaiKunjunganScreenState extends State<MulaiKunjunganScreen> {
         ),
       );
       Navigator.pop(context, true); // Return true to refresh parent
+    } on DioException catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _isStarting = false;
+      });
+      String errorMessage = 'Terjadi kesalahan jaringan';
+      if (e.response != null && e.response?.data != null) {
+         if (e.response?.data is Map && e.response?.data['message'] != null) {
+            errorMessage = e.response?.data['message'];
+         } else {
+            errorMessage = e.response?.data.toString() ?? 'Error dari server';
+         }
+      }
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(errorMessage),
+          backgroundColor: Colors.red,
+        ),
+      );
     } catch (e) {
       if (!mounted) return;
       setState(() {

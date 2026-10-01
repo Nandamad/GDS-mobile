@@ -143,7 +143,7 @@ class _AjukanKunjunganScreenState extends State<AjukanKunjunganScreen> {
         });
         String errorMessage = 'Terjadi kesalahan jaringan';
         if (e.response != null && e.response?.data != null) {
-           if (e.response?.data['message'] != null) {
+           if (e.response?.data is Map && e.response?.data['message'] != null) {
               errorMessage = e.response?.data['message'];
            } else {
               errorMessage = e.response?.data.toString() ?? 'Error dari server';
