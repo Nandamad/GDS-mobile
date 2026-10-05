@@ -370,7 +370,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
     try {
       final position = await Geolocator.getCurrentPosition(
-        desiredAccuracy: LocationAccuracy.high, // No time limit to force fresh location
+        desiredAccuracy: LocationAccuracy.high,
+        timeLimit: const Duration(seconds: 10), // Tambahkan timeLimit
       );
       if (mounted) {
         setState(() {

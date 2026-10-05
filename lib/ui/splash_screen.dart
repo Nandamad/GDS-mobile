@@ -39,7 +39,14 @@ class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderSt
     // Memberikan waktu minimal untuk splash screen (UX)
     await Future.delayed(const Duration(seconds: 3));
 
-    final token = await ApiService().getToken();
+    String? token;
+    try {
+      token = await ApiService().getToken();
+    } catch (e) {
+      debugPrint('Error getting token in splash screen: $e');
+      // If error (e.g. secure storage keystore error), force login
+      token = null; 
+    }
 
     if (!mounted) return;
 
@@ -50,7 +57,7 @@ class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderSt
         MaterialPageRoute(builder: (context) => const MainNavigationScreen()),
       );
     } else {
-      // Tidak ada token, ke halaman login
+      // Tidak ada token atau error, ke halaman login
       Navigator.pushReplacement(
         context,
         MaterialPageRoute(builder: (context) => const LoginScreen()),
