@@ -13,7 +13,8 @@ class SplashScreen extends StatefulWidget {
 
 class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderStateMixin {
   late AnimationController _controller;
-  late Animation<double> _animation;
+  late Animation<double> _clockProgress;
+  late Animation<double> _fadeAnimation;
 
   @override
   void initState() {
@@ -22,9 +23,23 @@ class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderSt
       vsync: this,
       duration: const Duration(seconds: 3),
     );
-    _animation = Tween<double>(begin: 0, end: 1).animate(
-      CurvedAnimation(parent: _controller, curve: Curves.easeInOutCubic),
+
+    // 0 to 0.5 (1.5 seconds) - Jam berputar
+    _clockProgress = Tween<double>(begin: 0, end: 1).animate(
+      CurvedAnimation(
+        parent: _controller,
+        curve: const Interval(0.0, 0.5, curve: Curves.easeInOut),
+      ),
     );
+
+    // 0.5 to 1.0 (1.5 seconds) - Logo dan Teks muncul
+    _fadeAnimation = Tween<double>(begin: 0, end: 1).animate(
+      CurvedAnimation(
+        parent: _controller,
+        curve: const Interval(0.5, 1.0, curve: Curves.easeIn),
+      ),
+    );
+
     _controller.forward();
     _checkSession();
   }
@@ -70,145 +85,189 @@ class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderSt
     return Scaffold(
       backgroundColor: Colors.white,
       body: SafeArea(
-        child: Column(
-          children: [
-            Expanded(
-              child: Center(
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    AnimatedBuilder(
-                      animation: _animation,
-                      builder: (context, child) {
-                        return SizedBox(
-                          width: 80,
-                          height: 80,
-                          child: CustomPaint(
-                            painter: ClockPainter(_animation.value),
-                          ),
-                        );
-                      },
-                    ),
-                    const SizedBox(height: 24),
-                    const Text(
-                      'PresensiPlus',
-                      style: TextStyle(
-                        color: Color(0xFF0F172A),
-                        fontSize: 32,
-                        fontWeight: FontWeight.bold,
+        child: AnimatedBuilder(
+          animation: _controller,
+          builder: (context, child) {
+            final showClock = _controller.value <= 0.5;
+
+            return Stack(
+              children: [
+                // 1. Animasi Jam Berputar
+                if (showClock)
+                  Center(
+                    child: SizedBox(
+                      width: 90,
+                      height: 90,
+                      child: CustomPaint(
+                        painter: SpinningClockPainter(_clockProgress.value),
                       ),
                     ),
-                    const SizedBox(height: 4),
-                    const Text(
-                      'Sistem Absensi Digital',
-                      style: TextStyle(color: Colors.grey, fontSize: 14),
+                  ),
+
+                // 2. Logo Ijo dan Teks PresensiPlus
+                if (!showClock)
+                  Opacity(
+                    opacity: _fadeAnimation.value,
+                    child: Center(
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Image.asset(
+                            'assets/logo.png',
+                            width: 100,
+                            height: 100,
+                            errorBuilder: (context, error, stackTrace) {
+                              // Fallback jika logo.png gagal dimuat
+                              return Container(
+                                width: 100,
+                                height: 100,
+                                decoration: const BoxDecoration(
+                                  color: Color(0xFF009688),
+                                  shape: BoxShape.circle,
+                                ),
+                                child: const Icon(
+                                  Icons.fingerprint_rounded, 
+                                  color: Colors.white, 
+                                  size: 50
+                                ),
+                              );
+                            },
+                          ),
+                          const SizedBox(height: 24),
+                          const Text(
+                            'PresensiPlus',
+                            style: TextStyle(
+                              color: Color(0xFF0F172A),
+                              fontSize: 32,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                          const SizedBox(height: 4),
+                          const Text(
+                            'Sistem Absensi Digital',
+                            style: TextStyle(color: Colors.grey, fontSize: 14),
+                          ),
+                        ],
+                      ),
                     ),
-                  ],
-                ),
-              ),
-            ),
-            const Padding(
-              padding: EdgeInsets.only(bottom: 12.0),
-              child: Text(
-                'v1.1.6',
-                style: TextStyle(fontSize: 10, color: Colors.grey),
-              ),
-            ),
-          ],
+                  ),
+
+                // Versi di bagian bawah
+                if (!showClock)
+                  Positioned(
+                    bottom: 12.0,
+                    left: 0,
+                    right: 0,
+                    child: Opacity(
+                      opacity: _fadeAnimation.value,
+                      child: const Center(
+                        child: Text(
+                          'v1.1.6',
+                          style: TextStyle(fontSize: 10, color: Colors.grey),
+                        ),
+                      ),
+                    ),
+                  ),
+              ],
+            );
+          },
         ),
       ),
     );
   }
 }
 
-class ClockPainter extends CustomPainter {
+class SpinningClockPainter extends CustomPainter {
   final double progress; // 0.0 to 1.0
 
-  ClockPainter(this.progress);
+  SpinningClockPainter(this.progress);
 
   @override
   void paint(Canvas canvas, Size size) {
     final center = Offset(size.width / 2, size.height / 2);
     final radius = size.width / 2;
 
-    // Draw background squircle
-    final paintBg = Paint()
-      ..color = const Color(0xFF009688)
-      ..style = PaintingStyle.fill;
-    
-    final rrect = RRect.fromRectAndRadius(
-      Rect.fromCenter(center: center, width: size.width, height: size.height),
-      const Radius.circular(12),
-    );
-    canvas.drawRRect(rrect, paintBg);
-
-    // Inner clock circle
-    final innerRadius = radius * 0.55;
-    
-    final paintWhite = Paint()
-      ..color = Colors.white
+    // Lingkaran border jam
+    final paintBorder = Paint()
+      ..color = const Color(0xFF009688).withOpacity(0.3)
       ..style = PaintingStyle.stroke
-      ..strokeCap = StrokeCap.round
-      ..strokeWidth = 2.5;
+      ..strokeWidth = 1.0;
+    canvas.drawCircle(center, radius, paintBorder);
 
-    // Draw clock circle
-    canvas.drawCircle(center, innerRadius, paintWhite);
+    // Menggambar angka 1-12
+    final textPainter = TextPainter(
+      textAlign: TextAlign.center,
+      textDirection: TextDirection.ltr,
+    );
+    for (int i = 1; i <= 12; i++) {
+      final angle = -math.pi / 2 + (i / 12) * 2 * math.pi;
+      final numberRadius = radius * 0.75;
+      final offset = Offset(
+        center.dx + math.cos(angle) * numberRadius,
+        center.dy + math.sin(angle) * numberRadius,
+      );
+      
+      textPainter.text = TextSpan(
+        text: i.toString(),
+        style: const TextStyle(
+          color: Color(0xFF009688),
+          fontSize: 11,
+          fontWeight: FontWeight.bold,
+        ),
+      );
+      textPainter.layout();
+      textPainter.paint(
+        canvas,
+        offset - Offset(textPainter.width / 2, textPainter.height / 2),
+      );
+    }
 
-    final checkCenter = Offset(center.dx + innerRadius * 0.75, center.dy + innerRadius * 0.75);
-    // Draw green circle to cut out the clock border for the checkmark
-    canvas.drawCircle(checkCenter, 8, paintBg);
-
-    // Calculate angles (-pi/2 is 12 o'clock / top)
-    // 8 o'clock is 8/12 of a circle
+    // Sudut jarum pendek (Jam): Mulai dari angka 8, muter 1 putaran penuh kembali ke angka 8
     final baseHourAngle = -math.pi / 2 + (8 / 12) * 2 * math.pi;
     final hourAngle = baseHourAngle + (progress * 2 * math.pi);
-    
-    // Minute hand starts at 12 o'clock
+
+    // Sudut jarum panjang (Menit): Mulai dari angka 12, muter lebih lambat (setengah putaran)
     final baseMinuteAngle = -math.pi / 2;
-    final minuteAngle = baseMinuteAngle + (progress * 2 * math.pi);
+    final minuteAngle = baseMinuteAngle + (progress * math.pi);
 
-    // Draw hour hand
-    final hourLength = innerRadius * 0.45;
-    canvas.drawLine(
-      center,
-      Offset(
-        center.dx + math.cos(hourAngle) * hourLength,
-        center.dy + math.sin(hourAngle) * hourLength,
-      ),
-      paintWhite,
-    );
-
-    // Draw minute hand
-    final minuteLength = innerRadius * 0.65;
+    // Gambar jarum panjang (Warna gelap)
+    final paintMinute = Paint()
+      ..color = const Color(0xFF0F172A)
+      ..style = PaintingStyle.stroke
+      ..strokeCap = StrokeCap.round
+      ..strokeWidth = 2.0;
+    final minuteLength = radius * 0.55;
     canvas.drawLine(
       center,
       Offset(
         center.dx + math.cos(minuteAngle) * minuteLength,
         center.dy + math.sin(minuteAngle) * minuteLength,
       ),
-      paintWhite,
+      paintMinute,
     );
 
-    // Draw center dot
-    canvas.drawCircle(center, 2.5, Paint()..color = Colors.white);
-
-    // Draw checkmark
-    final checkPaint = Paint()
-      ..color = Colors.white
+    // Gambar jarum pendek (Warna hijau, lebih tebal)
+    final paintHour = Paint()
+      ..color = const Color(0xFF009688)
       ..style = PaintingStyle.stroke
       ..strokeCap = StrokeCap.round
-      ..strokeJoin = StrokeJoin.round
-      ..strokeWidth = 2.5;
-      
-    final path = Path();
-    path.moveTo(checkCenter.dx - 3.5, checkCenter.dy);
-    path.lineTo(checkCenter.dx - 1, checkCenter.dy + 3.5);
-    path.lineTo(checkCenter.dx + 4.5, checkCenter.dy - 3);
-    canvas.drawPath(path, checkPaint);
+      ..strokeWidth = 3.0;
+    final hourLength = radius * 0.40;
+    canvas.drawLine(
+      center,
+      Offset(
+        center.dx + math.cos(hourAngle) * hourLength,
+        center.dy + math.sin(hourAngle) * hourLength,
+      ),
+      paintHour,
+    );
+
+    // Titik pusat
+    canvas.drawCircle(center, 3.5, Paint()..color = const Color(0xFF0F172A));
   }
 
   @override
-  bool shouldRepaint(covariant ClockPainter oldDelegate) {
+  bool shouldRepaint(covariant SpinningClockPainter oldDelegate) {
     return oldDelegate.progress != progress;
   }
 }
