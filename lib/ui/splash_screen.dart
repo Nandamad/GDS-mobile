@@ -103,7 +103,7 @@ class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderSt
             const Padding(
               padding: EdgeInsets.only(bottom: 12.0),
               child: Text(
-                'v1.2.3',
+                'v1.1.6',
                 style: TextStyle(fontSize: 10, color: Colors.grey),
               ),
             ),

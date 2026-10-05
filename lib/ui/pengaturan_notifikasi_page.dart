@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import '../services/notification_service.dart';
 
 class PengaturanNotifikasiScreen extends StatefulWidget {
   const PengaturanNotifikasiScreen({super.key});
@@ -37,6 +38,10 @@ class _PengaturanNotifikasiScreenState extends State<PengaturanNotifikasiScreen>
   Future<void> _savePreference(String key, bool value) async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setBool(key, value);
+    
+    if (key == 'notif_masuk' || key == 'notif_keluar') {
+      await NotificationService().scheduleDailyReminders();
+    }
   }
 
   @override

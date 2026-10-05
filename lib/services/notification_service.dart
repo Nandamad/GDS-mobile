@@ -4,6 +4,9 @@ import 'package:audioplayers/audioplayers.dart';
 import 'package:flutter/services.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:math';
+import 'package:timezone/data/latest_all.dart' as tz;
+import 'package:timezone/timezone.dart' as tz;
+import 'package:flutter_timezone/flutter_timezone.dart';
 
 /// Service untuk mengelola notifikasi lokal dan alarm lembur.
 ///
@@ -85,6 +88,12 @@ class NotificationService {
     );
 
     await _notifications.initialize(settings);
+    
+    tz.initializeTimeZones();
+    try {
+      final String timeZoneName = await FlutterTimezone.getLocalTimezone();
+      tz.setLocalLocation(tz.getLocation(timeZoneName));
+    } catch (_) {}
 
     // Request permission di Android 13+
     await _notifications
@@ -255,5 +264,78 @@ class NotificationService {
       details,
       payload: payload,
     );
+  }
+
+  /// Jadwalkan notifikasi pengingat harian untuk Masuk (07:30) dan Keluar (17:00).
+  Future<void> scheduleDailyReminders() async {
+    final prefs = await SharedPreferences.getInstance();
+    final notifMasuk = prefs.getBool('notif_masuk') ?? true;
+    final notifKeluar = prefs.getBool('notif_keluar') ?? true;
+
+    // Selalu batalkan jadwal lama agar bersih
+    await _notifications.cancel(101);
+    await _notifications.cancel(102);
+
+    if (notifMasuk) {
+      await _scheduleDailyNotification(
+        id: 101,
+        title: 'Pengingat Absen Masuk',
+        body: 'Jangan lupa untuk melakukan absen masuk pagi ini!',
+        hour: 7,
+        minute: 30, // 07:30 Pagi
+      );
+    }
+
+    if (notifKeluar) {
+      await _scheduleDailyNotification(
+        id: 102,
+        title: 'Pengingat Absen Keluar',
+        body: 'Waktunya pulang! Jangan lupa untuk melakukan absen keluar.',
+        hour: 17,
+        minute: 0, // 17:00 Sore
+      );
+    }
+  }
+
+  Future<void> _scheduleDailyNotification({
+    required int id,
+    required String title,
+    required String body,
+    required int hour,
+    required int minute,
+  }) async {
+    if (!_isInitialized) await initialize();
+
+    await _notifications.zonedSchedule(
+      id,
+      title,
+      body,
+      _nextInstanceOfTime(hour, minute),
+      const NotificationDetails(
+        android: AndroidNotificationDetails(
+          'daily_reminder_channel',
+          'Pengingat Harian',
+          channelDescription: 'Notifikasi pengingat absen masuk dan keluar harian',
+          importance: Importance.high,
+          priority: Priority.high,
+          icon: '@mipmap/ic_launcher',
+        ),
+        iOS: DarwinNotificationDetails(),
+      ),
+      androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
+      uiLocalNotificationDateInterpretation:
+          UILocalNotificationDateInterpretation.absoluteTime,
+      matchDateTimeComponents: DateTimeComponents.time,
+    );
+  }
+
+  tz.TZDateTime _nextInstanceOfTime(int hour, int minute) {
+    final tz.TZDateTime now = tz.TZDateTime.now(tz.local);
+    tz.TZDateTime scheduledDate =
+        tz.TZDateTime(tz.local, now.year, now.month, now.day, hour, minute);
+    if (scheduledDate.isBefore(now)) {
+      scheduledDate = scheduledDate.add(const Duration(days: 1));
+    }
+    return scheduledDate;
   }
 }

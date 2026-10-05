@@ -12,6 +12,7 @@ Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await dotenv.load(fileName: "assets/.env");
   await NotificationService().initialize();
+  await NotificationService().scheduleDailyReminders();
   await initializeDateFormatting('id_ID', null);
   runApp(const MyApp());
 }

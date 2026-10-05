@@ -147,6 +147,7 @@ class _NotifikasiScreenState extends State<NotifikasiScreen> {
       else if (lowerTitle.contains('izin')) jenis = 'Izin';
       else jenis = 'Pengajuan';
     } else {
+      jenis = jenis.split('_').first;
       jenis = '${jenis[0].toUpperCase()}${jenis.substring(1).toLowerCase()}';
     }
 
@@ -176,6 +177,7 @@ class _NotifikasiScreenState extends State<NotifikasiScreen> {
     }
 
     String jenis = (data['jenis'] ?? data['type'] ?? data['kategori'] ?? '').toString();
+    jenis = jenis.split('_').first;
     if (jenis.isEmpty) {
       if (rawMessage.toLowerCase().contains('cuti')) jenis = 'Cuti';
       else if (rawMessage.toLowerCase().contains('lembur')) jenis = 'Lembur';
@@ -459,8 +461,8 @@ class _NotifikasiScreenState extends State<NotifikasiScreen> {
                lemburStatus: 'Belum Dimulai',
              )));
           }
-          // Pengajuan Ditolak (lembur/cuti/izin) → Riwayat
-          else if (title.contains('ditolak')) {
+          // Pengajuan Ditolak / Disetujui (cuti/izin/kunjungan) → Riwayat
+          else if (title.contains('ditolak') || title.contains('disetujui')) {
              Navigator.push(context, MaterialPageRoute(builder: (context) => const RiwayatPresensiScreen(showBackButton: true)));
           }
           // Peringatan Keterlambatan → Riwayat Absen

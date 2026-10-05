@@ -22,7 +22,7 @@ class _LoginScreenState extends State<LoginScreen> {
   void initState() {
     super.initState();
     // Set manual version string
-    _version = 'v1.2.2';
+    _version = 'v1.1.6';
     // _loadVersion(); // disabled for manual version input
   }
   @override
