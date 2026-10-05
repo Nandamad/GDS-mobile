@@ -10,10 +10,14 @@ import 'cubit/location_cubit.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  await dotenv.load(fileName: "assets/.env");
-  await NotificationService().initialize();
-  await NotificationService().scheduleDailyReminders();
-  await initializeDateFormatting('id_ID', null);
+  try {
+    await dotenv.load(fileName: "assets/.env");
+    await NotificationService().initialize();
+    await NotificationService().scheduleDailyReminders();
+    await initializeDateFormatting('id_ID', null);
+  } catch (e) {
+    debugPrint("Initialization error: $e");
+  }
   runApp(const MyApp());
 }
 

@@ -95,8 +95,8 @@ class NotificationService {
       tz.setLocalLocation(tz.getLocation(timeZone.identifier));
     } catch (_) {}
 
-    // Request permission di Android 13+
-    await _notifications
+    // Request permission di Android 13+ tanpa await agar tidak nge-block UI
+    _notifications
         .resolvePlatformSpecificImplementation<
             AndroidFlutterLocalNotificationsPlugin>()
         ?.requestNotificationsPermission();
