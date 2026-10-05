@@ -208,6 +208,12 @@ class _LoginScreenState extends State<LoginScreen> {
         } else {
           errorMsg = 'Error server: ${e.response!.statusCode}';
         }
+      } else {
+        if (e.type == DioExceptionType.connectionTimeout) {
+          errorMsg = 'Koneksi ke server terputus (Timeout). Cek internet Anda.';
+        } else {
+          errorMsg = 'Error [${e.type.name}]: ${e.error ?? "No Error Object"}';
+        }
       }
 
       if (mounted) {

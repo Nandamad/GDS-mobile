@@ -42,7 +42,13 @@ class _SplashScreenState extends State<SplashScreen>
 
     String? token;
     try {
-      token = await ApiService().getToken();
+      token = await ApiService().getToken().timeout(
+        const Duration(seconds: 3),
+        onTimeout: () {
+          debugPrint('Token read timeout! Forcing login...');
+          return null;
+        },
+      );
     } catch (e) {
       debugPrint('Error getting token in splash screen: $e');
       // If error (e.g. secure storage keystore error), force login

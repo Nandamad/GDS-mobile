@@ -52,7 +52,13 @@ class ApiService {
     dio.interceptors.add(
       InterceptorsWrapper(
         onRequest: (options, handler) async {
-          final token = await storage.read(key: 'auth_token');
+          String? token;
+          try {
+            token = await storage.read(key: 'auth_token');
+          } catch (e) {
+            debugPrint('Secure storage read error in interceptor: $e');
+            try { await storage.deleteAll(); } catch (_) {}
+          }
           if (token != null) {
             options.headers['Authorization'] = 'Bearer $token';
           }
@@ -74,24 +80,46 @@ class ApiService {
   }
 
   Future<void> saveToken(String token) async {
-    await storage.write(key: 'auth_token', value: token);
+    try {
+      await storage.write(key: 'auth_token', value: token);
+    } catch (e) {
+      try { await storage.deleteAll(); } catch (_) {}
+      await storage.write(key: 'auth_token', value: token);
+    }
   }
 
   Future<void> deleteToken() async {
-    await storage.delete(key: 'auth_token');
-    await storage.delete(key: 'is_atasan');
+    try {
+      await storage.delete(key: 'auth_token');
+      await storage.delete(key: 'is_atasan');
+    } catch (e) {
+      try { await storage.deleteAll(); } catch (_) {}
+    }
   }
 
   Future<String?> getToken() async {
-    return await storage.read(key: 'auth_token');
+    try {
+      return await storage.read(key: 'auth_token');
+    } catch (e) {
+      try { await storage.deleteAll(); } catch (_) {}
+      return null;
+    }
   }
 
   Future<void> saveIsAtasan(bool value) async {
-    await storage.write(key: 'is_atasan', value: value.toString());
+    try {
+      await storage.write(key: 'is_atasan', value: value.toString());
+    } catch (e) {
+      // ignore
+    }
   }
 
   Future<bool> getIsAtasan() async {
-    final val = await storage.read(key: 'is_atasan');
-    return val == 'true';
+    try {
+      final val = await storage.read(key: 'is_atasan');
+      return val == 'true';
+    } catch (e) {
+      return false;
+    }
   }
 }

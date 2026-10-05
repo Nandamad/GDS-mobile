@@ -12,8 +12,11 @@ Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   try {
     await dotenv.load(fileName: "assets/.env");
-    await NotificationService().initialize();
-    await NotificationService().scheduleDailyReminders();
+    NotificationService().initialize().then((_) {
+      NotificationService().scheduleDailyReminders();
+    }).catchError((e) {
+      debugPrint("Notification init error: $e");
+    });
     await initializeDateFormatting('id_ID', null);
   } catch (e) {
     debugPrint("Initialization error: $e");
