@@ -170,6 +170,67 @@ class NotificationService {
     );
   }
 
+  /// Tampilkan notifikasi saat pengajuan berhasil dikirim (Izin/Cuti/Lembur/Koreksi).
+  Future<void> showPengajuanDikirimNotification(String tipePengajuan) async {
+    final prefs = await SharedPreferences.getInstance();
+    final updatePengajuanEnabled = prefs.getBool('notif_pengajuan') ?? false;
+    
+    if (!updatePengajuanEnabled) return;
+
+    if (!_isInitialized) await initialize();
+
+    await _notifications.show(
+      2001, 
+      '✅ Pengajuan Terkirim',
+      'Pengajuan $tipePengajuan Anda telah berhasil dikirim dan sedang menunggu persetujuan.',
+      const NotificationDetails(
+        android: AndroidNotificationDetails(
+          'pengajuan_channel',
+          'Status Pengajuan',
+          channelDescription: 'Notifikasi update status pengajuan',
+          importance: Importance.high,
+          priority: Priority.high,
+        ),
+        iOS: DarwinNotificationDetails(presentAlert: true, presentSound: true, presentBadge: true),
+      ),
+    );
+  }
+
+  /// Jadwalkan alarm lembur di jam tertentu
+  Future<void> scheduleLemburSelesaiNotification(DateTime endTime) async {
+    final prefs = await SharedPreferences.getInstance();
+    final infoLemburEnabled = prefs.getBool('notif_lembur') ?? false;
+    if (!infoLemburEnabled) return;
+
+    if (!_isInitialized) await initialize();
+
+    // Batalkan jadwal lembur sebelumnya jika ada
+    await _notifications.cancel(1001);
+
+    // Jika waktu selesai sudah lewat, jangan jadwalkan
+    if (endTime.isBefore(DateTime.now())) return;
+
+    await _notifications.zonedSchedule(
+      1001,
+      '⏰ Waktu Lembur Selesai!',
+      'Waktu lembur Anda telah habis. Segera selesaikan pekerjaan Anda.',
+      tz.TZDateTime.from(endTime, tz.local),
+      const NotificationDetails(
+        android: AndroidNotificationDetails(
+          'lembur_alarm_channel',
+          'Alarm Lembur',
+          importance: Importance.max,
+          priority: Priority.high,
+          playSound: true,
+          fullScreenIntent: true,
+        ),
+        iOS: DarwinNotificationDetails(presentAlert: true, presentSound: true),
+      ),
+      androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
+      matchDateTimeComponents: DateTimeComponents.time,
+    );
+  }
+
   /// Mainkan alarm sound menggunakan AudioPlayer.
   /// Ini memberikan suara alarm yang lebih kuat dan bisa diulang.
   Future<void> playAlarmSound() async {
@@ -266,23 +327,60 @@ class NotificationService {
     );
   }
 
-  /// Jadwalkan notifikasi pengingat harian untuk Masuk (07:30) dan Keluar (17:00).
+  /// Jadwalkan notifikasi pengingat harian sesuai jam masuk dan keluar admin.
   Future<void> scheduleDailyReminders() async {
     final prefs = await SharedPreferences.getInstance();
     final notifMasuk = prefs.getBool('notif_masuk') ?? true;
     final notifKeluar = prefs.getBool('notif_keluar') ?? true;
+
+    // Default time
+    int masukHour = 7;
+    int masukMinute = 30;
+    int keluarHour = 17;
+    int keluarMinute = 0;
+
+    final jamMasukStr = prefs.getString('jam_masuk_notif');
+    final jamKeluarStr = prefs.getString('jam_keluar_notif');
+
+    if (jamMasukStr != null && jamMasukStr.contains(':')) {
+      final parts = jamMasukStr.split(':');
+      if (parts.length >= 2) {
+        masukHour = int.tryParse(parts[0]) ?? 7;
+        masukMinute = int.tryParse(parts[1]) ?? 30;
+        // Ingatkan 30 menit sebelum jam masuk?
+        // Tapi kita jadwalkan pas jam masuk aja atau 15 menit sebelumnya
+        // Biar sesuai dengan default sebelumnya (07:30 jika jam_masuk 08:00? Oh tunggu.)
+      }
+    }
+
+    if (jamKeluarStr != null && jamKeluarStr.contains(':')) {
+      final parts = jamKeluarStr.split(':');
+      if (parts.length >= 2) {
+        keluarHour = int.tryParse(parts[0]) ?? 17;
+        keluarMinute = int.tryParse(parts[1]) ?? 0;
+      }
+    }
 
     // Selalu batalkan jadwal lama agar bersih
     await _notifications.cancel(101);
     await _notifications.cancel(102);
 
     if (notifMasuk) {
+      // Menit peringatan (misal 15 menit sebelum masuk). Tapi untuk amannya kita pasang sesuai string.
+      // Kecuali user minta khusus. Kita jadwalkan tepat di jam yang didapat dari admin dikurangi 15 menit.
+      var mHour = masukHour;
+      var mMin = masukMinute - 15;
+      if (mMin < 0) {
+        mMin += 60;
+        mHour -= 1;
+      }
+
       await _scheduleDailyNotification(
         id: 101,
         title: 'Pengingat Absen Masuk',
-        body: 'Jangan lupa untuk melakukan absen masuk pagi ini!',
-        hour: 7,
-        minute: 30, // 07:30 Pagi
+        body: 'Jangan lupa untuk melakukan absen masuk sekarang!',
+        hour: mHour,
+        minute: mMin,
       );
     }
 
@@ -291,8 +389,8 @@ class NotificationService {
         id: 102,
         title: 'Pengingat Absen Keluar',
         body: 'Waktunya pulang! Jangan lupa untuk melakukan absen keluar.',
-        hour: 17,
-        minute: 0, // 17:00 Sore
+        hour: keluarHour,
+        minute: keluarMinute,
       );
     }
   }

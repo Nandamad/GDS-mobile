@@ -11,6 +11,7 @@ import 'package:latlong2/latlong.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../services/api_service.dart';
 import '../services/image_url_service.dart';
+import '../services/notification_service.dart';
 import 'kamera_page.dart';
 import 'konfirmasi_foto_page.dart';
 import 'selesai_lembur_page.dart';
@@ -191,6 +192,16 @@ class _DashboardScreenState extends State<DashboardScreen> {
         _isWorkingDay = resData['jam_kerja'] != null
             ? (resData['jam_kerja']['is_working_day'] ?? false)
             : false;
+
+        if (resData['jam_kerja'] != null) {
+          final prefs = await SharedPreferences.getInstance();
+          final jMasuk = resData['jam_kerja']['jam_masuk']?.toString();
+          final jPulang = resData['jam_kerja']['jam_pulang']?.toString();
+          if (jMasuk != null) await prefs.setString('jam_masuk_notif', jMasuk);
+          if (jPulang != null) await prefs.setString('jam_keluar_notif', jPulang);
+          // Perbarui jadwal alarm sesuai jam kerja terbaru
+          NotificationService().scheduleDailyReminders();
+        }
 
         if (_lemburData != null) {
           final prefs = await SharedPreferences.getInstance();
