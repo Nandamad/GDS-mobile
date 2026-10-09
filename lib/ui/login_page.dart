@@ -256,6 +256,8 @@ class _LoginScreenState extends State<LoginScreen> {
                               'assets/logo.png',
                               width: 64,
                               height: 64,
+                              filterQuality: FilterQuality.high,
+                              isAntiAlias: true,
                             ),
                             const SizedBox(height: 24),
                             const Text(

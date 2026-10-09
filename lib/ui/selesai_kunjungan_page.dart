@@ -167,7 +167,6 @@ class _SelesaiKunjunganScreenState extends State<SelesaiKunjunganScreen> {
     try {
       final XFile? image = await _picker.pickImage(
         source: ImageSource.camera,
-        imageQuality: 70,
       );
       if (image != null) {
         setState(() {

@@ -34,6 +34,8 @@ class TentangAplikasiScreen extends StatelessWidget {
               'assets/logo.png',
               width: 80,
               height: 80,
+              filterQuality: FilterQuality.high,
+              isAntiAlias: true,
             ),
             const SizedBox(height: 16),
             const Text(
