@@ -31,7 +31,7 @@ class TentangAplikasiScreen extends StatelessWidget {
           children: [
             // Logo / Icon
             Image.asset(
-              'assets/logo.png',
+              'assets/Logo.png',
               width: 80,
               height: 80,
               filterQuality: FilterQuality.high,

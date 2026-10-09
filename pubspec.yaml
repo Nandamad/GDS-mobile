@@ -42,12 +42,12 @@ flutter:
 
   assets:
     - assets/.env
-    - assets/logo.png
+    - assets/Logo.png
     - assets/sounds/
     - shorebird.yaml
 
 flutter_launcher_icons:
   android: true
   ios: true
-  image_path: "assets/logo.png"
-  adaptive_icon_foreground: "assets/logo.png"
+  image_path: "assets/Logo.png"
+  adaptive_icon_foreground: "assets/Logo.png"
