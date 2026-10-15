@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:dio/dio.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../services/api_service.dart';
+import '../services/image_url_service.dart';
 
 class RiwayatKontrakScreen extends StatefulWidget {
   const RiwayatKontrakScreen({super.key});
@@ -273,8 +274,9 @@ class _RiwayatKontrakScreenState extends State<RiwayatKontrakScreen> {
             child: OutlinedButton.icon(
               onPressed: () async {
                 if (dokumenUrl != null && dokumenUrl.isNotEmpty) {
-                  final uri = Uri.parse(dokumenUrl);
-                  if (await canLaunchUrl(uri)) {
+                  final resolvedUrl = ImageUrlService.resolve(dokumenUrl);
+                  final uri = resolvedUrl == null ? null : Uri.tryParse(resolvedUrl);
+                  if (uri != null && await canLaunchUrl(uri)) {
                     await launchUrl(uri, mode: LaunchMode.externalApplication);
                   } else {
                     if (mounted) {

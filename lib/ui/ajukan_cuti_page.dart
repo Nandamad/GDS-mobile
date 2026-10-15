@@ -130,13 +130,23 @@ class _AjukanCutiScreenState extends State<AjukanCutiScreen> {
       });
 
       if (_selectedFile != null) {
+        final extension = (_fileName ?? _selectedFile!.path)
+            .split('.')
+            .last
+            .toLowerCase();
+        final contentType = switch (extension) {
+          'pdf' => MediaType('application', 'pdf'),
+          'png' => MediaType('image', 'png'),
+          'jpg' || 'jpeg' => MediaType('image', 'jpeg'),
+          _ => MediaType('application', 'octet-stream'),
+        };
         formData.files.add(
           MapEntry(
             'dokumen_pendukung',
             await MultipartFile.fromFile(
               _selectedFile!.path,
               filename: _fileName,
-              contentType: MediaType('image', 'jpeg'),
+              contentType: contentType,
             ),
           ),
         );

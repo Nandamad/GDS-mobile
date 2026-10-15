@@ -5,26 +5,40 @@
 // gestures. You can also use WidgetTester to find child widgets in the widget
 // tree, read text, and verify that the values of widget properties are correct.
 
-import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
-import 'package:presensi_plus/main.dart';
+import 'package:presensi_plus/services/image_url_service.dart';
 
 void main() {
-  testWidgets('Counter increments smoke test', (WidgetTester tester) async {
-    // Build our app and trigger a frame.
-    await tester.pumpWidget(const MyApp());
+  test('resolves private attendance photo paths to the API route', () {
+    final resolved = ImageUrlService.resolve('/absensi/foto masuk.jpg');
 
-    // Verify that our counter starts at 0.
-    expect(find.text('0'), findsOneWidget);
-    expect(find.text('1'), findsNothing);
+    expect(resolved, isNotNull);
+    final uri = Uri.parse(resolved!);
+    expect(uri.path, '/api/absensi/foto');
+    expect(uri.queryParameters['path'], 'absensi/foto masuk.jpg');
+  });
 
-    // Tap the '+' icon and trigger a frame.
-    await tester.tap(find.byIcon(Icons.add));
-    await tester.pump();
+  test('resolves private leave documents to the API route', () {
+    final resolved = ImageUrlService.resolve('dokumen_cuti/surat dokter.pdf');
 
-    // Verify that our counter has incremented.
-    expect(find.text('0'), findsNothing);
-    expect(find.text('1'), findsOneWidget);
+    expect(resolved, isNotNull);
+    final uri = Uri.parse(resolved!);
+    expect(uri.path, '/api/dokumen/cuti');
+    expect(uri.queryParameters['path'], 'dokumen_cuti/surat dokter.pdf');
+  });
+
+  test('preserves already routed protected document URLs', () {
+    expect(
+      ImageUrlService.resolve('/api/dokumen/cuti?path=dokumen_cuti%2Fsurat.pdf'),
+      'https://devabs.yukliat.com/api/dokumen/cuti?path=dokumen_cuti%2Fsurat.pdf',
+    );
+  });
+
+  test('resolves ordinary files to public storage', () {
+    expect(
+      ImageUrlService.resolve('avatars/karyawan.png'),
+      'https://devabs.yukliat.com/storage/avatars/karyawan.png',
+    );
   });
 }

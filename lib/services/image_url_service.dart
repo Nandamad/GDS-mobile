@@ -23,12 +23,29 @@ class ImageUrlService {
     
     // Jika URL adalah endpoint foto terproteksi, kembalikan langsung
     if (trimmed.contains('api/absensi/foto') || trimmed.contains('api/dokumen/cuti') || trimmed.contains('api/kunjungan/foto') || trimmed.contains('admin/logkehadiran/foto')) {
-        return trimmed.startsWith('http') ? trimmed : '$base$normalizedPath';
+      return '$base$normalizedPath';
     }
 
     if (trimmed.startsWith('kunjungan/selfie/') || trimmed.startsWith('/kunjungan/selfie/')) {
       final cleanPath = trimmed.startsWith('/') ? trimmed.substring(1) : trimmed;
-      return '$base/api/kunjungan/foto?path=$cleanPath';
+      return Uri.parse('$base/api/kunjungan/foto')
+          .replace(queryParameters: {'path': cleanPath})
+          .toString();
+    }
+
+    if (trimmed.startsWith('absensi/') || trimmed.startsWith('/absensi/')) {
+      final cleanPath = trimmed.startsWith('/') ? trimmed.substring(1) : trimmed;
+      return Uri.parse('$base/api/absensi/foto')
+          .replace(queryParameters: {'path': cleanPath})
+          .toString();
+    }
+
+    if (trimmed.startsWith('dokumen_cuti/') ||
+        trimmed.startsWith('/dokumen_cuti/')) {
+      final cleanPath = trimmed.startsWith('/') ? trimmed.substring(1) : trimmed;
+      return Uri.parse('$base/api/dokumen/cuti')
+          .replace(queryParameters: {'path': cleanPath})
+          .toString();
     }
 
     if (!normalizedPath.startsWith('/storage/')) {
