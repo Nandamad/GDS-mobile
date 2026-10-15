@@ -53,6 +53,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
   String _namaKantor = 'Kantor';
   String _alamatKantor = '';
   LatLng _currentLocation = const LatLng(-7.7279, 109.0089);
+  bool _hasCurrentLocation = false;
+  bool _isLocationLoading = true;
+  String? _locationError;
   StreamSubscription<Position>? _positionStream;
   double _gpsAccuracy = 0.0;
   bool _isMocked = false;
@@ -71,8 +74,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
   }
 
   Future<void> _initializeData() async {
-    setState(() => _isLoading = true);
-    await _determinePositionAndFetch();
+    unawaited(_fetchAllData());
+    await _determinePosition();
   }
 
   void _updateTime() {
@@ -144,23 +147,25 @@ class _DashboardScreenState extends State<DashboardScreen> {
     if (mounted) setState(() => _isLoading = false);
   }
 
-  Future<void> _fetchDashboardAndToday() async {
+  Future<void> _fetchDashboardAndToday({
+    bool includeDashboardData = true,
+  }) async {
     try {
       final token = await ApiService().getToken();
       if (token == null) {
-        if (!mounted) return;
-        setState(() {
-          _errorMessage = 'Sesi login tidak ditemukan.';
-          _isLoading = false;
-        });
+        if (includeDashboardData && mounted) {
+          setState(() {
+            _errorMessage = 'Sesi login tidak ditemukan.';
+            _isLoading = false;
+          });
+        }
         return;
       }
 
       final dio = ApiService().dio;
 
       String queryParams = '';
-      if (_currentLocation.latitude != -7.7279 &&
-          _currentLocation.longitude != 109.0089) {
+      if (_hasCurrentLocation) {
         queryParams =
             '?lat=${_currentLocation.latitude}&lng=${_currentLocation.longitude}';
       }
@@ -232,55 +237,57 @@ class _DashboardScreenState extends State<DashboardScreen> {
         }
       }
 
-      // 2. Fetch Dashboard Data
-      final dashRes = await dio.get('/dashboard');
-      if (dashRes.statusCode == 200) {
-        final payload = dashRes.data;
-        Map<String, dynamic>? data;
-        if (payload is Map) {
-          data = payload['data'] is Map
-              ? Map<String, dynamic>.from(payload['data'])
-              : Map<String, dynamic>.from(payload);
-        }
-        if (data != null) {
-          _dashboardData = data;
+      if (includeDashboardData) {
+        // 2. Fetch Dashboard Data
+        final dashRes = await dio.get('/dashboard');
+        if (dashRes.statusCode == 200) {
+          final payload = dashRes.data;
+          Map<String, dynamic>? data;
+          if (payload is Map) {
+            data = payload['data'] is Map
+                ? Map<String, dynamic>.from(payload['data'])
+                : Map<String, dynamic>.from(payload);
+          }
+          if (data != null) {
+            _dashboardData = data;
 
-          // Parse log_keterlambatan directly from dashboard API
-          if (data['log_keterlambatan'] is List) {
-            final logList = List<dynamic>.from(data['log_keterlambatan']);
-            final keterlambatanData = <Map<String, dynamic>>[];
-            for (var item in logList) {
-              if (item is Map) {
-                final menitTerlambat = item['menit_terlambat'] ?? 0;
-                final menitPulangAwal = item['menit_pulang_awal'] ?? 0;
+            // Parse log_keterlambatan directly from dashboard API
+            if (data['log_keterlambatan'] is List) {
+              final logList = List<dynamic>.from(data['log_keterlambatan']);
+              final keterlambatanData = <Map<String, dynamic>>[];
+              for (var item in logList) {
+                if (item is Map) {
+                  final menitTerlambat = item['menit_terlambat'] ?? 0;
+                  final menitPulangAwal = item['menit_pulang_awal'] ?? 0;
 
-                if (menitTerlambat > 0) {
-                  keterlambatanData.add({
-                    'tanggal': item['tanggal'],
-                    'tipe': 'Terlambat',
-                    'menit': menitTerlambat,
-                    'status_atasan':
-                        item['status_verifikasi_atasan'] ?? 'Pending',
-                    'status_hrd': item['status_verifikasi_hrd'] ?? 'Pending',
-                  });
-                }
+                  if (menitTerlambat > 0) {
+                    keterlambatanData.add({
+                      'tanggal': item['tanggal'],
+                      'tipe': 'Terlambat',
+                      'menit': menitTerlambat,
+                      'status_atasan':
+                          item['status_verifikasi_atasan'] ?? 'Pending',
+                      'status_hrd': item['status_verifikasi_hrd'] ?? 'Pending',
+                    });
+                  }
 
-                if (menitPulangAwal > 0) {
-                  keterlambatanData.add({
-                    'tanggal': item['tanggal'],
-                    'tipe': 'Pulang Awal',
-                    'menit': menitPulangAwal,
-                    'status_atasan':
-                        item['status_verifikasi_atasan'] ?? 'Pending',
-                    'status_hrd': item['status_verifikasi_hrd'] ?? 'Pending',
-                  });
+                  if (menitPulangAwal > 0) {
+                    keterlambatanData.add({
+                      'tanggal': item['tanggal'],
+                      'tipe': 'Pulang Awal',
+                      'menit': menitPulangAwal,
+                      'status_atasan':
+                          item['status_verifikasi_atasan'] ?? 'Pending',
+                      'status_hrd': item['status_verifikasi_hrd'] ?? 'Pending',
+                    });
+                  }
                 }
               }
-            }
-            if (mounted) {
-              setState(() {
-                _logKeterlambatan = keterlambatanData;
-              });
+              if (mounted) {
+                setState(() {
+                  _logKeterlambatan = keterlambatanData;
+                });
+              }
             }
           }
         }
@@ -291,15 +298,17 @@ class _DashboardScreenState extends State<DashboardScreen> {
       debugPrint(
         'DASHBOARD ERROR: ${e.response?.statusCode} ${e.response?.data}',
       );
-      _errorMessage = 'Gagal memuat dashboard: ${e.message}';
+      if (includeDashboardData) {
+        _errorMessage = 'Gagal memuat dashboard: ${e.message}';
+      }
     } catch (e) {
       debugPrint('DASHBOARD PARSE ERROR: $e');
-      _errorMessage = 'Terjadi kesalahan sistem.';
+      if (includeDashboardData) {
+        _errorMessage = 'Terjadi kesalahan sistem.';
+      }
     }
 
-    if (mounted) {
-      // _isLoading state dihandle oleh _fetchAllData()
-    }
+    if (mounted && !includeDashboardData) setState(() {});
   }
 
   Future<void> _fetchRecentHistory() async {
@@ -351,83 +360,102 @@ class _DashboardScreenState extends State<DashboardScreen> {
   }
 
   // GPS & Location Methods
-  Future<void> _determinePositionAndFetch() async {
-    bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
-    if (!serviceEnabled) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('GPS/Lokasi perangkat belum aktif. Harap nyalakan GPS Anda.'),
-            backgroundColor: Colors.redAccent,
-          ),
-        );
-      }
-      _fetchAllData();
-      return;
-    }
-
-    LocationPermission permission = await Geolocator.checkPermission();
-    if (permission == LocationPermission.denied) {
-      permission = await Geolocator.requestPermission();
-      if (permission == LocationPermission.denied) {
-        _fetchAllData();
-        return;
-      }
-    }
-    if (permission == LocationPermission.deniedForever) {
-      _fetchAllData();
-      return;
-    }
+  Future<void> _determinePosition() async {
+    if (!mounted) return;
+    setState(() {
+      _isLocationLoading = true;
+      _locationError = null;
+    });
 
     try {
-      final position = await Geolocator.getCurrentPosition(
-        desiredAccuracy: LocationAccuracy.high,
-        timeLimit: const Duration(seconds: 10), // Tambahkan timeLimit
-      );
-      if (mounted) {
-        setState(() {
-          _currentLocation = LatLng(position.latitude, position.longitude);
-          _gpsAccuracy = position.accuracy;
-          _isMocked = position.isMocked;
-        });
+      final serviceEnabled = await Geolocator.isLocationServiceEnabled();
+      if (!serviceEnabled) {
+        _locationError = 'Nyalakan GPS perangkat untuk menentukan lokasi.';
+        return;
       }
-    } catch (e) {
-      debugPrint('Dashboard GPS error: $e');
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Gagal mendapatkan lokasi akurat. Pastikan GPS stabil.'),
-            backgroundColor: Colors.orange,
+
+      var permission = await Geolocator.checkPermission();
+      if (permission == LocationPermission.denied) {
+        permission = await Geolocator.requestPermission();
+      }
+      if (permission == LocationPermission.deniedForever) {
+        _locationError =
+            'Izin lokasi diblokir. Aktifkan izin lokasi aplikasi di Pengaturan.';
+        return;
+      }
+      if (permission != LocationPermission.whileInUse &&
+          permission != LocationPermission.always) {
+        _locationError = 'Izinkan aplikasi mengakses lokasi perangkat.';
+        return;
+      }
+
+      await _startLocationStream();
+      try {
+        final position = await Geolocator.getCurrentPosition(
+          locationSettings: const LocationSettings(
+            accuracy: LocationAccuracy.best,
+            timeLimit: Duration(seconds: 20),
           ),
         );
+        _updateCurrentLocation(position);
+      } catch (e) {
+        debugPrint('Dashboard GPS error: $e');
+        if (!_hasCurrentLocation) {
+          _locationError =
+              'Lokasi belum didapat. Pastikan GPS mendapat sinyal lalu ketuk untuk mencoba lagi.';
+        }
       }
-      // No longer falling back to getLastKnownPosition to prevent spoofing!
+    } catch (e) {
+      debugPrint('Dashboard location setup error: $e');
+      _locationError = 'Gagal mengakses lokasi. Ketuk untuk mencoba lagi.';
+    } finally {
+      if (mounted) {
+        setState(() => _isLocationLoading = false);
+      }
     }
-
-    _fetchAllData();
-    _startLocationStream();
   }
 
-  void _startLocationStream() {
-    _positionStream =
-        Geolocator.getPositionStream(
-          locationSettings: const LocationSettings(
-            accuracy: LocationAccuracy.high,
-            distanceFilter: 5,
-          ),
-        ).listen((position) {
-          if (!mounted) return;
+  Future<void> _startLocationStream() async {
+    await _positionStream?.cancel();
+    _positionStream = Geolocator.getPositionStream(
+      locationSettings: const LocationSettings(
+        accuracy: LocationAccuracy.high,
+        distanceFilter: 0,
+      ),
+    ).listen(
+      _updateCurrentLocation,
+      onError: (Object error) {
+        debugPrint('Dashboard location stream error: $error');
+        if (mounted && !_hasCurrentLocation) {
           setState(() {
-            _currentLocation = LatLng(position.latitude, position.longitude);
-            _gpsAccuracy = position.accuracy;
-            _isMocked = position.isMocked;
+            _locationError =
+                'Lokasi belum tersedia. Pastikan GPS mendapat sinyal lalu coba lagi.';
+            _isLocationLoading = false;
           });
-          _calculateOfficeDistance();
-        });
+        }
+      },
+    );
+  }
+
+  void _updateCurrentLocation(Position position) {
+    if (!mounted) return;
+    final isFirstFix = !_hasCurrentLocation;
+    setState(() {
+      _currentLocation = LatLng(position.latitude, position.longitude);
+      _hasCurrentLocation = true;
+      _gpsAccuracy = position.accuracy;
+      _isMocked = position.isMocked;
+      _locationError = null;
+      _isLocationLoading = false;
+    });
+    _calculateOfficeDistance();
+    if (isFirstFix) {
+      unawaited(_fetchDashboardAndToday(includeDashboardData: false));
+    }
   }
 
   void _calculateOfficeDistance() {
-    if (_officeLocation == null) return;
+    if (!_hasCurrentLocation || _officeLocation == null) return;
     final distance = Geolocator.distanceBetween(
       _currentLocation.latitude,
       _currentLocation.longitude,
@@ -967,11 +995,10 @@ class _DashboardScreenState extends State<DashboardScreen> {
       btnText = 'Mulai Lembur';
     }
 
-    bool isDefaultLocation = _currentLocation.latitude == -7.7279 && _currentLocation.longitude == 109.0089;
-
-    if (isDefaultLocation && !(_isSudahAbsenMasuk && _isSudahAbsenKeluar)) {
+    if (!_hasCurrentLocation &&
+        !(_isSudahAbsenMasuk && _isSudahAbsenKeluar)) {
       btnColor = Colors.grey;
-      btnText = 'Mencari Lokasi';
+      btnText = _isLocationLoading ? 'Mencari Lokasi' : 'Lokasi Tidak Tersedia';
     } else if (!_isInRadius && !(_isSudahAbsenMasuk && _isSudahAbsenKeluar)) {
       btnColor = Colors.grey;
       btnText = 'Luar Radius';
@@ -1247,33 +1274,55 @@ class _DashboardScreenState extends State<DashboardScreen> {
   }
 
   Widget _buildRadiusBadge() {
-    final isDefaultLocation = _currentLocation.latitude == -7.7279 && _currentLocation.longitude == 109.0089;
-
-    if (isDefaultLocation) {
-      return Container(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-        decoration: BoxDecoration(
-          color: const Color(0xFFFFF3E0),
-          borderRadius: BorderRadius.circular(20),
-        ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: const [
-            Icon(
-              Icons.location_searching,
-              size: 16,
-              color: Color(0xFFE65100),
-            ),
-            SizedBox(width: 6),
-            Text(
-              'Sedang mencari lokasi GPS Anda...',
-              style: TextStyle(
-                color: Color(0xFFE65100),
-                fontSize: 12,
-                fontWeight: FontWeight.bold,
+    if (!_hasCurrentLocation) {
+      final message = _isLocationLoading
+          ? 'Mencari lokasi GPS...'
+          : _locationError ??
+                'Lokasi belum tersedia. Ketuk untuk mencoba lagi.';
+      return InkWell(
+        onTap: _isLocationLoading
+            ? null
+            : () => unawaited(_determinePosition()),
+        borderRadius: BorderRadius.circular(20),
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+          decoration: BoxDecoration(
+            color: const Color(0xFFFFF3E0),
+            borderRadius: BorderRadius.circular(20),
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(
+                _isLocationLoading
+                    ? Icons.location_searching
+                    : Icons.location_off,
+                size: 16,
+                color: const Color(0xFFE65100),
               ),
-            ),
-          ],
+              const SizedBox(width: 6),
+              Flexible(
+                child: Text(
+                  message,
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    color: Color(0xFFE65100),
+                    fontSize: 12,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ),
+              if (!_isLocationLoading) ...[
+                const SizedBox(width: 6),
+                const Icon(
+                  Icons.refresh,
+                  size: 14,
+                  color: Color(0xFFE65100),
+                ),
+              ],
+            ],
+          ),
         ),
       );
     }
