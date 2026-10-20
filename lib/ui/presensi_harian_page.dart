@@ -10,17 +10,14 @@ import 'package:latlong2/latlong.dart';
 
 import 'package:shared_preferences/shared_preferences.dart';
 import '../services/api_service.dart';
-import '../model/absensi.dart';
 import '../cubit/location_cubit.dart';
 import '../cubit/location_state.dart';
 import 'kamera_page.dart';
 import 'konfirmasi_foto_page.dart';
-import 'riwayat_presensi_page.dart';
 import 'mulai_kunjungan_page.dart';
 import 'selesai_kunjungan_page.dart';
 import 'mulai_lembur_page.dart';
 import 'selesai_lembur_page.dart';
-import 'ringkasan_presensi_page.dart';
 import '../services/lembur_helper.dart';
 
 class PresensiHarianScreen extends StatefulWidget {
@@ -34,9 +31,6 @@ class _PresensiHarianScreenState extends State<PresensiHarianScreen> {
   bool _isLoading = true;
 
   // Data
-  Map<String, dynamic> _attendanceSummary = {};
-  List<Map<String, dynamic>> _recentHistory = [];
-
   // GPS & Location States
   String _namaKantor = 'Kantor';
   String _alamatKantor = '';
@@ -132,7 +126,7 @@ class _PresensiHarianScreenState extends State<PresensiHarianScreen> {
       if (!mounted) return;
 
       try {
-        await Future.wait([_fetchDashboardAndToday(), _fetchRecentHistory()]).timeout(
+        await _fetchDashboardAndToday().timeout(
           const Duration(seconds: 15),
         );
       } catch (e) {
@@ -200,132 +194,8 @@ class _PresensiHarianScreenState extends State<PresensiHarianScreen> {
         }
       }
 
-      // Fetch Dashboard Data (For Ringkasan Kehadiran)
-      final dashRes = await dio.get('/dashboard');
-      if (!mounted) return;
-      if (dashRes.statusCode == 200) {
-        final payload = dashRes.data;
-        Map<String, dynamic>? data;
-        if (payload is Map) {
-          data = payload['data'] is Map
-              ? Map<String, dynamic>.from(payload['data'])
-              : Map<String, dynamic>.from(payload);
-        }
-        if (data != null) {
-          if (data['attendance_month'] != null) {
-            _attendanceSummary = Map<String, dynamic>.from(
-              data['attendance_month'],
-            );
-          }
-        }
-      }
     } catch (e) {
       debugPrint('PRESENSI DATA FETCH ERROR: $e');
-    }
-  }
-
-  Future<void> _fetchRecentHistory() async {
-    try {
-      final dio = ApiService().dio;
-      final now = DateTime.now();
-      final response = await dio.get(
-        '/history',
-        queryParameters: {'month': now.month, 'year': now.year},
-      );
-      if (!mounted) return;
-
-      if (response.statusCode == 200) {
-        final List<dynamic> data = response.data['data'] ?? [];
-        final parsedData = data.map((item) {
-          final absensiObj = Absensi.fromJson(item);
-          final isCuti = item['tipe'] != null && item['tipe'] != 'Kehadiran';
-          final rawStatus = (absensiObj.status ?? item['status'] ?? 'hadir')
-              .toString()
-              .toLowerCase();
-
-          Color bgColor = const Color(0xFFE8F5E9);
-          Color txtColor = const Color(0xFF2E7D32);
-          String statusTxt = 'Hadir';
-
-          if (isCuti) {
-            statusTxt = 'Izin/Cuti';
-            bgColor = const Color(0xFFE0F2F1);
-            txtColor = const Color(0xFF00695C);
-          } else if (rawStatus.contains('terlambat') ||
-              rawStatus.contains('late')) {
-            statusTxt = 'Terlambat';
-            bgColor = const Color(0xFFFFF3E0);
-            txtColor = const Color(0xFFE65100);
-          } else if (rawStatus.contains('pulang_awal') ||
-              rawStatus.contains('pulang awal')) {
-            statusTxt = 'Pulang Awal';
-            bgColor = const Color(0xFFFEE2E2);
-            txtColor = const Color(0xFFDC2626);
-          } else if (rawStatus.contains('alpha') ||
-              rawStatus.contains('tidak hadir') ||
-              rawStatus.contains('tidak_absen')) {
-            statusTxt = 'Alpha';
-            bgColor = const Color(0xFFF1F5F9);
-            txtColor = const Color(0xFF64748B);
-          }
-
-          final monthNames = [
-            'Jan',
-            'Feb',
-            'Mar',
-            'Apr',
-            'Mei',
-            'Jun',
-            'Jul',
-            'Agt',
-            'Sep',
-            'Okt',
-            'Nov',
-            'Des',
-          ];
-          final dayNames = [
-            'Senin',
-            'Selasa',
-            'Rabu',
-            'Kamis',
-            'Jumat',
-            'Sabtu',
-            'Minggu',
-          ];
-
-          String dateStr = '-';
-          if (absensiObj.tanggal != null) {
-            final d = absensiObj.tanggal!;
-            final dayName = dayNames[d.weekday - 1];
-            final monthName = monthNames[d.month - 1];
-            dateStr = '$dayName, ${d.day} $monthName ${d.year}';
-          }
-
-          String formatTime(DateTime? t) {
-            if (t == null) return '-';
-            final local = t.toLocal();
-            return '${local.hour.toString().padLeft(2, '0')}:${local.minute.toString().padLeft(2, '0')}';
-          }
-
-          return {
-            'date': dateStr,
-            'statusText': statusTxt,
-            'statusBgColor': bgColor,
-            'statusTextColor': txtColor,
-            'checkIn': formatTime(absensiObj.jamMasuk),
-            'checkOut': formatTime(absensiObj.jamPulang),
-          };
-        }).toList();
-
-        // Limit to 5 entries
-        if (mounted) {
-          setState(() {
-            _recentHistory = parsedData.take(5).toList();
-          });
-        }
-      }
-    } catch (e) {
-      debugPrint('FETCH RECENT HISTORY ERROR: $e');
     }
   }
 
@@ -466,7 +336,7 @@ class _PresensiHarianScreenState extends State<PresensiHarianScreen> {
 
     final errorMessage = await _submitAbsensi(
       tipe: tipe,
-      fotoBase64: finalImage!,
+      fotoBase64: finalImage,
       locState: locState,
     );
     if (!mounted) return;
@@ -711,113 +581,6 @@ class _PresensiHarianScreenState extends State<PresensiHarianScreen> {
           ),
         ),
       ],
-    );
-  }
-
-  Widget _buildRingkasanKehadiranContent() {
-    final Map<String, dynamic> items = {
-      'Hadir': {
-        'val': _attendanceSummary['hadir'] ?? 0,
-        'color': const Color(0xFF009688),
-      },
-      'Terlambat': {
-        'val': _attendanceSummary['terlambat'] ?? 0,
-        'color': const Color(0xFFF59E0B),
-      },
-      'Izin': {
-        'val': _attendanceSummary['izin'] ?? 0,
-        'color': const Color(0xFF3B82F6),
-      },
-      'Cuti': {
-        'val': _attendanceSummary['cuti'] ?? 0,
-        'color': const Color(0xFF009688),
-      },
-      'Sakit': {
-        'val': _attendanceSummary['sakit'] ?? 0,
-        'color': const Color(0xFF8B5CF6),
-      },
-      'Alpha': {
-        'val': _attendanceSummary['alpha'] ?? 0,
-        'color': const Color(0xFFEF4444),
-      },
-    };
-
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: Colors.grey.shade200),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Text(
-            'Ringkasan Kehadiran',
-            style: TextStyle(
-              fontWeight: FontWeight.bold,
-              fontSize: 13,
-              color: Color(0xFF0F172A),
-            ),
-          ),
-          const SizedBox(height: 16),
-          GridView.count(
-            crossAxisCount: 3,
-            shrinkWrap: true,
-            physics: const NeverScrollableScrollPhysics(),
-            mainAxisSpacing: 12,
-            crossAxisSpacing: 12,
-            childAspectRatio: 1.5,
-            children: items.entries.map((entry) {
-              return Container(
-                padding: const EdgeInsets.all(10),
-                decoration: BoxDecoration(
-                  color: const Color(0xFFF8FAFC),
-                  borderRadius: BorderRadius.circular(12),
-                  border: Border.all(color: Colors.grey.shade100),
-                ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Row(
-                      children: [
-                        Container(
-                          width: 6,
-                          height: 6,
-                          decoration: BoxDecoration(
-                            color: entry.value['color'],
-                            shape: BoxShape.circle,
-                          ),
-                        ),
-                        const SizedBox(width: 6),
-                        Text(
-                          entry.key,
-                          style: const TextStyle(
-                            fontSize: 9,
-                            color: Color(0xFF64748B),
-                            fontWeight: FontWeight.w500,
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 6),
-                    Text(
-                      '${entry.value['val']} Hari',
-                      style: const TextStyle(
-                        fontSize: 12,
-                        fontWeight: FontWeight.bold,
-                        color: Color(0xFF0F172A),
-                      ),
-                    ),
-                  ],
-                ),
-              );
-            }).toList(),
-          ),
-        ],
-      ),
     );
   }
 

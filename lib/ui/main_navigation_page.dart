@@ -6,7 +6,6 @@ import 'pengajuan_page.dart';
 import 'riwayat_presensi_page.dart';
 import 'profil_page.dart';
 import 'notifikasi_page.dart';
-import 'approval_page.dart';
 import '../services/api_service.dart';
 
 class MainNavigationScreen extends StatefulWidget {
@@ -19,7 +18,6 @@ class MainNavigationScreen extends StatefulWidget {
 
 class _MainNavigationScreenState extends State<MainNavigationScreen> {
   late int _currentIndex;
-  bool _isAtasan = false;
 
   @override
   void initState() {
@@ -70,9 +68,6 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
       }
     }
 
-    if (mounted) {
-      setState(() => _isAtasan = isAtasan);
-    }
   }
 
   void _openNotifikasi() {
@@ -87,16 +82,6 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
   /// Layout posisi:
   ///   Atasan:  Home(0) | Pengajuan(1) | [FAB=Presensi(2)] | Approval(3) | Riwayat(4) | Profil(5)
   ///   Biasa:   Home(0) | Pengajuan(1) | [FAB=Presensi(2)] | Riwayat(3)  | Profil(4)
-
-  List<Widget> get _pages {
-    return const <Widget>[
-      DashboardScreen(),
-      PengajuanScreen(),
-      PresensiHarianScreen(),
-      RiwayatPresensiScreen(),
-      ProfilPage(),
-    ];
-  }
 
   int get _presensiIndex => 2;
   int get _riwayatIndex => 3;

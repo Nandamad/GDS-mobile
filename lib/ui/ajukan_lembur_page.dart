@@ -18,8 +18,6 @@ class _AjukanLemburScreenState extends State<AjukanLemburScreen> {
   DateTime _selectedDate = DateTime.now();
   int _selectedDuration = 2; // Default 2 jam
 
-  String _jamMulaiStr = '17:00';
-
   @override
   void dispose() {
     _alasanController.dispose();
@@ -38,32 +36,6 @@ class _AjukanLemburScreenState extends State<AjukanLemburScreen> {
       setState(() {
         _selectedDate = picked;
       });
-    }
-  }
-
-  @override
-  void initState() {
-    super.initState();
-    _fetchShiftData();
-  }
-
-  Future<void> _fetchShiftData() async {
-    try {
-      final res = await ApiService().dio.get('/absensi/today');
-      final payload = res.data;
-      if (payload['jam_kerja'] != null && payload['jam_kerja']['jam_pulang'] != null) {
-        final jamPulang = payload['jam_kerja']['jam_pulang'].toString();
-        // format expected: HH:mm
-        if (jamPulang.length >= 5) {
-          if (mounted) {
-            setState(() {
-              _jamMulaiStr = jamPulang.substring(0, 5);
-            });
-          }
-        }
-      }
-    } catch (e) {
-      debugPrint('Gagal fetch shift: $e');
     }
   }
 

@@ -439,7 +439,6 @@ class _NotifikasiScreenState extends State<NotifikasiScreen> {
           if (!mounted) return;
           
           final title = item['title'].toString().toLowerCase();
-          final message = item['message'].toString().toLowerCase();
           
           // Persetujuan (untuk atasan/HRD)
           if (title.contains('persetujuan')) {

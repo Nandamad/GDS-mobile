@@ -3,7 +3,7 @@ import 'package:dio/dio.dart';
 import '../services/api_service.dart';
 import 'main_navigation_page.dart';
 import 'lupa_password_page.dart';
-import 'package:package_info_plus/package_info_plus.dart';
+import 'app_version_text.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -15,30 +15,17 @@ class LoginScreen extends StatefulWidget {
 class _LoginScreenState extends State<LoginScreen> {
   bool _obscurePassword = true;
   bool _isLoading = false;
-  String _version = '';
   final TextEditingController _nipController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
   @override
   void initState() {
     super.initState();
-    // Set manual version string
-    _version = 'v1.1.14';
-    // _loadVersion(); // disabled for manual version input
   }
   @override
   void dispose() {
     _nipController.dispose();
     _passwordController.dispose();
     super.dispose();
-  }
-
-  Future<void> _loadVersion() async {
-    final packageInfo = await PackageInfo.fromPlatform();
-    if (mounted) {
-      setState(() {
-        _version = 'v${packageInfo.version}';
-      });
-    }
   }
 
   Future<void> _handleLogin() async {
@@ -442,8 +429,8 @@ class _LoginScreenState extends State<LoginScreen> {
               ),
               Padding(
                 padding: const EdgeInsets.only(bottom: 12.0),
-                child: Text(
-                  _version,
+                child: AppVersionText(
+                  prefix: 'v',
                   style: const TextStyle(fontSize: 10, color: Colors.grey),
                 ),
               ),

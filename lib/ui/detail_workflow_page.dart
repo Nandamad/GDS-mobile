@@ -69,11 +69,6 @@ class DetailWorkflowScreen extends StatelessWidget {
     final status = _normalize(value);
     return status == 'ditolak' || status == 'rejected' || status == 'reject';
   }
-  bool _pending(dynamic value) {
-    final status = _normalize(value);
-    return status == 'pending' || status == 'menunggu';
-  }
-
   String _overallStatus() {
     if (isCuti) {
       final status = data['status'];

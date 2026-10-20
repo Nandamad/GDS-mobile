@@ -95,9 +95,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
             final selesaiStr = _lemburData!['jam_selesai'];
             if (mulaiStr != null && selesaiStr != null) {
               final DateTime apiSelesai = DateTime.parse(selesaiStr);
-              // Gunakan waktu mulai dari SharedPreferences (actual start) atau dari API
-              final DateTime effectiveStart =
-                  _lemburActualStartTime ?? DateTime.parse(mulaiStr);
 
               bool canLembur = true;
               if (_isWorkingDay == true && !_isSudahAbsenKeluar) {

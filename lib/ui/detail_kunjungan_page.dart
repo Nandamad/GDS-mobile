@@ -30,17 +30,6 @@ class DetailKunjunganScreen extends StatelessWidget {
     }
   }
 
-  String _formatDateTime(dynamic value) {
-    if (value == null) return '-';
-    try {
-      final date = DateTime.parse(value.toString()).toLocal();
-      const bulan = ['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Agt', 'Sep', 'Okt', 'Nov', 'Des'];
-      return '${date.day.toString().padLeft(2, '0')} ${bulan[date.month - 1]} ${date.year}, ${date.hour.toString().padLeft(2, '0')}:${date.minute.toString().padLeft(2, '0')}';
-    } catch (_) {
-      return value.toString();
-    }
-  }
-
   String _formatTime(dynamic value) {
     if (value == null) return '-';
     final text = value.toString();

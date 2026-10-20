@@ -1,6 +1,7 @@
 import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import '../services/api_service.dart';
+import 'app_version_text.dart';
 import 'main_navigation_page.dart';
 import 'onboarding_screen.dart';
 
@@ -131,8 +132,8 @@ class _SplashScreenState extends State<SplashScreen>
             ),
             const Padding(
               padding: EdgeInsets.only(bottom: 12.0),
-              child: Text(
-                'v1.1.14',
+              child: AppVersionText(
+                prefix: 'v',
                 style: TextStyle(fontSize: 10, color: Colors.grey),
               ),
             ),

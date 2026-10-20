@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'app_version_text.dart';
 import 'legal_document_page.dart';
 
 class TentangAplikasiScreen extends StatelessWidget {
@@ -55,8 +56,8 @@ class TentangAplikasiScreen extends StatelessWidget {
               ),
             ),
             const SizedBox(height: 4),
-            const Text(
-              'Versi 1.1.14',
+            const AppVersionText(
+              prefix: 'Versi ',
               style: TextStyle(fontSize: 12, color: Color(0xFF94A3B8)),
             ),
             const SizedBox(height: 24),

@@ -4,6 +4,37 @@
         id("dev.flutter.flutter-gradle-plugin")
     }
 
+    val releaseStoreFilePath = providers.gradleProperty("RELEASE_STORE_FILE")
+        .orElse(providers.environmentVariable("RELEASE_STORE_FILE"))
+        .orNull
+    val releaseStorePassword = providers.gradleProperty("RELEASE_STORE_PASSWORD")
+        .orElse(providers.environmentVariable("RELEASE_STORE_PASSWORD"))
+        .orNull
+    val releaseKeyAlias = providers.gradleProperty("RELEASE_KEY_ALIAS")
+        .orElse(providers.environmentVariable("RELEASE_KEY_ALIAS"))
+        .orNull
+    val releaseKeyPassword = providers.gradleProperty("RELEASE_KEY_PASSWORD")
+        .orElse(providers.environmentVariable("RELEASE_KEY_PASSWORD"))
+        .orNull
+
+    val validateReleaseSigning = tasks.register("validateReleaseSigning") {
+        doLast {
+            val missingValues = mapOf(
+                "RELEASE_STORE_FILE" to releaseStoreFilePath,
+                "RELEASE_STORE_PASSWORD" to releaseStorePassword,
+                "RELEASE_KEY_ALIAS" to releaseKeyAlias,
+                "RELEASE_KEY_PASSWORD" to releaseKeyPassword,
+            ).filterValues { it.isNullOrBlank() }.keys
+
+            check(missingValues.isEmpty()) {
+                "Release signing is not configured. Provide: ${missingValues.joinToString()}"
+            }
+            check(file(requireNotNull(releaseStoreFilePath)).isFile) {
+                "Release keystore file does not exist: $releaseStoreFilePath"
+            }
+        }
+    }
+
     android {
         namespace = "com.example.mobile"
         compileSdk = 36
@@ -28,9 +59,26 @@
             versionName = flutter.versionName
         }
 
+        signingConfigs {
+            create("release") {
+                if (releaseStoreFilePath != null) {
+                    storeFile = file(releaseStoreFilePath)
+                }
+                if (releaseStorePassword != null) {
+                    storePassword = releaseStorePassword
+                }
+                if (releaseKeyAlias != null) {
+                    keyAlias = releaseKeyAlias
+                }
+                if (releaseKeyPassword != null) {
+                    keyPassword = releaseKeyPassword
+                }
+            }
+        }
+
         buildTypes {
             release {
-                signingConfig = signingConfigs.getByName("debug")
+                signingConfig = signingConfigs.getByName("release")
             }
         }
 
@@ -40,6 +88,14 @@
             }
         }
         // ----------------------------------
+    }
+
+    tasks.matching {
+        it.name == "assembleRelease" ||
+            it.name == "bundleRelease" ||
+            it.name == "packageRelease"
+    }.configureEach {
+        dependsOn(validateReleaseSigning)
     }
 
     tasks.withType<JavaCompile>().configureEach {

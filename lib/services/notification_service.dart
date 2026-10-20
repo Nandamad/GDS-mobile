@@ -1,6 +1,6 @@
-import 'dart:typed_data';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:audioplayers/audioplayers.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:math';
@@ -128,7 +128,6 @@ class NotificationService {
         sound: RawResourceAndroidNotificationSound(_alarmSoundAndroid),
         enableVibration: true,
         vibrationPattern: Int64List.fromList([0, 500, 200, 500, 200, 500]),
-        fullScreenIntent: true,
         category: AndroidNotificationCategory.alarm,
       );
       iosDetails = DarwinNotificationDetails(
@@ -147,7 +146,6 @@ class NotificationService {
         playSound: true,
         enableVibration: true,
         vibrationPattern: Int64List.fromList([0, 500, 200, 500, 200, 500]),
-        fullScreenIntent: true,
         category: AndroidNotificationCategory.alarm,
       );
       iosDetails = const DarwinNotificationDetails(
@@ -210,6 +208,7 @@ class NotificationService {
     // Jika waktu selesai sudah lewat, jangan jadwalkan
     if (endTime.isBefore(DateTime.now())) return;
 
+    final scheduleMode = await _androidScheduleMode();
     await _notifications.zonedSchedule(
       1001,
       '⏰ Waktu Lembur Selesai!',
@@ -222,11 +221,10 @@ class NotificationService {
           importance: Importance.max,
           priority: Priority.high,
           playSound: true,
-          fullScreenIntent: true,
         ),
         iOS: DarwinNotificationDetails(presentAlert: true, presentSound: true),
       ),
-      androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
+      androidScheduleMode: scheduleMode,
       matchDateTimeComponents: DateTimeComponents.time,
     );
   }
@@ -404,48 +402,44 @@ class NotificationService {
   }) async {
     if (!_isInitialized) await initialize();
 
-    try {
-      await _notifications.zonedSchedule(
-        id,
-        title,
-        body,
-        _nextInstanceOfTime(hour, minute),
-        const NotificationDetails(
-          android: AndroidNotificationDetails(
-            'daily_reminder_channel',
-            'Pengingat Harian',
-            channelDescription: 'Notifikasi pengingat absen masuk dan keluar harian',
-            importance: Importance.high,
-            priority: Priority.high,
-            icon: '@mipmap/ic_launcher',
-          ),
-          iOS: DarwinNotificationDetails(),
+    final scheduleMode = await _androidScheduleMode();
+    await _notifications.zonedSchedule(
+      id,
+      title,
+      body,
+      _nextInstanceOfTime(hour, minute),
+      const NotificationDetails(
+        android: AndroidNotificationDetails(
+          'daily_reminder_channel',
+          'Pengingat Harian',
+          channelDescription: 'Notifikasi pengingat absen masuk dan keluar harian',
+          importance: Importance.high,
+          priority: Priority.high,
+          icon: '@mipmap/ic_launcher',
         ),
-        androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
-        matchDateTimeComponents: DateTimeComponents.time,
-      );
-    } catch (e) {
-      // Fallback untuk Android 14+ jika permission Exact Alarm belum diberikan
-      await _notifications.zonedSchedule(
-        id,
-        title,
-        body,
-        _nextInstanceOfTime(hour, minute),
-        const NotificationDetails(
-          android: AndroidNotificationDetails(
-            'daily_reminder_channel',
-            'Pengingat Harian',
-            channelDescription: 'Notifikasi pengingat absen masuk dan keluar harian',
-            importance: Importance.high,
-            priority: Priority.high,
-            icon: '@mipmap/ic_launcher',
-          ),
-          iOS: DarwinNotificationDetails(),
-        ),
-        androidScheduleMode: AndroidScheduleMode.inexactAllowWhileIdle,
-        matchDateTimeComponents: DateTimeComponents.time,
-      );
+        iOS: DarwinNotificationDetails(),
+      ),
+      androidScheduleMode: scheduleMode,
+      matchDateTimeComponents: DateTimeComponents.time,
+    );
+  }
+
+  Future<AndroidScheduleMode> _androidScheduleMode() async {
+    final androidPlugin = _notifications
+        .resolvePlatformSpecificImplementation<
+            AndroidFlutterLocalNotificationsPlugin>();
+    if (androidPlugin == null) return AndroidScheduleMode.exactAllowWhileIdle;
+
+    final canScheduleExactly =
+        await androidPlugin.canScheduleExactNotifications();
+    if (canScheduleExactly == true) {
+      return AndroidScheduleMode.exactAllowWhileIdle;
     }
+
+    debugPrint(
+      'Exact alarm access is unavailable; scheduling an inexact notification.',
+    );
+    return AndroidScheduleMode.inexactAllowWhileIdle;
   }
 
   tz.TZDateTime _nextInstanceOfTime(int hour, int minute) {
