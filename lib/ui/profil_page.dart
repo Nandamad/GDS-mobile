@@ -199,7 +199,7 @@ class _ProfilPageState extends State<ProfilPage> {
                 children: [
                   _buildProfileHeaderCard(),
                   const SizedBox(height: 24),
-                  
+
                   // Menu List Group
                   Container(
                     decoration: BoxDecoration(
@@ -276,7 +276,9 @@ class _ProfilPageState extends State<ProfilPage> {
                             Navigator.push(
                               context,
                               MaterialPageRoute(
-                                builder: (context) => const BantuanFaqScreen(),
+                                builder: (context) => BantuanFaqScreen(
+                                  userProfile: _userProfile!,
+                                ),
                               ),
                             );
                           },
@@ -290,7 +292,7 @@ class _ProfilPageState extends State<ProfilPage> {
                             final String perusahaan = (rawTenant is Map && rawTenant['nama_perusahaan'] != null)
                                 ? rawTenant['nama_perusahaan'].toString()
                                 : 'PT Generasi Digital Solusi';
-                                
+
                             Navigator.push(
                               context,
                               MaterialPageRoute(
@@ -302,7 +304,7 @@ class _ProfilPageState extends State<ProfilPage> {
                       ],
                     ),
                   ),
-                  
+
                   const SizedBox(height: 30),
                   _buildTombolKeluar(),
                   const SizedBox(height: 40),
@@ -335,7 +337,7 @@ class _ProfilPageState extends State<ProfilPage> {
     final divisi =
         (rawDivisi is Map ? rawDivisi['nama_divisi'] : rawDivisi ?? 'Umum')
             .toString();
-            
+
     final int? kId = karyawan['id'];
     final String generatedNip = kId != null ? 'EMP-${kId.toString().padLeft(3, '0')}' : '-';
     final nip = (karyawan['nip'] ?? generatedNip).toString();
@@ -349,7 +351,7 @@ class _ProfilPageState extends State<ProfilPage> {
         _userProfile?['avatar'];
 
     final fotoUrl = ImageUrlService.resolve(rawFoto?.toString());
-    
+
     // Parse year joined for badge
     String yearJoined = '-';
     if (karyawan['tanggal_mulai_kerja'] != null) {
@@ -415,7 +417,7 @@ class _ProfilPageState extends State<ProfilPage> {
             textAlign: TextAlign.center,
           ),
           const SizedBox(height: 16),
-          
+
           // Badges Row
           Row(
             mainAxisAlignment: MainAxisAlignment.center,

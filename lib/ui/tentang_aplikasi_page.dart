@@ -48,7 +48,7 @@ class TentangAplikasiScreen extends StatelessWidget {
             ),
             const SizedBox(height: 4),
             const Text(
-              'Versi 1.1.6',
+              'Versi 1.1.13',
               style: TextStyle(
                 fontSize: 12,
                 color: Color(0xFF94A3B8),

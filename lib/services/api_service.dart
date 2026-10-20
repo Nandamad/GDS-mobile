@@ -11,6 +11,7 @@ class ApiService {
   static final ApiService _instance = ApiService._internal();
   late Dio dio;
   final storage = const FlutterSecureStorage();
+  bool _redirectingToSplash = false;
 
   factory ApiService() {
     return _instance;
@@ -66,10 +67,15 @@ class ApiService {
           return handler.next(options);
         },
         onError: (DioException e, handler) async {
-          if (e.response?.statusCode == 401) {
+          final requestPath = e.requestOptions.path.split('?').first;
+          final isLoginRequest = RegExp(r'(^|/)login/?$').hasMatch(requestPath);
+          if (e.response?.statusCode == 401 &&
+              !isLoginRequest &&
+              !_redirectingToSplash) {
+            _redirectingToSplash = true;
             await deleteToken();
             navigatorKey.currentState?.pushNamedAndRemoveUntil(
-              '/login',
+              '/splash',
               (route) => false,
             );
           }
@@ -86,6 +92,7 @@ class ApiService {
       try { await storage.deleteAll(); } catch (_) {}
       await storage.write(key: 'auth_token', value: token);
     }
+    _redirectingToSplash = false;
   }
 
   Future<void> deleteToken() async {

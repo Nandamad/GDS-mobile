@@ -1,8 +1,8 @@
 import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import '../services/api_service.dart';
-import 'login_page.dart';
 import 'main_navigation_page.dart';
+import 'onboarding_screen.dart';
 
 class SplashScreen extends StatefulWidget {
   const SplashScreen({super.key});
@@ -15,6 +15,7 @@ class _SplashScreenState extends State<SplashScreen>
     with SingleTickerProviderStateMixin {
   late AnimationController _controller;
   late Animation<double> _animation;
+  bool _showSplash = false;
 
   @override
   void initState() {
@@ -26,7 +27,6 @@ class _SplashScreenState extends State<SplashScreen>
     _animation = Tween<double>(begin: 0, end: 1).animate(
       CurvedAnimation(parent: _controller, curve: Curves.easeInOutCubic),
     );
-    _controller.forward();
     _checkSession();
   }
 
@@ -37,9 +37,6 @@ class _SplashScreenState extends State<SplashScreen>
   }
 
   Future<void> _checkSession() async {
-    // Memberikan waktu minimal untuk splash screen (UX)
-    await Future.delayed(const Duration(seconds: 3));
-
     String? token;
     try {
       token = await ApiService().getToken().timeout(
@@ -58,22 +55,30 @@ class _SplashScreenState extends State<SplashScreen>
     if (!mounted) return;
 
     if (token != null && token.isNotEmpty) {
-      // Ada token, auto login ke dashboard
       Navigator.pushReplacement(
         context,
         MaterialPageRoute(builder: (context) => const MainNavigationScreen()),
       );
-    } else {
-      // Tidak ada token atau error, ke halaman login
-      Navigator.pushReplacement(
-        context,
-        MaterialPageRoute(builder: (context) => const LoginScreen()),
-      );
+      return;
     }
+
+    setState(() => _showSplash = true);
+    _controller.forward();
+    await Future.delayed(const Duration(seconds: 3));
+
+    if (!mounted) return;
+    Navigator.pushReplacement(
+      context,
+      MaterialPageRoute(builder: (context) => const OnboardingScreen()),
+    );
   }
 
   @override
   Widget build(BuildContext context) {
+    if (!_showSplash) {
+      return const Scaffold(backgroundColor: Colors.white);
+    }
+
     return Scaffold(
       backgroundColor: Colors.white,
       body: SafeArea(
@@ -97,17 +102,27 @@ class _SplashScreenState extends State<SplashScreen>
                       },
                     ),
                     const SizedBox(height: 24),
-                    const Text(
-                      'PresensiPlus',
-                      style: TextStyle(
-                        color: Color(0xFF0F172A),
-                        fontSize: 32,
-                        fontWeight: FontWeight.bold,
+                    const Text.rich(
+                      TextSpan(
+                        style: TextStyle(
+                          fontSize: 32,
+                          fontWeight: FontWeight.bold,
+                        ),
+                        children: [
+                          TextSpan(
+                            text: 'Presensi',
+                            style: TextStyle(color: Color(0xFF1E293B)),
+                          ),
+                          TextSpan(
+                            text: 'Plus+',
+                            style: TextStyle(color: Color(0xFF059669)),
+                          ),
+                        ],
                       ),
                     ),
                     const SizedBox(height: 4),
                     const Text(
-                      'Sistem Absensi Digital',
+                      'Sistem Kehadiran Digital',
                       style: TextStyle(color: Colors.grey, fontSize: 14),
                     ),
                   ],
@@ -117,7 +132,7 @@ class _SplashScreenState extends State<SplashScreen>
             const Padding(
               padding: EdgeInsets.only(bottom: 12.0),
               child: Text(
-                'v1.1.6',
+                'v1.1.13',
                 style: TextStyle(fontSize: 10, color: Colors.grey),
               ),
             ),
@@ -165,7 +180,6 @@ class ClockPainter extends CustomPainter {
       center.dx + innerRadius * 0.75,
       center.dy + innerRadius * 0.75,
     );
-    // Draw green circle to cut out the clock border for the checkmark
     canvas.drawCircle(checkCenter, 8, paintBg);
 
     // Calculate angles (-pi/2 is 12 o'clock / top)
@@ -199,22 +213,20 @@ class ClockPainter extends CustomPainter {
       paintWhite,
     );
 
-    // Draw center dot
-    canvas.drawCircle(center, 2.5, Paint()..color = Colors.white);
-
-    // Draw checkmark
     final checkPaint = Paint()
       ..color = Colors.white
       ..style = PaintingStyle.stroke
       ..strokeCap = StrokeCap.round
       ..strokeJoin = StrokeJoin.round
       ..strokeWidth = 2.5;
+    final checkPath = Path()
+      ..moveTo(checkCenter.dx - 3.5, checkCenter.dy)
+      ..lineTo(checkCenter.dx - 1, checkCenter.dy + 3.5)
+      ..lineTo(checkCenter.dx + 4.5, checkCenter.dy - 3);
+    canvas.drawPath(checkPath, checkPaint);
 
-    final path = Path();
-    path.moveTo(checkCenter.dx - 3.5, checkCenter.dy);
-    path.lineTo(checkCenter.dx - 1, checkCenter.dy + 3.5);
-    path.lineTo(checkCenter.dx + 4.5, checkCenter.dy - 3);
-    canvas.drawPath(path, checkPaint);
+    // Draw center dot
+    canvas.drawCircle(center, 2.5, Paint()..color = Colors.white);
   }
 
   @override
