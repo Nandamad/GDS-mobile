@@ -1,7 +1,7 @@
 name: presensi_plus
 description: "PresensiPlus+"
 publish_to: 'none'
-version: 1.1.13+1
+version: 1.1.14+1
 
 environment:
   sdk: ^3.11.5
@@ -45,6 +45,8 @@ flutter:
     - assets/Logo.png
     - assets/sounds/
     - shorebird.yaml
+    - kebijakan-privasi-presensiplus.md
+    - syarat-ketentuan-presensiplus.md
 
 flutter_launcher_icons:
   android: true

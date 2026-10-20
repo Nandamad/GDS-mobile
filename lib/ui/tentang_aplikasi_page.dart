@@ -1,8 +1,12 @@
 import 'package:flutter/material.dart';
+import 'legal_document_page.dart';
 
 class TentangAplikasiScreen extends StatelessWidget {
   final String namaPerusahaan;
-  const TentangAplikasiScreen({super.key, this.namaPerusahaan = 'PT Generasi Digital Solusi'});
+  const TentangAplikasiScreen({
+    super.key,
+    this.namaPerusahaan = 'PT Generasi Digital Solusi',
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -12,7 +16,11 @@ class TentangAplikasiScreen extends StatelessWidget {
         backgroundColor: const Color(0xFFF8FAFC),
         elevation: 0,
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back_ios_new_rounded, color: Color(0xFF0F172A), size: 18),
+          icon: const Icon(
+            Icons.arrow_back_ios_new_rounded,
+            color: Color(0xFF0F172A),
+            size: 18,
+          ),
           onPressed: () => Navigator.pop(context),
         ),
         title: const Text(
@@ -49,13 +57,10 @@ class TentangAplikasiScreen extends StatelessWidget {
             const SizedBox(height: 4),
             const Text(
               'Versi 1.1.14',
-              style: TextStyle(
-                fontSize: 12,
-                color: Color(0xFF94A3B8),
-              ),
+              style: TextStyle(fontSize: 12, color: Color(0xFF94A3B8)),
             ),
             const SizedBox(height: 24),
-            
+
             // Description
             const Text(
               'PresensiPlus adalah solusi Employee Self-Service (ESS) terintegrasi untuk memudahkan kehadiran, pengajuan cuti, serta pengelolaan data kepegawaian Anda dalam satu genggaman tangan secara real-time dan transparan.',
@@ -67,7 +72,7 @@ class TentangAplikasiScreen extends StatelessWidget {
               ),
             ),
             const SizedBox(height: 32),
-            
+
             // Info Card
             Container(
               padding: const EdgeInsets.all(16),
@@ -87,24 +92,37 @@ class TentangAplikasiScreen extends StatelessWidget {
               ),
             ),
             const SizedBox(height: 24),
-            
+
             // Policies
             _buildActionCard('Kebijakan Privasi', () {
-              ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Halaman Kebijakan Privasi sedang dalam pengembangan.')));
+              Navigator.push(
+                context,
+                MaterialPageRoute<void>(
+                  builder: (_) => const LegalDocumentScreen(
+                    title: 'Kebijakan Privasi',
+                    assetPath: 'kebijakan-privasi-presensiplus.md',
+                  ),
+                ),
+              );
             }),
             const SizedBox(height: 12),
             _buildActionCard('Syarat & Ketentuan', () {
-              ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Halaman Syarat & Ketentuan sedang dalam pengembangan.')));
+              Navigator.push(
+                context,
+                MaterialPageRoute<void>(
+                  builder: (_) => const LegalDocumentScreen(
+                    title: 'Syarat & Ketentuan',
+                    assetPath: 'syarat-ketentuan-presensiplus.md',
+                  ),
+                ),
+              );
             }),
-            
+
             const SizedBox(height: 40),
             // Copyright
             const Text(
               '© 2026 PresensiPlus. All rights reserved.',
-              style: TextStyle(
-                fontSize: 11,
-                color: Color(0xFF94A3B8),
-              ),
+              style: TextStyle(fontSize: 11, color: Color(0xFF94A3B8)),
             ),
             const SizedBox(height: 16),
           ],
@@ -119,10 +137,7 @@ class TentangAplikasiScreen extends StatelessWidget {
       children: [
         Text(
           label,
-          style: const TextStyle(
-            fontSize: 12,
-            color: Color(0xFF64748B),
-          ),
+          style: const TextStyle(fontSize: 12, color: Color(0xFF64748B)),
         ),
         Text(
           value,
