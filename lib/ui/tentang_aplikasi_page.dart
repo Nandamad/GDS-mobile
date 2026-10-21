@@ -101,7 +101,7 @@ class TentangAplikasiScreen extends StatelessWidget {
                 MaterialPageRoute<void>(
                   builder: (_) => const LegalDocumentScreen(
                     title: 'Kebijakan Privasi',
-                    assetPath: 'kebijakan-privasi-presensiplus.md',
+                    assetPath: 'assets/kebijakan-privasi-presensiplus .md',
                   ),
                 ),
               );
@@ -113,7 +113,7 @@ class TentangAplikasiScreen extends StatelessWidget {
                 MaterialPageRoute<void>(
                   builder: (_) => const LegalDocumentScreen(
                     title: 'Syarat & Ketentuan',
-                    assetPath: 'syarat-ketentuan-presensiplus.md',
+                    assetPath: 'assets/syarat-ketentuan-presensiplus.md',
                   ),
                 ),
               );

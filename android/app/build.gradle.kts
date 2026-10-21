@@ -16,20 +16,25 @@
     val releaseKeyPassword = providers.gradleProperty("RELEASE_KEY_PASSWORD")
         .orElse(providers.environmentVariable("RELEASE_KEY_PASSWORD"))
         .orNull
+    val releaseSigningValues = mapOf(
+        "RELEASE_STORE_FILE" to releaseStoreFilePath,
+        "RELEASE_STORE_PASSWORD" to releaseStorePassword,
+        "RELEASE_KEY_ALIAS" to releaseKeyAlias,
+        "RELEASE_KEY_PASSWORD" to releaseKeyPassword,
+    )
+    val hasReleaseSigningValues = releaseSigningValues.values.any { !it.isNullOrBlank() }
+    val hasCompleteReleaseSigning = releaseSigningValues.values.all { !it.isNullOrBlank() }
 
     val validateReleaseSigning = tasks.register("validateReleaseSigning") {
         doLast {
-            val missingValues = mapOf(
-                "RELEASE_STORE_FILE" to releaseStoreFilePath,
-                "RELEASE_STORE_PASSWORD" to releaseStorePassword,
-                "RELEASE_KEY_ALIAS" to releaseKeyAlias,
-                "RELEASE_KEY_PASSWORD" to releaseKeyPassword,
-            ).filterValues { it.isNullOrBlank() }.keys
+            val missingValues = releaseSigningValues
+                .filterValues { it.isNullOrBlank() }
+                .keys
 
-            check(missingValues.isEmpty()) {
+            check(!hasReleaseSigningValues || missingValues.isEmpty()) {
                 "Release signing is not configured. Provide: ${missingValues.joinToString()}"
             }
-            check(file(requireNotNull(releaseStoreFilePath)).isFile) {
+            check(!hasCompleteReleaseSigning || file(requireNotNull(releaseStoreFilePath)).isFile) {
                 "Release keystore file does not exist: $releaseStoreFilePath"
             }
         }
@@ -78,7 +83,9 @@
 
         buildTypes {
             release {
-                signingConfig = signingConfigs.getByName("release")
+                signingConfig = signingConfigs.getByName(
+                    if (hasCompleteReleaseSigning) "release" else "debug",
+                )
             }
         }
 
