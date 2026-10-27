@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:dio/dio.dart';
 import 'dashboard_page.dart';
@@ -7,6 +8,7 @@ import 'riwayat_presensi_page.dart';
 import 'profil_page.dart';
 import 'notifikasi_page.dart';
 import '../services/api_service.dart';
+import '../services/notification_service.dart';
 
 class MainNavigationScreen extends StatefulWidget {
   final int initialIndex;
@@ -16,14 +18,36 @@ class MainNavigationScreen extends StatefulWidget {
   State<MainNavigationScreen> createState() => _MainNavigationScreenState();
 }
 
-class _MainNavigationScreenState extends State<MainNavigationScreen> {
+class _MainNavigationScreenState extends State<MainNavigationScreen>
+    with WidgetsBindingObserver {
   late int _currentIndex;
+  Timer? _notificationSyncTimer;
 
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     _currentIndex = widget.initialIndex;
     _loadAtasanStatus();
+    unawaited(NotificationService().syncServerNotifications());
+    _notificationSyncTimer = Timer.periodic(
+      const Duration(minutes: 1),
+      (_) => unawaited(NotificationService().syncServerNotifications()),
+    );
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) {
+      unawaited(NotificationService().syncServerNotifications());
+    }
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    _notificationSyncTimer?.cancel();
+    super.dispose();
   }
 
   Future<void> _loadAtasanStatus() async {
@@ -67,7 +91,6 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
         );
       }
     }
-
   }
 
   void _openNotifikasi() {

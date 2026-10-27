@@ -5,6 +5,19 @@ import 'main_navigation_page.dart';
 import 'lupa_password_page.dart';
 import 'app_version_text.dart';
 
+bool isValidLoginIdentifier(String input) {
+  final value = input.trim();
+  final emailPattern = RegExp(r'^[^@\s]+@[^@\s]+\.[^@\s]+$');
+  if (emailPattern.hasMatch(value)) return true;
+
+  if (!RegExp(r'^\+?[\d(](?:[\d\s().-]*\d)?$').hasMatch(value)) {
+    return false;
+  }
+  final phone = value.replaceAll(RegExp(r'[\s().-]'), '');
+  final digitCount = phone.replaceAll(RegExp(r'\D'), '').length;
+  return digitCount >= 8 && digitCount <= 15;
+}
+
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
 
@@ -21,6 +34,7 @@ class _LoginScreenState extends State<LoginScreen> {
   void initState() {
     super.initState();
   }
+
   @override
   void dispose() {
     _nipController.dispose();
@@ -38,6 +52,18 @@ class _LoginScreenState extends State<LoginScreen> {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text('Email/No. HP dan Password wajib diisi!'),
+          backgroundColor: Colors.redAccent,
+        ),
+      );
+      return;
+    }
+
+    if (!isValidLoginIdentifier(input)) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text(
+            'Gunakan email yang valid atau nomor HP. Username tidak dapat digunakan untuk login.',
+          ),
           backgroundColor: Colors.redAccent,
         ),
       );
@@ -181,7 +207,8 @@ class _LoginScreenState extends State<LoginScreen> {
           if (data is Map && data.containsKey('message')) {
             errorMsg = data['message'];
           } else {
-            errorMsg = 'Email/No. HP atau Password salah atau format tidak valid.';
+            errorMsg =
+                'Email/No. HP atau Password salah atau format tidak valid.';
           }
         } else if (e.response!.statusCode == 401) {
           final data = e.response!.data;
@@ -211,7 +238,12 @@ class _LoginScreenState extends State<LoginScreen> {
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Terjadi kesalahan sistem internal. Silakan coba lagi.'), backgroundColor: Colors.redAccent),
+          const SnackBar(
+            content: Text(
+              'Terjadi kesalahan sistem internal. Silakan coba lagi.',
+            ),
+            backgroundColor: Colors.redAccent,
+          ),
         );
       }
     } finally {
@@ -279,6 +311,7 @@ class _LoginScreenState extends State<LoginScreen> {
                       const SizedBox(height: 8),
                       TextField(
                         controller: _nipController,
+                        keyboardType: TextInputType.emailAddress,
                         style: const TextStyle(
                           fontSize: 13,
                           color: Color(0xFF0F172A),
@@ -371,7 +404,8 @@ class _LoginScreenState extends State<LoginScreen> {
                             Navigator.push(
                               context,
                               MaterialPageRoute(
-                                builder: (context) => const LupaPasswordScreen(),
+                                builder: (context) =>
+                                    const LupaPasswordScreen(),
                               ),
                             );
                           },

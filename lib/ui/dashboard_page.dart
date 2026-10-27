@@ -101,7 +101,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 canLembur = false;
               }
 
-              String statusLemburAPI = _lemburData!['status']?.toString().toLowerCase() ?? '';
+              String statusLemburAPI =
+                  _lemburData!['status']?.toString().toLowerCase() ?? '';
 
               if (statusLemburAPI == 'selesai') {
                 _lemburStatus = 'Sudah Selesai';
@@ -200,9 +201,13 @@ class _DashboardScreenState extends State<DashboardScreen> {
           final jMasuk = resData['jam_kerja']['jam_masuk']?.toString();
           final jPulang = resData['jam_kerja']['jam_pulang']?.toString();
           if (jMasuk != null) await prefs.setString('jam_masuk_notif', jMasuk);
-          if (jPulang != null) await prefs.setString('jam_keluar_notif', jPulang);
-          // Perbarui jadwal alarm sesuai jam kerja terbaru
-          NotificationService().scheduleDailyReminders();
+          if (jPulang != null)
+            await prefs.setString('jam_keluar_notif', jPulang);
+          try {
+            await NotificationService().scheduleDailyReminders();
+          } catch (e) {
+            debugPrint('Updating attendance reminder schedule failed: $e');
+          }
         }
 
         if (_lemburData != null) {
@@ -414,24 +419,25 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
   Future<void> _startLocationStream() async {
     await _positionStream?.cancel();
-    _positionStream = Geolocator.getPositionStream(
-      locationSettings: const LocationSettings(
-        accuracy: LocationAccuracy.high,
-        distanceFilter: 0,
-      ),
-    ).listen(
-      _updateCurrentLocation,
-      onError: (Object error) {
-        debugPrint('Dashboard location stream error: $error');
-        if (mounted && !_hasCurrentLocation) {
-          setState(() {
-            _locationError =
-                'Lokasi belum tersedia. Pastikan GPS mendapat sinyal lalu coba lagi.';
-            _isLocationLoading = false;
-          });
-        }
-      },
-    );
+    _positionStream =
+        Geolocator.getPositionStream(
+          locationSettings: const LocationSettings(
+            accuracy: LocationAccuracy.high,
+            distanceFilter: 0,
+          ),
+        ).listen(
+          _updateCurrentLocation,
+          onError: (Object error) {
+            debugPrint('Dashboard location stream error: $error');
+            if (mounted && !_hasCurrentLocation) {
+              setState(() {
+                _locationError =
+                    'Lokasi belum tersedia. Pastikan GPS mendapat sinyal lalu coba lagi.';
+                _isLocationLoading = false;
+              });
+            }
+          },
+        );
   }
 
   void _updateCurrentLocation(Position position) {
@@ -922,7 +928,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
               letterSpacing: 0.5,
             ),
           ),
-        ] else if (_lemburStatus == 'Selesai' || _lemburStatus == 'Sudah Selesai') ...[
+        ] else if (_lemburStatus == 'Selesai' ||
+            _lemburStatus == 'Sudah Selesai') ...[
           const Text(
             'SELESAI LEMBUR',
             style: TextStyle(
@@ -992,8 +999,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
       btnText = 'Mulai Lembur';
     }
 
-    if (!_hasCurrentLocation &&
-        !(_isSudahAbsenMasuk && _isSudahAbsenKeluar)) {
+    if (!_hasCurrentLocation && !(_isSudahAbsenMasuk && _isSudahAbsenKeluar)) {
       btnColor = Colors.grey;
       btnText = _isLocationLoading ? 'Mencari Lokasi' : 'Lokasi Tidak Tersedia';
     } else if (!_isInRadius && !(_isSudahAbsenMasuk && _isSudahAbsenKeluar)) {
@@ -1060,7 +1066,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
     return GestureDetector(
       onTap: () {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Anda sudah menyelesaikan lembur hari ini.')),
+          const SnackBar(
+            content: Text('Anda sudah menyelesaikan lembur hari ini.'),
+          ),
         );
       },
       child: Container(
@@ -1088,7 +1096,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 value: 1.0,
                 strokeWidth: 8,
                 backgroundColor: const Color(0xFFE2E8F0),
-                valueColor: AlwaysStoppedAnimation<Color>(const Color(0xFF009688)),
+                valueColor: AlwaysStoppedAnimation<Color>(
+                  const Color(0xFF009688),
+                ),
               ),
             ),
             Container(
@@ -1108,7 +1118,11 @@ class _DashboardScreenState extends State<DashboardScreen> {
               child: const Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  Icon(Icons.check_circle_outline, color: Colors.white, size: 40),
+                  Icon(
+                    Icons.check_circle_outline,
+                    color: Colors.white,
+                    size: 40,
+                  ),
                   SizedBox(height: 8),
                   Text(
                     'Lembur\nSelesai',
@@ -1312,11 +1326,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
               ),
               if (!_isLocationLoading) ...[
                 const SizedBox(width: 6),
-                const Icon(
-                  Icons.refresh,
-                  size: 14,
-                  color: Color(0xFFE65100),
-                ),
+                const Icon(Icons.refresh, size: 14, color: Color(0xFFE65100)),
               ],
             ],
           ),
@@ -1521,7 +1531,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
           if (time.contains('T') || time.contains('-')) {
             try {
               final dt = DateTime.parse(time).toLocal();
-              jamMasuk = '${dt.hour.toString().padLeft(2, '0')}:${dt.minute.toString().padLeft(2, '0')} WIB';
+              jamMasuk =
+                  '${dt.hour.toString().padLeft(2, '0')}:${dt.minute.toString().padLeft(2, '0')} WIB';
             } catch (_) {}
           } else if (time.length >= 5) {
             jamMasuk = '${time.substring(0, 5)} WIB';
@@ -1556,7 +1567,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
           if (time.contains('T') || time.contains('-')) {
             try {
               final dt = DateTime.parse(time).toLocal();
-              jamKeluar = '${dt.hour.toString().padLeft(2, '0')}:${dt.minute.toString().padLeft(2, '0')} WIB';
+              jamKeluar =
+                  '${dt.hour.toString().padLeft(2, '0')}:${dt.minute.toString().padLeft(2, '0')} WIB';
             } catch (_) {}
           } else if (time.length >= 5) {
             jamKeluar = '${time.substring(0, 5)} WIB';
@@ -1626,7 +1638,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
             badgeBg: masukBadgeBg,
             isFirst: true,
             isLast: !_isSudahAbsenMasuk && _lemburData == null,
-            dotColor: _isSudahAbsenMasuk ? const Color(0xFF009688) : Colors.grey,
+            dotColor: _isSudahAbsenMasuk
+                ? const Color(0xFF009688)
+                : Colors.grey,
           ),
           // Keluar
           if (_isSudahAbsenMasuk)
@@ -1638,35 +1652,47 @@ class _DashboardScreenState extends State<DashboardScreen> {
               badgeBg: keluarBadgeBg,
               isFirst: false,
               isLast: _lemburData == null,
-              dotColor: _isSudahAbsenKeluar ? const Color(0xFF009688) : Colors.grey,
+              dotColor: _isSudahAbsenKeluar
+                  ? const Color(0xFF009688)
+                  : Colors.grey,
             ),
           // Lembur
           if (_lemburData != null) ...[
             _buildTimelineItem(
               title: 'Mulai Lembur',
               time: jamMulaiLembur,
-              badgeText: (_lemburStatus == 'Selesai' || _lemburStatus == 'Sudah Selesai')
+              badgeText:
+                  (_lemburStatus == 'Selesai' ||
+                      _lemburStatus == 'Sudah Selesai')
                   ? 'Selesai'
                   : _lemburStatus == 'Sedang Lembur'
-                      ? 'Sedang Berlangsung'
-                      : 'Belum Mulai',
-              badgeColor: (_lemburStatus == 'Selesai' || _lemburStatus == 'Sudah Selesai')
+                  ? 'Sedang Berlangsung'
+                  : 'Belum Mulai',
+              badgeColor:
+                  (_lemburStatus == 'Selesai' ||
+                      _lemburStatus == 'Sudah Selesai')
                   ? const Color(0xFF009688)
                   : _lemburStatus == 'Sedang Lembur'
-                      ? const Color(0xFFE65100)
-                      : Colors.grey,
-              badgeBg: (_lemburStatus == 'Selesai' || _lemburStatus == 'Sudah Selesai')
+                  ? const Color(0xFFE65100)
+                  : Colors.grey,
+              badgeBg:
+                  (_lemburStatus == 'Selesai' ||
+                      _lemburStatus == 'Sudah Selesai')
                   ? const Color(0xFFE0F2F1)
                   : _lemburStatus == 'Sedang Lembur'
-                      ? const Color(0xFFFFF3E0)
-                      : const Color(0xFFF1F5F9),
+                  ? const Color(0xFFFFF3E0)
+                  : const Color(0xFFF1F5F9),
               isFirst: false,
-              isLast: (_lemburStatus != 'Selesai' && _lemburStatus != 'Sudah Selesai'),
-              dotColor: (_lemburStatus == 'Selesai' || _lemburStatus == 'Sudah Selesai')
+              isLast:
+                  (_lemburStatus != 'Selesai' &&
+                  _lemburStatus != 'Sudah Selesai'),
+              dotColor:
+                  (_lemburStatus == 'Selesai' ||
+                      _lemburStatus == 'Sudah Selesai')
                   ? const Color(0xFF009688)
                   : _lemburStatus == 'Sedang Lembur'
-                      ? const Color(0xFFF57C00)
-                      : Colors.grey,
+                  ? const Color(0xFFF57C00)
+                  : Colors.grey,
             ),
             if (_lemburStatus == 'Selesai' || _lemburStatus == 'Sudah Selesai')
               _buildTimelineItem(

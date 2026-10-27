@@ -11,12 +11,15 @@ class PengaturanNotifikasiScreen extends StatefulWidget {
       _PengaturanNotifikasiScreenState();
 }
 
-class _PengaturanNotifikasiScreenState extends State<PengaturanNotifikasiScreen> {
+class _PengaturanNotifikasiScreenState
+    extends State<PengaturanNotifikasiScreen> {
   bool _pengingatMasuk = true;
   bool _pengingatKeluar = true;
   bool _updatePengajuan = true;
   bool _infoLembur = false;
   bool _pengumumanPerusahaan = true;
+  bool _canScheduleExactAlarms = true;
+  bool _isRequestingAlarmPermission = false;
 
   @override
   void initState() {
@@ -26,21 +29,126 @@ class _PengaturanNotifikasiScreenState extends State<PengaturanNotifikasiScreen>
 
   Future<void> _loadPreferences() async {
     final prefs = await SharedPreferences.getInstance();
+    var canScheduleExactAlarms = false;
+    try {
+      canScheduleExactAlarms = await NotificationService()
+          .canScheduleExactReminders();
+    } catch (e) {
+      debugPrint('Checking exact alarm permission failed: $e');
+    }
+
+    if (!mounted) return;
     setState(() {
       _pengingatMasuk = prefs.getBool('notif_masuk') ?? true;
       _pengingatKeluar = prefs.getBool('notif_keluar') ?? true;
       _updatePengajuan = prefs.getBool('notif_pengajuan') ?? true;
       _infoLembur = prefs.getBool('notif_lembur') ?? false;
       _pengumumanPerusahaan = prefs.getBool('notif_pengumuman') ?? true;
+      _canScheduleExactAlarms = canScheduleExactAlarms;
     });
   }
 
-  Future<void> _savePreference(String key, bool value) async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setBool(key, value);
-    
-    if (key == 'notif_masuk' || key == 'notif_keluar') {
+  Future<void> _requestExactAlarmPermission() async {
+    setState(() => _isRequestingAlarmPermission = true);
+    try {
+      final granted = await NotificationService().requestReminderPermissions();
+      if (!mounted) return;
+
+      if (!granted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text(
+              'Aktifkan izin notifikasi dan "Alarm & reminders" untuk PresensiPlus di Pengaturan Android.',
+            ),
+          ),
+        );
+        return;
+      }
+
+      setState(() => _canScheduleExactAlarms = true);
       await NotificationService().scheduleDailyReminders();
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Izin diberikan. Pengingat absen sudah dijadwalkan.'),
+          ),
+        );
+      }
+    } catch (e) {
+      debugPrint('Requesting exact alarm permission failed: $e');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text(
+              'Izin alarm belum aktif. Periksa Pengaturan Android lalu coba lagi.',
+            ),
+          ),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _isRequestingAlarmPermission = false);
+    }
+  }
+
+  Future<void> _savePreference(String key, bool value) async {
+    final isReminder = key == 'notif_masuk' || key == 'notif_keluar';
+    final isOvertime = key == 'notif_lembur';
+    final requiresExactAlarm = isReminder || isOvertime;
+    final requestsNotificationPermission =
+        requiresExactAlarm ||
+        key == 'notif_pengajuan' ||
+        key == 'notif_pengumuman';
+    try {
+      final notificationService = NotificationService();
+      if (requestsNotificationPermission && value) {
+        final permissionGranted = requiresExactAlarm
+            ? await notificationService.requestReminderPermissions()
+            : await notificationService.requestNotificationPermissions();
+        if (!permissionGranted) {
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text(
+                  'Izin notifikasi atau "Alarm & reminders" belum diberikan. Aktifkan di Pengaturan perangkat lalu coba lagi.',
+                ),
+              ),
+            );
+          }
+          return;
+        }
+        if (mounted && requiresExactAlarm) {
+          setState(() => _canScheduleExactAlarms = true);
+        }
+      }
+
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setBool(key, value);
+      await _loadPreferences();
+
+      if (isReminder) {
+        await notificationService.scheduleDailyReminders();
+        if (mounted && value) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text(
+                'Pengingat dijadwalkan. Jika waktunya hari ini sudah lewat, pengingat berikutnya akan muncul pada jadwal berikutnya.',
+              ),
+            ),
+          );
+        }
+      }
+      if (isOvertime && !value) {
+        await notificationService.cancelLemburSelesaiNotification();
+      }
+    } catch (e) {
+      debugPrint('Saving notification preference failed: $e');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Pengaturan notifikasi gagal diterapkan. Coba lagi.'),
+          ),
+        );
+      }
     }
   }
 
@@ -52,7 +160,11 @@ class _PengaturanNotifikasiScreenState extends State<PengaturanNotifikasiScreen>
         backgroundColor: const Color(0xFFF8FAFC),
         elevation: 0,
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back_ios_new_rounded, color: Color(0xFF0F172A), size: 18),
+          icon: const Icon(
+            Icons.arrow_back_ios_new_rounded,
+            color: Color(0xFF0F172A),
+            size: 18,
+          ),
           onPressed: () => Navigator.pop(context),
         ),
         title: const Text(
@@ -88,7 +200,51 @@ class _PengaturanNotifikasiScreenState extends State<PengaturanNotifikasiScreen>
               ),
             ),
             const SizedBox(height: 24),
-            
+            if (!_canScheduleExactAlarms) ...[
+              Container(
+                padding: const EdgeInsets.all(14),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFFFF7ED),
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: const Color(0xFFFED7AA)),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text(
+                      'Izin alarm tepat belum aktif',
+                      style: TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.bold,
+                        color: Color(0xFF9A3412),
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    const Text(
+                      'Tanpa izin "Alarm & reminders", Android dapat menunda pengingat beberapa menit.',
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: Color(0xFF9A3412),
+                        height: 1.4,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    TextButton(
+                      onPressed: _isRequestingAlarmPermission
+                          ? null
+                          : _requestExactAlarmPermission,
+                      child: Text(
+                        _isRequestingAlarmPermission
+                            ? 'Membuka Pengaturan...'
+                            : 'Aktifkan izin alarm tepat',
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 16),
+            ],
+
             // List of Notification Toggles
             _buildNotificationTile(
               icon: Icons.access_time_rounded,
@@ -96,7 +252,6 @@ class _PengaturanNotifikasiScreenState extends State<PengaturanNotifikasiScreen>
               subtitle: 'Notifikasi sebelum jam masuk',
               value: _pengingatMasuk,
               onChanged: (val) {
-                setState(() => _pengingatMasuk = val);
                 _savePreference('notif_masuk', val);
               },
             ),
@@ -107,7 +262,6 @@ class _PengaturanNotifikasiScreenState extends State<PengaturanNotifikasiScreen>
               subtitle: 'Pemberitahuan harian waktu pulang kerja',
               value: _pengingatKeluar,
               onChanged: (val) {
-                setState(() => _pengingatKeluar = val);
                 _savePreference('notif_keluar', val);
               },
             ),
@@ -115,34 +269,27 @@ class _PengaturanNotifikasiScreenState extends State<PengaturanNotifikasiScreen>
             _buildNotificationTile(
               icon: Icons.fact_check_outlined,
               title: 'Update Pengajuan',
-              subtitle: 'Notifikasi saat pengajuan disetujui/ditolak',
+              subtitle:
+                  'Disinkronkan saat aplikasi aktif; push saat ditutup perlu backend',
               value: _updatePengajuan,
-              onChanged: (val) {
-                setState(() => _updatePengajuan = val);
-                _savePreference('notif_pengajuan', val);
-              },
+              onChanged: (val) => _savePreference('notif_pengajuan', val),
             ),
             const SizedBox(height: 12),
             _buildNotificationTile(
               icon: Icons.business_center_outlined,
               title: 'Info Lembur',
-              subtitle: 'Tingkat waktu lembur baru yang diajukan',
+              subtitle: 'Alarm saat waktu lembur selesai',
               value: _infoLembur,
-              onChanged: (val) {
-                setState(() => _infoLembur = val);
-                _savePreference('notif_lembur', val);
-              },
+              onChanged: (val) => _savePreference('notif_lembur', val),
             ),
             const SizedBox(height: 12),
             _buildNotificationTile(
               icon: Icons.campaign_outlined,
               title: 'Pengumuman Perusahaan',
-              subtitle: 'Info umum departemen dan kantor pusat',
+              subtitle:
+                  'Disinkronkan saat aplikasi aktif; push saat ditutup perlu backend',
               value: _pengumumanPerusahaan,
-              onChanged: (val) {
-                setState(() => _pengumumanPerusahaan = val);
-                _savePreference('notif_pengumuman', val);
-              },
+              onChanged: (val) => _savePreference('notif_pengumuman', val),
             ),
           ],
         ),

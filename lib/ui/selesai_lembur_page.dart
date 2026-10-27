@@ -7,10 +7,7 @@ import '../services/notification_service.dart';
 class SelesaiLemburScreen extends StatefulWidget {
   final Map<String, dynamic> lemburData;
 
-  const SelesaiLemburScreen({
-    super.key,
-    required this.lemburData,
-  });
+  const SelesaiLemburScreen({super.key, required this.lemburData});
 
   @override
   State<SelesaiLemburScreen> createState() => _SelesaiLemburScreenState();
@@ -26,13 +23,16 @@ class _SelesaiLemburScreenState extends State<SelesaiLemburScreen> {
 
   final NotificationService _notificationService = NotificationService();
 
-  DateTime get startTime => DateTime.parse(widget.lemburData['jam_mulai_lembur']).toLocal();
+  DateTime get startTime =>
+      DateTime.parse(widget.lemburData['jam_mulai_lembur']).toLocal();
   String get alasan => widget.lemburData['alasan'] ?? '';
   String get catatan => widget.lemburData['catatan'] ?? '';
-  int get estimasiMenit => widget.lemburData['durasi_lembur_menit'] as int? ?? 60;
+  int get estimasiMenit =>
+      widget.lemburData['durasi_lembur_menit'] as int? ?? 60;
 
   /// Waktu selesai yang dijadwalkan (startTime + estimasi)
-  DateTime get scheduledEndTime => startTime.add(Duration(minutes: estimasiMenit));
+  DateTime get scheduledEndTime =>
+      startTime.add(Duration(minutes: estimasiMenit));
 
   /// Apakah waktu lembur sudah habis
   bool get isTimeUp => DateTime.now().isAfter(scheduledEndTime);
@@ -40,11 +40,23 @@ class _SelesaiLemburScreenState extends State<SelesaiLemburScreen> {
   @override
   void initState() {
     super.initState();
-    _notificationService.initialize();
+    _scheduleOvertimeEndNotification();
     _updateTime();
     _timer = Timer.periodic(const Duration(seconds: 1), (timer) {
       _updateTime();
     });
+  }
+
+  Future<void> _scheduleOvertimeEndNotification() async {
+    try {
+      await _notificationService.scheduleLemburSelesaiNotification(
+        scheduledEndTime,
+      );
+    } catch (e, stackTrace) {
+      debugPrint(
+        'Scheduling overtime completion notification failed: $e\n$stackTrace',
+      );
+    }
   }
 
   void _updateTime() {
@@ -68,8 +80,13 @@ class _SelesaiLemburScreenState extends State<SelesaiLemburScreen> {
   Future<void> _triggerAlarm() async {
     // 1. Kirim notifikasi lokal (muncul di notification bar)
     try {
+      await _notificationService.cancelLemburSelesaiNotification();
       await _notificationService.showLemburSelesaiNotification();
-    } catch (_) {}
+    } catch (e, stackTrace) {
+      debugPrint(
+        'Showing overtime completion notification failed: $e\n$stackTrace',
+      );
+    }
 
     // 2. Mainkan alarm sound
     try {
@@ -140,7 +157,10 @@ class _SelesaiLemburScreenState extends State<SelesaiLemburScreen> {
               const SizedBox(height: 8),
               // Info durasi
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 10,
+                ),
                 decoration: BoxDecoration(
                   color: const Color(0xFFF1F5F9),
                   borderRadius: BorderRadius.circular(10),
@@ -148,7 +168,11 @@ class _SelesaiLemburScreenState extends State<SelesaiLemburScreen> {
                 child: Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    const Icon(Icons.timer_outlined, size: 16, color: Color(0xFF64748B)),
+                    const Icon(
+                      Icons.timer_outlined,
+                      size: 16,
+                      color: Color(0xFF64748B),
+                    ),
                     const SizedBox(width: 8),
                     Text(
                       'Durasi: ${_formatDuration(_elapsedTime)}',
@@ -174,7 +198,9 @@ class _SelesaiLemburScreenState extends State<SelesaiLemburScreen> {
                   },
                   style: ElevatedButton.styleFrom(
                     backgroundColor: const Color(0xFFEF4444),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
                     padding: const EdgeInsets.symmetric(vertical: 14),
                     elevation: 0,
                   ),
@@ -219,9 +245,11 @@ class _SelesaiLemburScreenState extends State<SelesaiLemburScreen> {
     setState(() => _isSubmitting = true);
     try {
       final response = await ApiService().dio.post('/lembur/selesai', data: {});
-      
+
       if (!mounted) return;
       if (response.statusCode == 200) {
+        await _notificationService.cancelLemburSelesaiNotification();
+        if (!mounted) return;
         _notificationService.stopAlarmSound();
         Navigator.pop(context);
         ScaffoldMessenger.of(context).showSnackBar(
@@ -248,7 +276,7 @@ class _SelesaiLemburScreenState extends State<SelesaiLemburScreen> {
       );
     } finally {
       if (mounted) {
-         setState(() => _isSubmitting = false);
+        setState(() => _isSubmitting = false);
       }
     }
   }
@@ -256,20 +284,24 @@ class _SelesaiLemburScreenState extends State<SelesaiLemburScreen> {
   @override
   Widget build(BuildContext context) {
     final bool timeUp = isTimeUp;
-    
+
     // Format Estimasi Awal
     final int estHours = estimasiMenit ~/ 60;
     final int estMins = estimasiMenit % 60;
-    final String estimasiText = estMins > 0 ? '$estHours Jam $estMins Menit' : '$estHours Jam';
-    
+    final String estimasiText = estMins > 0
+        ? '$estHours Jam $estMins Menit'
+        : '$estHours Jam';
+
     // Format Waktu Berjalan (elapsed)
     final int elapHours = _elapsedTime.inHours;
     final int elapMins = _elapsedTime.inMinutes.remainder(60);
-    final String elapsedText = elapMins > 0 ? '$elapHours Jam $elapMins Menit' : '$elapHours Jam';
+    final String elapsedText = elapMins > 0
+        ? '$elapHours Jam $elapMins Menit'
+        : '$elapHours Jam';
 
     // Timer display: countdown jika masih berjalan, elapsed jika sudah habis
-    final String timerDisplay = timeUp 
-        ? _formatDuration(_elapsedTime) 
+    final String timerDisplay = timeUp
+        ? _formatDuration(_elapsedTime)
         : _formatDuration(_remainingTime);
 
     return Scaffold(
@@ -283,14 +315,25 @@ class _SelesaiLemburScreenState extends State<SelesaiLemburScreen> {
             onTap: () => Navigator.pop(context),
             borderRadius: BorderRadius.circular(20),
             child: Container(
-              decoration: BoxDecoration(color: Colors.grey.shade100, shape: BoxShape.circle),
-              child: const Icon(Icons.arrow_back, size: 18, color: Color(0xFF0F172A)),
+              decoration: BoxDecoration(
+                color: Colors.grey.shade100,
+                shape: BoxShape.circle,
+              ),
+              child: const Icon(
+                Icons.arrow_back,
+                size: 18,
+                color: Color(0xFF0F172A),
+              ),
             ),
           ),
         ),
         title: const Text(
           'Selesai Lembur',
-          style: TextStyle(color: Color(0xFF0F172A), fontWeight: FontWeight.bold, fontSize: 16),
+          style: TextStyle(
+            color: Color(0xFF0F172A),
+            fontWeight: FontWeight.bold,
+            fontSize: 16,
+          ),
         ),
         centerTitle: true,
       ),
@@ -305,7 +348,10 @@ class _SelesaiLemburScreenState extends State<SelesaiLemburScreen> {
                     // ===== Banner Info (jika waktu sudah habis) =====
                     if (timeUp) ...[
                       Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 16,
+                          vertical: 12,
+                        ),
                         decoration: BoxDecoration(
                           color: const Color(0xFFF0FDF4),
                           borderRadius: BorderRadius.circular(12),
@@ -319,7 +365,11 @@ class _SelesaiLemburScreenState extends State<SelesaiLemburScreen> {
                                 color: Color(0xFF22C55E),
                                 shape: BoxShape.circle,
                               ),
-                              child: const Icon(Icons.check, color: Colors.white, size: 16),
+                              child: const Icon(
+                                Icons.check,
+                                color: Colors.white,
+                                size: 16,
+                              ),
                             ),
                             const SizedBox(width: 12),
                             const Expanded(
@@ -341,7 +391,10 @@ class _SelesaiLemburScreenState extends State<SelesaiLemburScreen> {
                     // ===== Timer Card =====
                     Container(
                       width: double.infinity,
-                      padding: const EdgeInsets.symmetric(vertical: 32, horizontal: 16),
+                      padding: const EdgeInsets.symmetric(
+                        vertical: 32,
+                        horizontal: 16,
+                      ),
                       decoration: BoxDecoration(
                         color: Colors.white,
                         borderRadius: BorderRadius.circular(16),
@@ -357,9 +410,13 @@ class _SelesaiLemburScreenState extends State<SelesaiLemburScreen> {
                       child: Column(
                         children: [
                           Text(
-                            timeUp ? 'WAKTU LEMBUR TELAH HABIS' : 'SISA WAKTU LEMBUR',
+                            timeUp
+                                ? 'WAKTU LEMBUR TELAH HABIS'
+                                : 'SISA WAKTU LEMBUR',
                             style: TextStyle(
-                              color: timeUp ? const Color(0xFFEF4444) : const Color(0xFF64748B),
+                              color: timeUp
+                                  ? const Color(0xFFEF4444)
+                                  : const Color(0xFF64748B),
                               fontWeight: FontWeight.bold,
                               fontSize: 12,
                               letterSpacing: 1.0,
@@ -369,10 +426,14 @@ class _SelesaiLemburScreenState extends State<SelesaiLemburScreen> {
                           Text(
                             timerDisplay,
                             style: TextStyle(
-                              color: timeUp ? const Color(0xFFEF4444) : const Color(0xFF0F172A),
+                              color: timeUp
+                                  ? const Color(0xFFEF4444)
+                                  : const Color(0xFF0F172A),
                               fontSize: 48,
                               fontWeight: FontWeight.bold,
-                              fontFeatures: const [FontFeature.tabularFigures()],
+                              fontFeatures: const [
+                                FontFeature.tabularFigures(),
+                              ],
                             ),
                           ),
                           const SizedBox(height: 12),
@@ -383,13 +444,15 @@ class _SelesaiLemburScreenState extends State<SelesaiLemburScreen> {
                                 width: 8,
                                 height: 8,
                                 decoration: BoxDecoration(
-                                  color: timeUp ? const Color(0xFFEF4444) : const Color(0xFF009688),
+                                  color: timeUp
+                                      ? const Color(0xFFEF4444)
+                                      : const Color(0xFF009688),
                                   shape: BoxShape.circle,
                                 ),
                               ),
                               const SizedBox(width: 6),
                               Text(
-                                timeUp 
+                                timeUp
                                     ? 'Estimasi lembur Anda telah berakhir'
                                     : 'Dimulai dari jam ${_formatStartTime()} WIB',
                                 style: const TextStyle(
@@ -403,7 +466,7 @@ class _SelesaiLemburScreenState extends State<SelesaiLemburScreen> {
                       ),
                     ),
                     const SizedBox(height: 16),
-                    
+
                     // ===== Informasi Lembur Aktif Card =====
                     Container(
                       width: double.infinity,
@@ -437,7 +500,10 @@ class _SelesaiLemburScreenState extends State<SelesaiLemburScreen> {
                           const SizedBox(height: 16),
                           const Divider(height: 1, color: Color(0xFFF1F5F9)),
                           const SizedBox(height: 16),
-                          _buildInfoRow('Alasan Lembur', alasan.isEmpty ? '-' : alasan),
+                          _buildInfoRow(
+                            'Alasan Lembur',
+                            alasan.isEmpty ? '-' : alasan,
+                          ),
                           const SizedBox(height: 12),
                           _buildInfoRow('Estimasi Awal', estimasiText),
                           const SizedBox(height: 12),
@@ -484,7 +550,7 @@ class _SelesaiLemburScreenState extends State<SelesaiLemburScreen> {
                 ),
               ),
             ),
-            
+
             // ===== Button Selesai Lembur =====
             Container(
               padding: const EdgeInsets.all(16),
@@ -515,7 +581,10 @@ class _SelesaiLemburScreenState extends State<SelesaiLemburScreen> {
                       ? const SizedBox(
                           width: 20,
                           height: 20,
-                          child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
+                          child: CircularProgressIndicator(
+                            color: Colors.white,
+                            strokeWidth: 2,
+                          ),
                         )
                       : const Text(
                           'Selesai Lembur',
@@ -542,10 +611,7 @@ class _SelesaiLemburScreenState extends State<SelesaiLemburScreen> {
           flex: 2,
           child: Text(
             label,
-            style: const TextStyle(
-              color: Color(0xFF64748B),
-              fontSize: 12,
-            ),
+            style: const TextStyle(color: Color(0xFF64748B), fontSize: 12),
           ),
         ),
         Expanded(

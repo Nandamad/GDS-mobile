@@ -13,17 +13,20 @@ Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   try {
     await dotenv.load(fileName: "assets/.env");
-    NotificationService()
-        .initialize()
-        .then((_) {
-          NotificationService().scheduleDailyReminders();
-        })
-        .catchError((e) {
-          debugPrint("Notification init error: $e");
-        });
+  } catch (e) {
+    debugPrint("Environment initialization error: $e");
+  }
+  try {
     await initializeDateFormatting('id_ID', null);
   } catch (e) {
-    debugPrint("Initialization error: $e");
+    debugPrint("Date formatting initialization error: $e");
+  }
+  try {
+    final notificationService = NotificationService();
+    await notificationService.initialize();
+    await notificationService.scheduleDailyReminders();
+  } catch (e) {
+    debugPrint("Notification initialization or scheduling error: $e");
   }
   runApp(const MyApp());
 }

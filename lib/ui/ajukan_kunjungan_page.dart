@@ -1,10 +1,11 @@
-import 'package:flutter/material.dart';
 import 'dart:async';
+import 'package:flutter/material.dart';
 import 'package:geocoding/geocoding.dart';
 import 'package:dio/dio.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart' hide Path;
 import '../services/api_service.dart';
+import '../services/notification_service.dart';
 
 class AjukanKunjunganScreen extends StatefulWidget {
   const AjukanKunjunganScreen({super.key});
@@ -22,7 +23,12 @@ class _AjukanKunjunganScreenState extends State<AjukanKunjunganScreen> {
   final TextEditingController _catatanController = TextEditingController();
 
   String? _tujuanKunjungan;
-  final List<String> _tujuanOptions = ['Meeting', 'Maintenance', 'Sales', 'Lainnya'];
+  final List<String> _tujuanOptions = [
+    'Meeting',
+    'Maintenance',
+    'Sales',
+    'Lainnya',
+  ];
 
   bool _isSubmitting = false;
 
@@ -91,11 +97,13 @@ class _AjukanKunjunganScreenState extends State<AjukanKunjunganScreen> {
 
   void _submit() async {
     if (!_formKey.currentState!.validate()) return;
-    
+
     if (_latitude == null || _longitude == null) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text('Lokasi peta belum ditemukan. Mohon ketikkan alamat kunjungan yang lebih jelas.'),
+          content: Text(
+            'Lokasi peta belum ditemukan. Mohon ketikkan alamat kunjungan yang lebih jelas.',
+          ),
           backgroundColor: Colors.orange,
         ),
       );
@@ -107,13 +115,16 @@ class _AjukanKunjunganScreenState extends State<AjukanKunjunganScreen> {
     });
 
     try {
-      final response = await ApiService().dio.post('/kunjungan/ajukan', data: {
-        'nama_klien': _namaKlienController.text,
-        'alamat_kunjungan': _alamatController.text,
-        'tujuan_kunjungan': _tujuanKunjungan,
-        'catatan': _catatanController.text,
-        'lokasi_gps_mulai': '$_latitude,$_longitude',
-      });
+      final response = await ApiService().dio.post(
+        '/kunjungan/ajukan',
+        data: {
+          'nama_klien': _namaKlienController.text,
+          'alamat_kunjungan': _alamatController.text,
+          'tujuan_kunjungan': _tujuanKunjungan,
+          'catatan': _catatanController.text,
+          'lokasi_gps_mulai': '$_latitude,$_longitude',
+        },
+      );
 
       if (mounted) {
         setState(() {
@@ -122,15 +133,33 @@ class _AjukanKunjunganScreenState extends State<AjukanKunjunganScreen> {
         if (response.statusCode == 201 || response.statusCode == 200) {
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(
-              content: Text('Pengajuan Kunjungan berhasil dikirim! Menunggu approval.'),
+              content: Text(
+                'Pengajuan Kunjungan berhasil dikirim! Menunggu approval.',
+              ),
               backgroundColor: Colors.green,
             ),
           );
           Navigator.pop(context, true);
+          unawaited(
+            NotificationService()
+                .showInfoNotification(
+                  title: 'Pengajuan Kunjungan Terkirim',
+                  body:
+                      'Pengajuan kunjungan Anda berhasil dikirim dan menunggu persetujuan.',
+                  preferenceKey: 'notif_pengajuan',
+                )
+                .catchError((Object error, StackTrace stackTrace) {
+                  debugPrint(
+                    'Showing visit submission notification failed: $error\n$stackTrace',
+                  );
+                }),
+          );
         } else {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
-              content: Text(response.data['message'] ?? 'Gagal memulai kunjungan'),
+              content: Text(
+                response.data['message'] ?? 'Gagal memulai kunjungan',
+              ),
               backgroundColor: Colors.red,
             ),
           );
@@ -143,17 +172,14 @@ class _AjukanKunjunganScreenState extends State<AjukanKunjunganScreen> {
         });
         String errorMessage = 'Terjadi kesalahan jaringan';
         if (e.response != null && e.response?.data != null) {
-           if (e.response?.data is Map && e.response?.data['message'] != null) {
-              errorMessage = e.response?.data['message'];
-           } else {
-              errorMessage = e.response?.data.toString() ?? 'Error dari server';
-           }
+          if (e.response?.data is Map && e.response?.data['message'] != null) {
+            errorMessage = e.response?.data['message'];
+          } else {
+            errorMessage = e.response?.data.toString() ?? 'Error dari server';
+          }
         }
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(errorMessage),
-            backgroundColor: Colors.red,
-          ),
+          SnackBar(content: Text(errorMessage), backgroundColor: Colors.red),
         );
       }
     } catch (e) {
@@ -162,10 +188,7 @@ class _AjukanKunjunganScreenState extends State<AjukanKunjunganScreen> {
           _isSubmitting = false;
         });
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(e.toString()),
-            backgroundColor: Colors.red,
-          ),
+          SnackBar(content: Text(e.toString()), backgroundColor: Colors.red),
         );
       }
     }
@@ -180,7 +203,11 @@ class _AjukanKunjunganScreenState extends State<AjukanKunjunganScreen> {
         elevation: 0,
         centerTitle: false,
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back_ios_new, color: Color(0xFF0F172A), size: 18),
+          icon: const Icon(
+            Icons.arrow_back_ios_new,
+            color: Color(0xFF0F172A),
+            size: 18,
+          ),
           onPressed: () => Navigator.pop(context),
         ),
         title: const Text(
@@ -203,7 +230,9 @@ class _AjukanKunjunganScreenState extends State<AjukanKunjunganScreen> {
               _buildTextField(
                 controller: _namaKlienController,
                 hint: 'Masukkan nama klien',
-                validator: (val) => val == null || val.isEmpty ? 'Nama klien wajib diisi' : null,
+                validator: (val) => val == null || val.isEmpty
+                    ? 'Nama klien wajib diisi'
+                    : null,
               ),
               const SizedBox(height: 16),
 
@@ -211,7 +240,8 @@ class _AjukanKunjunganScreenState extends State<AjukanKunjunganScreen> {
               _buildTextField(
                 controller: _alamatController,
                 hint: 'Masukkan alamat kunjungan',
-                validator: (val) => val == null || val.isEmpty ? 'Alamat wajib diisi' : null,
+                validator: (val) =>
+                    val == null || val.isEmpty ? 'Alamat wajib diisi' : null,
               ),
               const SizedBox(height: 16),
 
@@ -219,12 +249,23 @@ class _AjukanKunjunganScreenState extends State<AjukanKunjunganScreen> {
               DropdownButtonFormField<String>(
                 value: _tujuanKunjungan,
                 decoration: _inputDecoration('Pilih tujuan kunjungan'),
-                icon: const Icon(Icons.keyboard_arrow_down, color: Color(0xFF64748B)),
+                icon: const Icon(
+                  Icons.keyboard_arrow_down,
+                  color: Color(0xFF64748B),
+                ),
                 items: _tujuanOptions
-                    .map((t) => DropdownMenuItem(
-                          value: t,
-                          child: Text(t, style: const TextStyle(fontSize: 13, color: Color(0xFF1E293B))),
-                        ))
+                    .map(
+                      (t) => DropdownMenuItem(
+                        value: t,
+                        child: Text(
+                          t,
+                          style: const TextStyle(
+                            fontSize: 13,
+                            color: Color(0xFF1E293B),
+                          ),
+                        ),
+                      ),
+                    )
                     .toList(),
                 onChanged: (val) => setState(() => _tujuanKunjungan = val),
                 validator: (val) => val == null ? 'Tujuan wajib dipilih' : null,
@@ -258,11 +299,18 @@ class _AjukanKunjunganScreenState extends State<AjukanKunjunganScreen> {
                       ? const SizedBox(
                           width: 20,
                           height: 20,
-                          child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
+                          child: CircularProgressIndicator(
+                            color: Colors.white,
+                            strokeWidth: 2,
+                          ),
                         )
                       : const Text(
                           'Mulai Kunjungan Sekarang',
-                          style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 13),
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontWeight: FontWeight.bold,
+                            fontSize: 13,
+                          ),
                         ),
                 ),
               ),
@@ -335,7 +383,7 @@ class _AjukanKunjunganScreenState extends State<AjukanKunjunganScreen> {
             color: Colors.black.withOpacity(0.02),
             blurRadius: 10,
             offset: const Offset(0, 4),
-          )
+          ),
         ],
       ),
       child: Column(
@@ -347,14 +395,21 @@ class _AjukanKunjunganScreenState extends State<AjukanKunjunganScreen> {
               const SizedBox(width: 8),
               const Text(
                 'Lokasi Peta (Berdasarkan Alamat)',
-                style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12, color: Color(0xFF0F172A)),
+                style: TextStyle(
+                  fontWeight: FontWeight.bold,
+                  fontSize: 12,
+                  color: Color(0xFF0F172A),
+                ),
               ),
               if (_isLoadingLocation) ...[
                 const Spacer(),
                 SizedBox(
                   width: 14,
                   height: 14,
-                  child: CircularProgressIndicator(strokeWidth: 2, color: primaryTeal),
+                  child: CircularProgressIndicator(
+                    strokeWidth: 2,
+                    color: primaryTeal,
+                  ),
                 ),
               ],
             ],
@@ -362,12 +417,20 @@ class _AjukanKunjunganScreenState extends State<AjukanKunjunganScreen> {
           const SizedBox(height: 12),
           Text(
             _locationName,
-            style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: Color(0xFF0F172A)),
+            style: const TextStyle(
+              fontWeight: FontWeight.bold,
+              fontSize: 13,
+              color: Color(0xFF0F172A),
+            ),
           ),
           const SizedBox(height: 4),
           Text(
             _locationAddress,
-            style: const TextStyle(color: Colors.grey, fontSize: 11, height: 1.4),
+            style: const TextStyle(
+              color: Colors.grey,
+              fontSize: 11,
+              height: 1.4,
+            ),
           ),
           const SizedBox(height: 16),
           ClipRRect(
@@ -375,20 +438,21 @@ class _AjukanKunjunganScreenState extends State<AjukanKunjunganScreen> {
             child: Container(
               height: 120,
               width: double.infinity,
-              decoration: const BoxDecoration(
-                color: Color(0xFFE2E8F0),
-              ),
+              decoration: const BoxDecoration(color: Color(0xFFE2E8F0)),
               child: _latitude != null && _longitude != null
                   ? FlutterMap(
                       key: ValueKey('$_latitude-$_longitude'),
                       options: MapOptions(
                         initialCenter: LatLng(_latitude!, _longitude!),
                         initialZoom: 15.0,
-                        interactionOptions: const InteractionOptions(flags: InteractiveFlag.none),
+                        interactionOptions: const InteractionOptions(
+                          flags: InteractiveFlag.none,
+                        ),
                       ),
                       children: [
                         TileLayer(
-                          urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+                          urlTemplate:
+                              'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
                           userAgentPackageName: 'com.gds.presensi_plus',
                         ),
                         MarkerLayer(
@@ -411,15 +475,17 @@ class _AjukanKunjunganScreenState extends State<AjukanKunjunganScreen> {
                       alignment: Alignment.center,
                       children: [
                         Positioned.fill(
-                          child: CustomPaint(
-                            painter: MapPlaceholderPainter(),
-                          ),
+                          child: CustomPaint(painter: MapPlaceholderPainter()),
                         ),
-                        const Icon(Icons.location_off, color: Colors.grey, size: 30),
+                        const Icon(
+                          Icons.location_off,
+                          color: Colors.grey,
+                          size: 30,
+                        ),
                       ],
                     ),
             ),
-          )
+          ),
         ],
       ),
     );
